@@ -2,30 +2,30 @@
 // ======== INITIAL SETTINGS ========
 error_reporting(E_ALL); // Enable error reporting for debugging (disable in production: error_reporting(0))
 ini_set('display_errors', 1);
-set_time_limit(60); // Reduced for Render's free tier
+set_time_limit(60); // Adjusted for Render's free tier
 date_default_timezone_set('Asia/Kolkata');
 
 // ======== CONFIGURATION ========
 // Dynamically generate restream base URL (used for logging)
-$scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'https'; // Force HTTPS for Render
+$scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'https';
 $host = $_SERVER['HTTP_HOST'];
 $script = $_SERVER['SCRIPT_NAME'];
 $restream_base_url = "{$scheme}://{$host}{$script}";
 
 $xtream_config = [
-    'panel_url' => 'http://filex.tv:8080', // Xtream Codes panel URL
-    'username'  => 'Home329', // Xtream Codes username
-    'password'  => 'Sohailhome', // Xtream Codes password
-    'token'     => null, // Store session token
-    'token_expiry' => 0 // Track token expiry
+    'panel_url' => 'http://filex.tv:8080',
+    'username'  => 'Home329',
+    'password'  => 'Sohailhome',
+    'token'     => null,
+    'token_expiry' => 0
 ];
 
 $stalker_config = [
-    'portal'     => 'http://starshare.fun:8080/c', // Base portal URL
-    'api_path'   => '', // Will be set dynamically after testing endpoints
-    'mac'        => '00:1A:79:00:00:00', // Replace with your valid MAC address
-    'sn'         => 'YOUR_SERIAL_NUMBER', // Replace with your valid serial number
-    'device_id'  => 'YOUR_DEVICE_ID', // Replace with your valid device ID
+    'portal'     => 'http://starshare.fun:8080/c',
+    'api_path'   => '',
+    'mac'        => '00:1A:79:00:00:00', // Replace with valid MAC address
+    'sn'         => 'YOUR_SERIAL_NUMBER', // Replace with valid serial number
+    'device_id'  => 'YOUR_DEVICE_ID', // Replace with valid device ID
     'possible_endpoints' => [
         '/server/load.php',
         '/stalker_portal/server/load.php',
@@ -115,7 +115,6 @@ function proxy_stream($url, $headers = []) {
         return strlen($data);
     });
 
-    // Set streaming headers
     header('Content-Type: application/x-mpegURL');
     header('Cache-Control: no-cache');
     header('Connection: keep-alive');
@@ -165,13 +164,11 @@ function xtream_authenticate(&$config) {
         log_message($error_msg);
         exit($error_msg);
     }
-    // Store token or session data if provided (simplified for now)
-    $config['token_expiry'] = time() + 300; // Assume 5-minute validity
+    $config['token_expiry'] = time() + 180; // Assume 3-minute validity
     log_message("Xtream Codes authentication successful");
 }
 
 function xtream_stream($config, $channel) {
-    // Re-authenticate if token expired
     if (time() >= $config['token_expiry']) {
         xtream_authenticate($config);
     }
@@ -189,7 +186,6 @@ function xtream_stream($config, $channel) {
 }
 
 function xtream_playlist($config, $restream_base_url) {
-    // Authenticate before fetching channels
     xtream_authenticate($config);
 
     $channels_url = "{$config['panel_url']}/player_api.php?username={$config['username']}&password={$config['password']}&action=get_live_streams";
@@ -204,7 +200,6 @@ function xtream_playlist($config, $restream_base_url) {
     foreach ($channels_data as $channel) {
         $channel_id = $channel['stream_id'];
         $channel_name = $channel['name'] ?? 'Unknown';
-        // Use direct stream URL
         $stream_url = "{$config['panel_url']}/live/{$config['username']}/{$config['password']}/{$channel_id}.m3u8";
         $m3u .= "#EXTINF:-1,{$channel_name}\n{$stream_url}\n";
     }
@@ -230,17 +225,14 @@ function find_stalker_endpoint($config) {
 }
 
 function stalker_stream($config, $channel) {
-    // Find valid endpoint if not set
     if (empty($config['api_path'])) {
         $config['api_path'] = find_stalker_endpoint($config);
     }
 
-    // Step 1: Handshake
     $handshake_url = "{$config['portal']}{$config['api_path']}?type=stb&action=handshake&JsHttpRequest=1-xml";
     $handshake_data = json_decode(make_request($handshake_url, build_headers('stalker', $config)), true);
     $token = isset($handshake_data["js"]["token"]) ? $handshake_data["js"]["token"] : exit("Stalker handshake failed");
 
-    // Step 2: Authorize
     $auth_url = "{$config['portal']}{$config['api_path']}?type=stb&action=authorize&JsHttpRequest=1-xml";
     $auth_payload = [
         "mac"       => $config['mac'],
@@ -255,7 +247,6 @@ function stalker_stream($config, $channel) {
         exit($error_msg);
     }
 
-    // Step 3: Get Profile
     $profile_url = "{$config['portal']}{$config['api_path']}?type=stb&action=get_profile&JsHttpRequest=1-xml";
     $profile_data = json_decode(make_request($profile_url, build_headers('stalker', $config, $token)), true);
     if (!isset($profile_data["js"]["id"])) {
@@ -264,7 +255,6 @@ function stalker_stream($config, $channel) {
         exit($error_msg);
     }
 
-    // Step 4: Fetch Stream Link
     $stream_url = "{$config['portal']}{$config['api_path']}?type=itv&action=create_link&cmd=ffmpeg%20http://localhost/ch/{$channel}&JsHttpRequest=1-xml";
     $stream_data = json_decode(make_request($stream_url, build_headers('stalker', $config, $token)), true);
     $cmd = isset($stream_data["js"]["cmd"]) ? $stream_data["js"]["cmd"] : exit("Stalker stream link fetch failed");
@@ -274,17 +264,14 @@ function stalker_stream($config, $channel) {
 }
 
 function stalker_playlist($config, $restream_base_url) {
-    // Find valid endpoint if not set
     if (empty($config['api_path'])) {
         $config['api_path'] = find_stalker_endpoint($config);
     }
 
-    // Step 1: Handshake
     $handshake_url = "{$config['portal']}{$config['api_path']}?type=stb&action=handshake&JsHttpRequest=1-xml";
     $handshake_data = json_decode(make_request($handshake_url, build_headers('stalker', $config)), true);
     $token = isset($handshake_data["js"]["token"]) ? $handshake_data["js"]["token"] : exit("Stalker handshake failed");
 
-    // Step 2: Authorize
     $auth_url = "{$config['portal']}{$config['api_path']}?type=stb&action=authorize&JsHttpRequest=1-xml";
     $auth_payload = [
         "mac"       => $config['mac'],
@@ -299,7 +286,6 @@ function stalker_playlist($config, $restream_base_url) {
         exit($error_msg);
     }
 
-    // Step 3: Fetch Channels
     $channels_url = "{$config['portal']}{$config['api_path']}?type=itv&action=get_all_channels&JsHttpRequest=1-xml";
     $channels_data = json_decode(make_request($channels_url, build_headers('stalker', $config, $token)), true);
     if (!isset($channels_data['js']['data'])) {
@@ -308,7 +294,6 @@ function stalker_playlist($config, $restream_base_url) {
         exit($error_msg);
     }
 
-    // Generate M3U playlist with direct stream URLs
     $m3u = "#EXTM3U\n";
     foreach ($channels_data['js']['data'] as $channel) {
         $channel_id = $channel['id'];
