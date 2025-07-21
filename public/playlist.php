@@ -260,7 +260,7 @@ function stalker_playlist($config, $restream_base_url) {
     $auth_url = "{$config['portal']}{$config['api_path']}?type=stb&action=authorize&JsHttpRequest=1-xml";
     $auth_payload = [
         "mac"       => $config['mac'],
-        "sn"       medi0"        => $config['sn'],
+        "sn"        => $config['sn'],
         "device_id" => $config['device_id'],
         "device_id2"=> $config['device_id']
     ];
