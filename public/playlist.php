@@ -1,21 +1,21 @@
 <?php
 // ======== INITIAL SETTINGS ========
-error_reporting(E_ALL); // Enable error reporting for debugging
+error_reporting(E_ALL); // Enable error reporting for debugging (disable in production: error_reporting(0))
 ini_set('display_errors', 1);
-set_time_limit(30);
+set_time_limit(300); // Increased timeout for streaming
 date_default_timezone_set('Asia/Kolkata');
 
 // ======== CONFIGURATION ========
-// Dynamically generate restream base URL
-$scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'https';
+// Dynamically generate restream base URL (used for logging)
+$scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'https'; // Force HTTPS for free.nf
 $host = $_SERVER['HTTP_HOST'];
 $script = $_SERVER['SCRIPT_NAME'];
 $restream_base_url = "{$scheme}://{$host}{$script}";
 
 $xtream_config = [
-    'panel_url' => 'http://filex.tv:8080', // Replace with your Xtream Codes panel URL
-    'username'  => 'Home329', // Replace with your Xtream Codes username
-    'password'  => 'Sohailhome'  // Replace with your Xtream Codes password
+    'panel_url' => 'http://filex.tv:8080', // Xtream Codes panel URL
+    'username'  => 'Home329', // Xtream Codes username
+    'password'  => 'Sohailhome'  // Xtream Codes password
 ];
 
 $stalker_config = [
@@ -48,20 +48,24 @@ $type = isset($_GET['type']) ? strtolower(trim($_GET['type'])) : exit("Type miss
 $channel = isset($_GET['ch']) ? trim($_GET['ch']) : (isset($_GET['playlist']) ? null : exit("Channel ID missing (?ch=xxx)"));
 $generate_playlist = isset($_GET['playlist']) && $_GET['playlist'] === 'true';
 
-if (!in_array($type, ['xtream', 'stalker'])) {
-    exit("Invalid type. Use ?type=xtream or ?type=stalker");
-}
+// Add CORS headers
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET');
+header('Access-Control-Allow-Headers: Content-Type, User-Agent');
 
 // ======== REQUEST FUNCTION (Without cURL) ========
 function make_request($url, $headers = [], $post = null) {
     $options = [
         'http' => [
             'method'  => $post ? 'POST' : 'GET',
-            'header'  => implode("\r\n", $headers),
+            'header'  => implode("\r\n", array_merge($headers, [
+                'Connection: keep-alive',
+                'Keep-Alive: timeout=30, max=100'
+            ])),
             'content' => $post ? http_build_query($post) : '',
             'follow_location' => 1,
             'max_redirects'  => 5,
-            'timeout' => 10
+            'timeout' => 30 // Increased timeout
         ]
     ];
     $context = stream_context_create($options);
@@ -76,13 +80,48 @@ function make_request($url, $headers = [], $post = null) {
     return $response;
 }
 
+// ======== STREAM PROXY FUNCTION ========
+function proxy_stream($url, $headers = []) {
+    $context = stream_context_create([
+        'http' => [
+            'header' => implode("\r\n", array_merge($headers, [
+                'Connection: keep-alive',
+                'Keep-Alive: timeout=30, max=100'
+            ])),
+            'follow_location' => 1,
+            'max_redirects' => 5,
+            'timeout' => 30
+        ]
+    ]);
+    $stream = @fopen($url, 'r', false, $context);
+    if ($stream === false) {
+        $error = error_get_last();
+        $error_msg = "Stream failed: fopen($url): " . ($error['message'] ?? 'Unknown error');
+        log_message($error_msg);
+        exit($error_msg);
+    }
+
+    // Set streaming headers
+    header('Content-Type: application/x-mpegURL');
+    header('Cache-Control: no-cache');
+    header('Connection: keep-alive');
+
+    // Stream the content
+    while (!feof($stream)) {
+        echo fread($stream, 8192);
+        flush();
+    }
+    fclose($stream);
+    log_message("Stream proxied successfully: $url");
+}
+
 // ======== HEADER BUILDER ========
 function build_headers($type, $config, $token = '') {
     if ($type === 'xtream') {
         return [
             "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
             "Accept: */*",
-            "Content-Type: application/x-www-form-urlencoded"
+            "Content-Type: application/x-mpegURL"
         ];
     } else {
         return [
@@ -106,7 +145,7 @@ function find_stalker_endpoint($config) {
             'header' => implode("\r\n", $headers),
             'follow_location' => 1,
             'max_redirects' => 5,
-            'timeout' => 10
+            'timeout' => 30
         ]]));
         if ($response !== false) {
             $data = json_decode($response, true);
@@ -136,7 +175,7 @@ function xtream_stream($config, $channel) {
     $headers = build_headers('xtream', $config);
     $stream_response = make_request($stream_url, $headers);
     if (strpos($stream_response, '#EXTM3U') === false) {
-        $error_msg = "Xtream Codes stream link fetch failed";
+        $error_msg = "Xtream Codes stream link fetch failed for channel $channel";
         log_message($error_msg);
         exit($error_msg);
     }
@@ -157,7 +196,8 @@ function xtream_playlist($config, $restream_base_url) {
     foreach ($channels_data as $channel) {
         $channel_id = $channel['stream_id'];
         $channel_name = $channel['name'] ?? 'Unknown';
-        $stream_url = "{$restream_base_url}?type=xtream&ch={$channel_id}";
+        // Use direct stream URL
+        $stream_url = "{$config['panel_url']}/live/{$config['username']}/{$config['password']}/{$channel_id}.m3u8";
         $m3u .= "#EXTINF:-1,{$channel_name}\n{$stream_url}\n";
     }
     log_message("Xtream Codes playlist generated with " . count($channels_data) . " channels");
@@ -244,12 +284,12 @@ function stalker_playlist($config, $restream_base_url) {
         exit($error_msg);
     }
 
-    // Generate M3U playlist with restream URLs
+    // Generate M3U playlist with direct stream URLs
     $m3u = "#EXTM3U\n";
     foreach ($channels_data['js']['data'] as $channel) {
         $channel_id = $channel['id'];
         $channel_name = $channel['name'] ?? 'Unknown';
-        $stream_url = "{$restream_base_url}?type=stalker&ch={$channel_id}";
+        $stream_url = stalker_stream($config, $channel_id);
         $m3u .= "#EXTINF:-1,{$channel_name}\n{$stream_url}\n";
     }
     log_message("Stalker playlist generated with " . count($channels_data['js']['data']) . " channels");
@@ -268,11 +308,11 @@ if ($generate_playlist) {
 } else {
     if ($type === 'xtream') {
         $stream_url = xtream_stream($xtream_config, $channel);
+        proxy_stream($stream_url, build_headers('xtream', $xtream_config));
     } else {
         $stream_url = stalker_stream($stalker_config, $channel);
+        proxy_stream($stream_url, build_headers('stalker', $stalker_config));
     }
-    log_message("Redirecting to stream URL: $stream_url");
-    header("Location: $stream_url");
 }
 exit;
 ?>
