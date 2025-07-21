@@ -13,9 +13,9 @@ $script = $_SERVER['SCRIPT_NAME'];
 $restream_base_url = "{$scheme}://{$host}{$script}";
 
 $xtream_config = [
-    'panel_url' => 'http://filex.me:8080', // Replace with your Xtream Codes panel URL
-    'username'  => 'Home329', // Replace with your Xtream Codes username
-    'password'  => 'Sohailhome'  // Replace with your Xtream Codes password
+    'panel_url' => 'http://nodns1.top:8080', // Replace with your Xtream Codes panel URL
+    'username'  => '431723547318174', // Replace with your Xtream Codes username
+    'password'  => '5afc489121c7'  // Replace with your Xtream Codes password
 ];
 
 $stalker_config = [
