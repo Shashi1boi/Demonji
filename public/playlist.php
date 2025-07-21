@@ -2,12 +2,12 @@
 // ======== INITIAL SETTINGS ========
 error_reporting(E_ALL); // Enable error reporting for debugging (disable in production: error_reporting(0))
 ini_set('display_errors', 1);
-set_time_limit(120); // Reduced timeout for performance
+set_time_limit(60); // Reduced for Render's free tier
 date_default_timezone_set('Asia/Kolkata');
 
 // ======== CONFIGURATION ========
 // Dynamically generate restream base URL (used for logging)
-$scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'https'; // Force HTTPS for free.nf
+$scheme = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https' : 'https'; // Force HTTPS for Render
 $host = $_SERVER['HTTP_HOST'];
 $script = $_SERVER['SCRIPT_NAME'];
 $restream_base_url = "{$scheme}://{$host}{$script}";
@@ -15,7 +15,9 @@ $restream_base_url = "{$scheme}://{$host}{$script}";
 $xtream_config = [
     'panel_url' => 'http://filex.tv:8080', // Xtream Codes panel URL
     'username'  => 'Home329', // Xtream Codes username
-    'password'  => 'Sohailhome'  // Xtream Codes password
+    'password'  => 'Sohailhome', // Xtream Codes password
+    'token'     => null, // Store session token
+    'token_expiry' => 0 // Track token expiry
 ];
 
 $stalker_config = [
@@ -24,7 +26,7 @@ $stalker_config = [
     'mac'        => '00:1A:79:00:00:00', // Replace with your valid MAC address
     'sn'         => 'YOUR_SERIAL_NUMBER', // Replace with your valid serial number
     'device_id'  => 'YOUR_DEVICE_ID', // Replace with your valid device ID
-    'possible_endpoints' => [ // Expanded list of possible Stalker API endpoints
+    'possible_endpoints' => [
         '/server/load.php',
         '/stalker_portal/server/load.php',
         '/api/load.php',
@@ -40,7 +42,7 @@ $stalker_config = [
 function log_message($message) {
     $log_file = __DIR__ . '/debug.log';
     $timestamp = date('Y-m-d H:i:s');
-    file_put_contents($log_file, "[$timestamp] $message\n", FILE_APPEND);
+    file_put_contents($log_file, "[$timestamp] $message\n", FILE_APPEND | LOCK_EX);
 }
 
 // ======== INPUT CHECK ========
@@ -65,13 +67,14 @@ function make_request($url, $headers = [], $post = null) {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge($headers, [
         'Connection: keep-alive',
-        'Keep-Alive: timeout=15, max=100'
+        'Keep-Alive: timeout=10, max=50'
     ]));
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    curl_setopt($ch, CURLOPT_ENCODING, 'gzip, deflate');
 
     if ($post) {
         curl_setopt($ch, CURLOPT_POST, true);
@@ -98,11 +101,11 @@ function proxy_stream($url, $headers = []) {
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge($headers, [
         'Connection: keep-alive',
-        'Keep-Alive: timeout=15, max=100'
+        'Keep-Alive: timeout=10, max=50'
     ]));
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
     curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
     curl_setopt($ch, CURLOPT_HEADER, false);
@@ -116,6 +119,7 @@ function proxy_stream($url, $headers = []) {
     header('Content-Type: application/x-mpegURL');
     header('Cache-Control: no-cache');
     header('Connection: keep-alive');
+    header('Access-Control-Allow-Origin: *');
 
     $result = curl_exec($ch);
     if ($result === false) {
@@ -151,31 +155,25 @@ function build_headers($type, $config, $token = '') {
     }
 }
 
-// ======== FIND STALKER ENDPOINT ========
-function find_stalker_endpoint($config) {
-    foreach ($config['possible_endpoints'] as $endpoint) {
-        $url = "{$config['portal']}{$endpoint}?type=stb&action=handshake&JsHttpRequest=1-xml";
-        $response = make_request($url, build_headers('stalker', $config));
-        $data = json_decode($response, true);
-        if (isset($data['js']['token'])) {
-            log_message("Valid endpoint found: $endpoint");
-            return $endpoint;
-        }
-        log_message("Endpoint failed: $endpoint");
-    }
-    $error_msg = "No valid Stalker API endpoint found. Tried: " . implode(', ', $config['possible_endpoints']);
-    log_message($error_msg);
-    exit($error_msg);
-}
-
 // ======== XTREAM CODES LOGIC ========
-function xtream_stream($config, $channel) {
+function xtream_authenticate(&$config) {
     $auth_url = "{$config['panel_url']}/player_api.php?username={$config['username']}&password={$config['password']}&action=user_info";
-    $auth_data = json_decode(make_request($auth_url, build_headers('xtream', $config)), true);
+    $headers = build_headers('xtream', $config);
+    $auth_data = json_decode(make_request($auth_url, $headers), true);
     if (!isset($auth_data['user_info']['auth']) || $auth_data['user_info']['auth'] != 1) {
         $error_msg = "Xtream Codes authentication failed";
         log_message($error_msg);
         exit($error_msg);
+    }
+    // Store token or session data if provided (simplified for now)
+    $config['token_expiry'] = time() + 300; // Assume 5-minute validity
+    log_message("Xtream Codes authentication successful");
+}
+
+function xtream_stream($config, $channel) {
+    // Re-authenticate if token expired
+    if (time() >= $config['token_expiry']) {
+        xtream_authenticate($config);
     }
 
     $stream_url = "{$config['panel_url']}/live/{$config['username']}/{$config['password']}/{$channel}.m3u8";
@@ -191,6 +189,9 @@ function xtream_stream($config, $channel) {
 }
 
 function xtream_playlist($config, $restream_base_url) {
+    // Authenticate before fetching channels
+    xtream_authenticate($config);
+
     $channels_url = "{$config['panel_url']}/player_api.php?username={$config['username']}&password={$config['password']}&action=get_live_streams";
     $channels_data = json_decode(make_request($channels_url, build_headers('xtream', $config)), true);
     if (!$channels_data) {
@@ -212,6 +213,22 @@ function xtream_playlist($config, $restream_base_url) {
 }
 
 // ======== STALKER PORTAL LOGIC ========
+function find_stalker_endpoint($config) {
+    foreach ($config['possible_endpoints'] as $endpoint) {
+        $url = "{$config['portal']}{$endpoint}?type=stb&action=handshake&JsHttpRequest=1-xml";
+        $response = make_request($url, build_headers('stalker', $config));
+        $data = json_decode($response, true);
+        if (isset($data['js']['token'])) {
+            log_message("Valid endpoint found: $endpoint");
+            return $endpoint;
+        }
+        log_message("Endpoint failed: $endpoint");
+    }
+    $error_msg = "No valid Stalker API endpoint found. Tried: " . implode(', ', $config['possible_endpoints']);
+    log_message($error_msg);
+    exit($error_msg);
+}
+
 function stalker_stream($config, $channel) {
     // Find valid endpoint if not set
     if (empty($config['api_path'])) {
@@ -307,6 +324,8 @@ function stalker_playlist($config, $restream_base_url) {
 if ($generate_playlist) {
     header('Content-Type: audio/mpegurl');
     header('Content-Disposition: attachment; filename="playlist.m3u"');
+    header('Cache-Control: no-cache');
+    header('Access-Control-Allow-Origin: *');
     if ($type === 'xtream') {
         echo xtream_playlist($xtream_config, $restream_base_url);
     } else {
