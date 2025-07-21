@@ -14,8 +14,8 @@ $restream_base_url = "{$scheme}://{$host}{$script}";
 
 $xtream_config = [
     'panel_url' => 'http://filex.me:8080', // Replace with your Xtream Codes panel URL
-    'username'  => '646467', // Replace with your Xtream Codes username
-    'password'  => '646467'  // Replace with your Xtream Codes password
+    'username'  => 'Home329', // Replace with your Xtream Codes username
+    'password'  => 'Sohailhome'  // Replace with your Xtream Codes password
 ];
 
 $stalker_config = [
