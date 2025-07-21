@@ -2,7 +2,7 @@
 // ======== INITIAL SETTINGS ========
 error_reporting(E_ALL); // Enable error reporting for debugging (disable in production: error_reporting(0))
 ini_set('display_errors', 1);
-set_time_limit(300); // Increased timeout for streaming
+set_time_limit(120); // Reduced timeout for performance
 date_default_timezone_set('Asia/Kolkata');
 
 // ======== CONFIGURATION ========
@@ -53,66 +53,82 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET');
 header('Access-Control-Allow-Headers: Content-Type, User-Agent');
 
-// ======== REQUEST FUNCTION (Without cURL) ========
+if (!in_array($type, ['xtream', 'stalker'])) {
+    $error_msg = "Invalid type. Use ?type=xtream or ?type=stalker";
+    log_message($error_msg);
+    exit($error_msg);
+}
+
+// ======== cURL REQUEST FUNCTION ========
 function make_request($url, $headers = [], $post = null) {
-    $options = [
-        'http' => [
-            'method'  => $post ? 'POST' : 'GET',
-            'header'  => implode("\r\n", array_merge($headers, [
-                'Connection: keep-alive',
-                'Keep-Alive: timeout=30, max=100'
-            ])),
-            'content' => $post ? http_build_query($post) : '',
-            'follow_location' => 1,
-            'max_redirects'  => 5,
-            'timeout' => 30 // Increased timeout
-        ]
-    ];
-    $context = stream_context_create($options);
-    $response = @file_get_contents($url, false, $context);
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge($headers, [
+        'Connection: keep-alive',
+        'Keep-Alive: timeout=15, max=100'
+    ]));
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+
+    if ($post) {
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($post));
+    }
+
+    $response = curl_exec($ch);
+    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     if ($response === false) {
-        $error = error_get_last();
-        $error_msg = "Request failed: file_get_contents($url): " . ($error['message'] ?? 'Unknown error');
+        $error = curl_error($ch);
+        $error_msg = "cURL request failed: $url (HTTP $http_code): $error";
         log_message($error_msg);
+        curl_close($ch);
         exit($error_msg);
     }
-    log_message("Request succeeded: $url");
+
+    log_message("cURL request succeeded: $url (HTTP $http_code)");
+    curl_close($ch);
     return $response;
 }
 
 // ======== STREAM PROXY FUNCTION ========
 function proxy_stream($url, $headers = []) {
-    $context = stream_context_create([
-        'http' => [
-            'header' => implode("\r\n", array_merge($headers, [
-                'Connection: keep-alive',
-                'Keep-Alive: timeout=30, max=100'
-            ])),
-            'follow_location' => 1,
-            'max_redirects' => 5,
-            'timeout' => 30
-        ]
-    ]);
-    $stream = @fopen($url, 'r', false, $context);
-    if ($stream === false) {
-        $error = error_get_last();
-        $error_msg = "Stream failed: fopen($url): " . ($error['message'] ?? 'Unknown error');
-        log_message($error_msg);
-        exit($error_msg);
-    }
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, array_merge($headers, [
+        'Connection: keep-alive',
+        'Keep-Alive: timeout=15, max=100'
+    ]));
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+    curl_setopt($ch, CURLOPT_HEADER, false);
+    curl_setopt($ch, CURLOPT_WRITEFUNCTION, function($ch, $data) {
+        echo $data;
+        flush();
+        return strlen($data);
+    });
 
     // Set streaming headers
     header('Content-Type: application/x-mpegURL');
     header('Cache-Control: no-cache');
     header('Connection: keep-alive');
 
-    // Stream the content
-    while (!feof($stream)) {
-        echo fread($stream, 8192);
-        flush();
+    $result = curl_exec($ch);
+    if ($result === false) {
+        $error = curl_error($ch);
+        $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $error_msg = "Stream failed: cURL($url): HTTP $http_code: $error";
+        log_message($error_msg);
+        curl_close($ch);
+        exit($error_msg);
     }
-    fclose($stream);
+
     log_message("Stream proxied successfully: $url");
+    curl_close($ch);
 }
 
 // ======== HEADER BUILDER ========
@@ -120,7 +136,7 @@ function build_headers($type, $config, $token = '') {
     if ($type === 'xtream') {
         return [
             "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-            "Accept: */*",
+            "Accept: application/x-mpegURL",
             "Content-Type: application/x-mpegURL"
         ];
     } else {
@@ -139,20 +155,11 @@ function build_headers($type, $config, $token = '') {
 function find_stalker_endpoint($config) {
     foreach ($config['possible_endpoints'] as $endpoint) {
         $url = "{$config['portal']}{$endpoint}?type=stb&action=handshake&JsHttpRequest=1-xml";
-        $headers = build_headers('stalker', $config);
-        $response = @file_get_contents($url, false, stream_context_create(['http' => [
-            'method' => 'GET',
-            'header' => implode("\r\n", $headers),
-            'follow_location' => 1,
-            'max_redirects' => 5,
-            'timeout' => 30
-        ]]));
-        if ($response !== false) {
-            $data = json_decode($response, true);
-            if (isset($data['js']['token'])) {
-                log_message("Valid endpoint found: $endpoint");
-                return $endpoint;
-            }
+        $response = make_request($url, build_headers('stalker', $config));
+        $data = json_decode($response, true);
+        if (isset($data['js']['token'])) {
+            log_message("Valid endpoint found: $endpoint");
+            return $endpoint;
         }
         log_message("Endpoint failed: $endpoint");
     }
