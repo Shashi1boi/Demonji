@@ -2,7 +2,7 @@
 // ======== INITIAL SETTINGS ========
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
-set_time_limit(10); // Increased for long-running streams
+set_time_limit(180); // Increased for streaming
 date_default_timezone_set('Asia/Kolkata');
 
 // ======== CONFIGURATION ========
@@ -34,8 +34,8 @@ $stalker_config = [
         '/stalker/server/load.php',
         '/server/api.php'
     ],
-    'token'      => '', // Store token for reuse
-    'token_expiry' => 0 // Track token expiry time
+    'token'      => '',
+    'token_expiry' => 0
 ];
 
 // ======== PERSISTENT STORAGE FOR ENDPOINT ========
@@ -75,15 +75,17 @@ function make_request($url, $headers = [], $post = null, $retries = 3) {
             CURLOPT_HTTPHEADER => $headers,
             CURLOPT_FOLLOWLOCATION => true,
             CURLOPT_MAXREDIRS => 5,
-            CURLOPT_TIMEOUT => 20, // Increased timeout
-            CURLOPT_CONNECTTIMEOUT => 15,
-            CURLOPT_SSL_VERIFYPEER => false, // Consider enabling in production
+            CURLOPT_TIMEOUT => 10, // Reduced for faster failure detection
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_SSL_VERIFYPEER => false, // Enable in production with certificates
             CURLOPT_SSL_VERIFYHOST => false,
             CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
             CURLOPT_TCP_KEEPALIVE => 1,
-            CURLOPT_TCP_KEEPIDLE => 300, // Extended keep-alive
-            CURLOPT_TCP_KEEPINTVL => 60,
-            CURLOPT_FAILONERROR => true // Fail on HTTP errors (4xx, 5xx)
+            CURLOPT_TCP_KEEPIDLE => 20, // Reduced for frequent keep-alive
+            CURLOPT_TCP_KEEPINTVL => 10,
+            CURLOPT_FAILONERROR => true,
+            CURLOPT_NOSIGNAL => 1, // Prevent signal issues
+            CURLOPT_DNS_CACHE_TIMEOUT => 60 // Faster DNS resolution
         ]);
 
         if ($post) {
@@ -103,7 +105,7 @@ function make_request($url, $headers = [], $post = null, $retries = 3) {
                 log_message($error_msg);
                 exit($error_msg);
             }
-            sleep(2); // Wait before retry
+            sleep(1);
             continue;
         }
 
@@ -120,7 +122,7 @@ function build_headers($type, $config, $token = '') {
             "Accept: */*",
             "Content-Type: application/x-www-form-urlencoded",
             "Connection: keep-alive",
-            "Keep-Alive: timeout=300, max=1000"
+            "Keep-Alive: timeout=30, max=1000"
         ];
     } else {
         return [
@@ -131,7 +133,7 @@ function build_headers($type, $config, $token = '') {
             "X-User-Agent: Model: MAG250; Link: WiFi",
             "Cookie: mac={$config['mac']}; stb_lang=en; timezone=Asia/Kolkata;",
             "Connection: keep-alive",
-            "Keep-Alive: timeout=300, max=1000"
+            "Keep-Alive: timeout=30, max=1000"
         ];
     }
 }
@@ -168,8 +170,8 @@ function find_stalker_endpoint($config) {
 // ======== STALKER TOKEN REFRESH ========
 function refresh_stalker_token($config) {
     global $stalker_config;
-    // Check if token is still valid (within 1 hour)
-    if (!empty($stalker_config['token']) && $stalker_config['token_expiry'] > time() + 300) {
+    // Refresh token every 20 seconds to avoid expiration
+    if (!empty($stalker_config['token']) && $stalker_config['token_expiry'] > time() + 10) {
         log_message("Using cached token");
         return $stalker_config['token'];
     }
@@ -181,9 +183,9 @@ function refresh_stalker_token($config) {
         log_message($error_msg);
         exit($error_msg);
     }
-    
+
     $stalker_config['token'] = $handshake_data["js"]["token"];
-    $stalker_config['token_expiry'] = time() + 3600; // Assume 1-hour validity
+    $stalker_config['token_expiry'] = time() + 20; // Short expiry for frequent refresh
     log_message("New token obtained: {$stalker_config['token']}");
     return $stalker_config['token'];
 }
@@ -193,16 +195,17 @@ function check_stream_health($stream_url) {
     $ch = curl_init($stream_url);
     curl_setopt_array($ch, [
         CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_NOBODY => true, // HEAD request to check availability
-        CURLOPT_TIMEOUT => 10,
-        CURLOPT_CONNECTTIMEOUT => 5,
+        CURLOPT_NOBODY => true,
+        CURLOPT_TIMEOUT => 5,
+        CURLOPT_CONNECTTIMEOUT => 3,
         CURLOPT_SSL_VERIFYPEER => false,
         CURLOPT_SSL_VERIFYHOST => false
     ]);
     curl_exec($ch);
     $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
-    
+
+    log_message("Stream health check for $stream_url: HTTP $http_code");
     return $http_code >= 200 && $http_code < 400;
 }
 
@@ -268,26 +271,22 @@ function stalker_stream($config, $channel) {
     ];
     $auth_data = json_decode(make_request($auth_url, build_headers('stalker', $config, $token), $auth_payload), true);
     if (!isset($auth_data["js"]["id"])) {
-        $error_msg = "Stalker authorization failed";
-        log_message($error_msg);
-        exit($error_msg);
+        // Retry with fresh token
+        $token = refresh_stalker_token($config);
+        $auth_data = json_decode(make_request($auth_url, build_headers('stalker', $config, $token), $auth_payload), true);
+        if (!isset($auth_data["js"]["id"])) {
+            $error_msg = "Stalker authorization failed";
+            log_message($error_msg);
+            exit($error_msg);
+        }
     }
 
-    // Step 3: Get Profile
-    $profile_url = "{$config['portal']}{$config['api_path']}?type=stb&action=get_profile&JsHttpRequest=1-xml";
-    $profile_data = json_decode(make_request($profile_url, build_headers('stalker', $config, $token)), true);
-    if (!isset($profile_data["js"]["id"])) {
-        $error_msg = "Stalker profile retrieval failed";
-        log_message($error_msg);
-        exit($error_msg);
-    }
-
-    // Step 4: Fetch Stream Link with retry on token expiration
+    // Step 3: Fetch Stream Link
     $stream_url = "{$config['portal']}{$config['api_path']}?type=itv&action=create_link&cmd=ffmpeg%20http://localhost/ch/{$channel}&JsHttpRequest=1-xml";
     $stream_data = json_decode(make_request($stream_url, build_headers('stalker', $config, $token)), true);
     
     if (!isset($stream_data["js"]["cmd"])) {
-        // Refresh token and retry
+        // Retry with fresh token
         $token = refresh_stalker_token($config);
         $stream_data = json_decode(make_request($stream_url, build_headers('stalker', $config, $token)), true);
         if (!isset($stream_data["js"]["cmd"])) {
@@ -296,14 +295,14 @@ function stalker_stream($config, $channel) {
             exit($error_msg);
         }
     }
-    
+
     $cmd = $stream_data["js"]["cmd"];
     if (!check_stream_health($cmd)) {
         $error_msg = "Stalker stream health check failed: $cmd";
         log_message($error_msg);
         exit($error_msg);
     }
-    
+
     log_message("Stalker stream fetched for channel $channel: $cmd");
     return $cmd;
 }
@@ -373,6 +372,7 @@ if ($generate_playlist) {
     header("Cache-Control: no-cache, no-store, must-revalidate");
     header("Pragma: no-cache");
     header("Expires: 0");
+    header("Connection: keep-alive");
     header("Location: $stream_url");
 }
 exit;
