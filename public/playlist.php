@@ -13,9 +13,9 @@ $script = $_SERVER['SCRIPT_NAME'];
 $restream_base_url = "{$scheme}://{$host}{$script}";
 
 $xtream_config = [
-    'panel_url' => 'http://filex.tv:8080',
-    'username'  => 'Home329',
-    'password'  => 'Sohailhome'
+    'panel_url' => 'http://starshare.org:8080',
+    'username'  => 'Sad41',
+    'password'  => 'Premium51'
 ];
 
 $stalker_config = [
