@@ -14,8 +14,8 @@ $restream_base_url = "{$scheme}://{$host}{$script}";
 
 $xtream_config = [
     'panel_url' => 'http://starshare.org:8080',
-    'username'  => 'Sad41',
-    'password'  => 'Premium51'
+    'username'  => '5477447635355',
+    'password'  => '5326643536426'
 ];
 
 $stalker_config = [
