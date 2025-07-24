@@ -19,11 +19,11 @@ $xtream_config = [
 ];
 
 $stalker_config = [
-    'portal'     => 'http://starshare.fun:8080/c',
+    'portal'     => 'http://filex.me:8080/c/',
     'api_path'   => '',
     'mac'        => '00:1A:79:00:00:00',
-    'sn'         => 'YOUR_SERIAL_NUMBER',
-    'device_id'  => 'YOUR_DEVICE_ID',
+    'sn'         => 'A24E172791EEA',
+    'device_id'  => 'B4B2D9F2C5DB4998401A39F3FFA46C76F0D352DFBA27D0059359E9B40C9CCF70',
     'possible_endpoints' => [
         '/server/load.php',
         '/stalker_portal/server/load.php',
