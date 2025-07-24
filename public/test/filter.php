@@ -7,8 +7,6 @@ $password = "Sohailhome"; // Replace with your password
 $parsedUrl = parse_url($serverURL);
 $hostname = isset($parsedUrl['host']) ? $parsedUrl['host'] : 'playlist';
 $playlistName = preg_replace('/[^a-zA-Z0-9]/', '', $hostname);
-$playlistFile = $playlistName . '.m3u';
-$filterFile = $playlistName . '_filters.json';
 
 $currentUrl = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 $scriptName = basename($_SERVER['SCRIPT_NAME']);
@@ -19,35 +17,13 @@ if (empty($scriptName) || $scriptName == "index.php") {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['m3uContent'])) {
-        $m3uContent = $_POST['m3uContent'];
-        $savePath = $playlistFile;
-
-        if (file_put_contents($savePath, $m3uContent) === false) {
-            echo json_encode(['success' => false, 'message' => 'Failed to save playlist.']);
-            exit;
-        }
-    }
-
     if (isset($_POST['selectedCategories'])) {
         $selectedCategories = json_decode($_POST['selectedCategories'], true);
-        $filterData = ['selectedCategories' => $selectedCategories];
-        $filterPath = $filterFile;
-
-        if (file_put_contents($filterPath, json_encode($filterData, JSON_PRETTY_PRINT)) === false) {
-            echo json_encode(['success' => false, 'message' => 'Failed to save filter categories.']);
-            exit;
-        }
+        echo json_encode(['success' => true, 'message' => "Category filter applied! Use the playlist URL: $playlistUrl"]);
+        exit;
     }
-
-    echo json_encode(['success' => true, 'message' => "Category filter saved successfully!"]);
+    echo json_encode(['success' => false, 'message' => 'No categories selected.']);
     exit;
-}
-
-$filterData = [];
-if (file_exists($filterFile)) {
-    $filterJson = file_get_contents($filterFile);
-    $filterData = json_decode($filterJson, true);
 }
 ?>
 
@@ -355,14 +331,21 @@ if (file_exists($filterFile)) {
         </div>
     </div>
 
+    <div class="overlay" id="overlay"></div>
+    <div class="popup" id="popup">
+        <p id="popupMessage"></p>
+        <button onclick="closePopup()">OK</button>
+    </div>
+
     <script>
         let categories = [];
         let channels = [];
-        let selectedCategories = new Set(<?php echo json_encode($filterData['selectedCategories'] ?? []); ?>);
+        let selectedCategories = new Set();
 
         const server = <?php echo json_encode($serverURL); ?>;
         const user = <?php echo json_encode($username); ?>;
         const pass = <?php echo json_encode($password); ?>;
+        const playlistUrl = <?php echo json_encode($playlistUrl); ?>;
 
         async function fetchCategoriesAndChannels() {
             if (!server || !user || !pass) {
@@ -424,7 +407,7 @@ if (file_exists($filterFile)) {
 
         function displayCategories(filteredCategories) {
             const categoryList = document.getElementById("categoryList");
-            const selectAllDiv = categoryList.querySelector('.form-group');
+            const selectAllDiv = categoryList.querySelector('.form-group') || document.createElement('div');
             categoryList.innerHTML = '';
             categoryList.appendChild(selectAllDiv);
 
@@ -500,30 +483,11 @@ if (file_exists($filterFile)) {
                 return;
             }
 
-            const categoryMap = Object.fromEntries(categories.map(cat => [cat.category_id, cat.category_name]));
-            const filteredChannels = channels.filter(ch => selected.includes(ch.category_id));
-
-            if (!filteredChannels.length) {
-                showPopup("No channels found for the selected categories.");
-                return;
-            }
-
-            const defaultLogo = "https://i.ibb.co/xK5zSMkD/xtream.png";
-            const m3u8Url = <?php echo json_encode($playlistUrl); ?>.replace(/playlist\.php$/, 'play.php?id=');
-
-            let m3uContent = "#EXTM3U\n";
-            filteredChannels.forEach(ch => {
-                const categoryName = categoryMap[ch.category_id] || "Unknown";
-                const streamURL = `${m3u8Url}${ch.stream_id}`;
-                const logoUrl = ch.stream_icon && ch.stream_icon.trim() !== "" ? ch.stream_icon : defaultLogo;
-                m3uContent += `#EXTINF:-1 tvg-id="${ch.stream_id}" tvg-name="${ch.name}" tvg-logo="${logoUrl}" group-title="${categoryName}",${ch.name}\n${streamURL}\n`;
-            });
-
             try {
                 const response = await fetch('', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `m3uContent=${encodeURIComponent(m3uContent)}&selectedCategories=${encodeURIComponent(JSON.stringify(selected))}`
+                    body: `selectedCategories=${encodeURIComponent(JSON.stringify(selected))}`
                 });
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
@@ -531,8 +495,8 @@ if (file_exists($filterFile)) {
                 const result = await response.json();
                 showPopup(result.message);
             } catch (error) {
-                console.error("Error saving playlist:", error);
-                showPopup(`Failed to save playlist. Error: ${error.message}.`);
+                console.error("Error applying filter:", error);
+                showPopup(`Failed to apply filter. Error: ${error.message}.`);
             }
         }
 
