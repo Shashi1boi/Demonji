@@ -29,7 +29,7 @@ function handshake($host) {
         "Host: $host",
         "Connection: Keep-Alive",
     ];
-    $Info_Data = Info($Xurl, $HED);
+    $Info_Data = Info($Xurl, $HED, '');
     $Info_Status = $Info_Data["Info_arr"]["info"];
     $Info_Data = $Info_Data["Info_arr"]["data"];
     $Info_Data_Json = json_decode($Info_Data, true);
@@ -68,7 +68,7 @@ function re_generate_token($Bearer_token, $host) {
         "Host: $host",
         "Connection: Keep-Alive",
     ];
-    $Info_Data = Info($Xurl, $HED);
+    $Info_Data = Info($Xurl, $HED, '');
     $Info_Data = $Info_Data["Info_arr"]["data"];
     $Info_Data_Json = json_decode($Info_Data, true);
     $Info_Encode = array(
@@ -97,7 +97,7 @@ function get_profile($Bearer_token, $host, $mac, $sn, $device_id_1, $device_id_2
         "Host: $host",
         "Connection: Keep-Alive",
     ];
-    Info($Xurl, $HED);
+    Info($Xurl, $HED, $mac);
 }
 
 // Info
@@ -152,14 +152,10 @@ function group_title($host, $mac, $sn, $device_id_1, $device_id_2, $sig, $all = 
         if ($genre['id'] === "*") {
             continue;
         }
-        $filtered_data[$genre['id']] = [
-            'id' => $genre['id'],
-            'title' => $genre['title'],
-            'filter' => $all ? true : false,
-        ];
+        $filtered_data[$genre['id']] = $genre['title'];
     }
 
-    return array_column($filtered_data, 'title', 'id');
+    return $filtered_data;
 }
 
 // AJAX endpoint for groups
