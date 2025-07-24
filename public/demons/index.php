@@ -359,7 +359,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <div style="text-align: center; margin-top: 15px; font-size: 16px;">
-            <strong>Coded with ❤️ by PARAG</strong>
+            <strong>with ❤️ by DEMONJI</strong>
         </div>
     </div>
 
