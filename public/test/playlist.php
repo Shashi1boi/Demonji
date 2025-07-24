@@ -28,6 +28,13 @@ if (empty($hostname)) {
 
 $replaceUrl = "$baseUrl/$user/$password/";
 
+// Get selected categories from query parameter
+$selectedCategories = [];
+if (isset($_GET['categories']) && !empty($_GET['categories'])) {
+    $selectedCategories = explode(',', $_GET['categories']);
+    $selectedCategories = array_map('trim', $selectedCategories);
+}
+
 $apiUrl = "$baseUrl/player_api.php?username=$user&password=$password&action=get_live_streams";
 
 $ch = curl_init();
@@ -99,6 +106,11 @@ foreach ($streams as $stream) {
     $categoryId = $stream['category_id'] ?? '';
     $streamIcon = !empty($stream['stream_icon']) ? $stream['stream_icon'] : 'https://i.ibb.co/xK5zSMkD/xtream.png';
     if (empty($streamId)) {
+        continue;
+    }
+
+    // Filter streams by selected categories if provided
+    if (!empty($selectedCategories) && !in_array($categoryId, $selectedCategories)) {
         continue;
     }
 
