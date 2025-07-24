@@ -15,16 +15,6 @@ if (empty($scriptName) || $scriptName == "index.php") {
 } else {    
     $playlistUrl = str_replace($scriptName, "playlist.php", $currentUrl);
 }
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (isset($_POST['selectedCategories'])) {
-        $selectedCategories = json_decode($_POST['selectedCategories'], true);
-        echo json_encode(['success' => true, 'message' => "Category filter applied! Use the playlist URL: $playlistUrl"]);
-        exit;
-    }
-    echo json_encode(['success' => false, 'message' => 'No categories selected.']);
-    exit;
-}
 ?>
 
 <!DOCTYPE html>
@@ -345,7 +335,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         const server = <?php echo json_encode($serverURL); ?>;
         const user = <?php echo json_encode($username); ?>;
         const pass = <?php echo json_encode($password); ?>;
-        const playlistUrl = <?php echo json_encode($playlistUrl); ?>;
+        const basePlaylistUrl = <?php echo json_encode($playlistUrl); ?>;
 
         async function fetchCategoriesAndChannels() {
             if (!server || !user || !pass) {
@@ -397,8 +387,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 showPopup("Categories and channels loaded successfully!");
             } catch (error) {
                 console.error("Error fetching data:", error);
-                let errorMessage = `Failed to fetch categories or channels. Error: ${error.message}. `;               
-                showPopup(errorMessage);
+                showPopup(`Failed to fetch categories or channels. Error: ${error.message}. Please check your credentials or server URL.`);
             } finally {
                 document.getElementById("loadingIndicator").style.display = "none";
                 document.getElementById("categoryList").style.display = "block";
@@ -427,6 +416,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         selectedCategories.delete(cat.category_id);
                     }
                     updateSelectAllCheckbox();
+                    updatePlaylistUrl();
                 });
 
                 const label = document.createElement("label");
@@ -439,6 +429,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             });
 
             updateSelectAllCheckbox();
+            updatePlaylistUrl();
         }
 
         function filterCategories() {
@@ -464,6 +455,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             document.querySelectorAll('.checkbox-container input[type="checkbox"]:not(#selectAll)').forEach(checkbox => {
                 checkbox.checked = isChecked;
             });
+
+            updateSelectAllCheckbox();
+            updatePlaylistUrl();
         }
 
         function updateSelectAllCheckbox() {
@@ -476,27 +470,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             selectAllCheckbox.indeterminate = someChecked && !allChecked;
         }
 
+        function updatePlaylistUrl() {
+            const playlistInput = document.getElementById("playlist_url");
+            const selected = Array.from(selectedCategories);
+            if (selected.length > 0) {
+                playlistInput.value = `${basePlaylistUrl}?categories=${encodeURIComponent(selected.join(','))}`;
+            } else {
+                playlistInput.value = basePlaylistUrl;
+            }
+        }
+
         async function saveM3U() {
             const selected = Array.from(selectedCategories);
             if (!selected.length) {
-                showPopup("No categories selected.");
+                showPopup("No categories selected. Please select at least one category.");
                 return;
             }
 
+            const filteredChannels = channels.filter(ch => selected.includes(ch.category_id));
+            if (!filteredChannels.length) {
+                showPopup("No channels found for the selected categories.");
+                return;
+            }
+
+            const playlistUrlWithCategories = `${basePlaylistUrl}?categories=${encodeURIComponent(selected.join(','))}`;
+            document.getElementById("playlist_url").value = playlistUrlWithCategories;
+
             try {
-                const response = await fetch('', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: `selectedCategories=${encodeURIComponent(JSON.stringify(selected))}`
-                });
+                const response = await fetch(playlistUrlWithCategories);
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
-                const result = await response.json();
-                showPopup(result.message);
+                showPopup(`Category filter applied! Use this playlist URL: ${playlistUrlWithCategories}`);
             } catch (error) {
-                console.error("Error applying filter:", error);
-                showPopup(`Failed to apply filter. Error: ${error.message}.`);
+                console.error("Error verifying playlist:", error);
+                showPopup(`Failed to verify playlist. Error: ${error.message}. Please try again.`);
             }
         }
 
@@ -508,7 +516,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 showPopup("Playlist URL copied to clipboard!");
             } catch (err) {
                 console.error("Failed to copy: ", err);
-                showPopup("Failed to copy URL.");
+                showPopup("Failed to copy URL. Please copy manually.");
             }
         }
 
