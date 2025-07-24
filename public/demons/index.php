@@ -1,6 +1,4 @@
 <?php
-include 'config.php';
-
 $show_popup = false;
 $popup_message = '';
 $popup_type = '';
@@ -36,8 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <style>
         body {
             min-height: 100vh;
-            height: auto;
-            font-family: 'Segoe UI', Arial, sans-serif;
+            font-family: Arial, sans-serif;
             background: linear-gradient(135deg, #1a1a2e, #16213e);
             display: flex;
             justify-content: center;
@@ -49,52 +46,49 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         .container {
             background: rgba(34, 40, 49, 0.9);
-            border-radius: 20px;
-            padding: 30px;
-            margin: 20px;
-            overflow: auto;
-            max-height: 90vh;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 10px;
             width: 90%;
-            max-width: 600px;
+            max-width: 500px;
             text-align: center;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         h2 {
             color: #00d4ff;
-            text-shadow: 0 0 10px rgba(0, 212, 255, 0.5);
-            margin-bottom: 25px;
+            margin-bottom: 20px;
+            font-size: 24px;
         }
 
         .form-group {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin: 12px 0;
+            margin: 10px 0;
         }
 
         .form-group label {
             flex: 1;
             text-align: left;
-            font-weight: 600;
+            font-weight: 500;
             color: #a0a0a0;
         }
 
         .form-group input {
             flex: 2;
-            padding: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
             background: rgba(255, 255, 255, 0.05);
             color: #e0e0e0;
-            font-size: 16px;
-            transition: all 0.3s ease;
+            font-size: 14px;
         }
 
         .form-group input:focus {
             border-color: #00d4ff;
-            box-shadow: 0 0 8px rgba(0, 212, 255, 0.3);
+            box-shadow: 0 0 5px rgba(0, 212, 255, 0.3);
             outline: none;
         }
 
@@ -103,38 +97,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         .checkbox-container {
-            max-height: 300px;
+            max-height: 200px;
             overflow-y: auto;
-            padding: 15px;
+            padding: 10px;
             background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            margin: 20px 0;
+            border-radius: 8px;
+            margin: 15px 0;
         }
 
         .checkbox-container .form-group {
-            padding: 8px;
-            border-radius: 8px;
+            padding: 5px;
+            border-radius: 5px;
             background: rgba(255, 255, 255, 0.03);
-            transition: background 0.2s;
         }
 
         .checkbox-container .form-group:hover {
-            background: rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .checkbox-container input[type="checkbox"] {
-            transform: scale(1.2);
+            transform: scale(1.1);
             cursor: pointer;
-            margin-right: 10px;
+            margin-right: 8px;
         }
 
         button {
             width: 100%;
-            padding: 14px;
+            padding: 12px;
             border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
             cursor: pointer;
             transition: all 0.3s ease;
         }
@@ -146,8 +139,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         button.connect-btn:hover {
             background: linear-gradient(45deg, #0096c7, #0353a4);
-            box-shadow: 0 0px 10px rgba(0, 150, 199, 0.4);
-            transform: translateY(-2px);
+            box-shadow: 0 0 8px rgba(0, 150, 199, 0.4);
         }
 
         button.save-btn {
@@ -157,71 +149,63 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         button.save-btn:hover {
             background: linear-gradient(45deg, #0096c7, #0353a4);
-            box-shadow: 0 0px 10px rgba(0, 150, 199, 0.4);
-            transform: translateY(-2px);
+            box-shadow: 0 0 8px rgba(0, 150, 199, 0.4);
         }
 
         .playlist-container {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin: 20px 0;
+            gap: 8px;
+            margin: 15px 0;
         }
 
         .playlist-container label {
-            font-weight: 600;
+            font-weight: 500;
             color: #a0a0a0;
         }
 
         .playlist-container input {
             flex: 1;
-            padding: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
             background: rgba(255, 255, 255, 0.05);
             color: #e0e0e0;
-            font-size: 16px;
+            font-size: 14px;
         }
 
-        .action-buttons {
-            display: flex;
-            gap: 10px;
-        }
-
-        .btn {
-            padding: 10px;
-            width: 40px;
-            height: 40px;
-            border-radius: 10px;
+        .action-buttons .btn {
+            padding: 8px;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
             background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.3s ease;
         }
 
-        .btn:hover {
+        .action-buttons .btn:hover {
             background: rgba(0, 212, 255, 0.2);
             border-color: #00d4ff;
-            box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
         }
 
-        .btn i {
-            font-size: 16px;
+        .action-buttons .btn i {
+            font-size: 14px;
             color: #e0e0e0;
         }
 
         .search-container {
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             position: relative;
         }
 
         .search-input {
             width: 100%;
-            padding: 12px 40px 12px 15px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px 35px 10px 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 8px;
             background: rgba(255, 255, 255, 0.05);
             color: #e0e0e0;
@@ -232,13 +216,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         .search-input:focus {
             outline: none;
             border-color: #00d4ff;
-            box-shadow: 0 0 5px rgba(0, 212, 255, 0.5);
+            box-shadow: 0 0 5px rgba(0, 212, 255, 0.3);
         }
 
         .search-container::after {
             content: '🔍';
             position: absolute;
-            right: 15px;
+            right: 12px;
             top: 50%;
             transform: translateY(-50%);
             color: #a0a0a0;
@@ -250,35 +234,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             left: 50%;
             transform: translate(-50%, -50%);
             background: rgba(34, 40, 49, 0.95);
-            padding: 20px 30px;
-            border-radius: 15px;
-            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            padding: 15px 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
             z-index: 1000;
             display: none;
-            max-width: 90%;
+            max-width: 85%;
             text-align: center;
-            border: 2px solid #00d4ff;
+            border: 1px solid #00d4ff;
         }
 
         .popup button {
-            width: auto;
-            padding: 10px 20px;
-            margin: 0 auto;
-            display: inline-block;
+            padding: 8px 15px;
             background: linear-gradient(45deg, #0077b6, #023e8a);
             color: white;
             border: none;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
+            border-radius: 8px;
+            font-size: 14px;
             cursor: pointer;
-            transition: all 0.3s ease;
         }
 
         .popup button:hover {
             background: linear-gradient(45deg, #0096c7, #0353a4);
-            box-shadow: 0 0px 10px rgba(0, 150, 199, 0.6);
-            transform: translateY(-2px);
+            box-shadow: 0 0 8px rgba(0, 150, 199, 0.4);
         }
 
         .overlay {
@@ -293,36 +271,35 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         #loadingIndicator {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
             display: none;
             color: #00d4ff;
-            margin: 20px 0;
+            margin: 15px 0;
         }
 
         @media (max-width: 480px) {
             .container {
-                padding: 20px;
+                padding: 15px;
             }
 
             h2 {
-                font-size: 1.5em;
+                font-size: 20px;
             }
 
             .form-group {
                 flex-direction: column;
                 align-items: flex-start;
-                padding: 10px;
+                padding: 8px;
             }
 
             .form-group label {
-                padding-left: 0;
                 margin-bottom: 5px;
             }
 
             .popup {
                 width: 80%;
-                padding: 15px;
+                padding: 12px;
             }
         }
     </style>
@@ -381,13 +358,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             </div>
         <?php endif; ?>
 
-        <div style="text-align: center; margin-top: 20px; font-size: 18px;">
-            <strong>with ❤️ by DEMONJI</strong>
+        <div style="text-align: center; margin-top: 15px; font-size: 16px;">
+            <strong>Coded with ❤️ by PARAG</strong>
         </div>
     </div>
 
     <div id="overlay" class="overlay" onclick="hidePopup()"></div>
-    <div id="popup" class="popup <?php echo $popup_type; ?>">
+    <div id="popup" class="popup">
         <p id="popup-message"></p>
         <div id="popup-buttons">
             <button onclick="hidePopup()">OK</button>
@@ -433,10 +410,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
 
                 displayGroups(groups);
-                showPopup("Groups and channels loaded successfully!");
+                showPopup("Groups loaded successfully!");
             } catch (error) {
                 console.error("Error fetching data:", error);
-                showPopup(`Failed to fetch groups or channels. Error: ${error.message}. Please check your credentials or server URL.`);
+                showPopup(`Failed to load groups. Error: ${error.message}. Please check your credentials.`);
             } finally {
                 document.getElementById("loadingIndicator").style.display = "none";
                 document.getElementById("groupList").style.display = "block";
@@ -542,13 +519,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         async function saveM3U() {
             const selected = Array.from(selectedGroups);
             if (!selected.length) {
-                showPopup("No groups selected. Please select at least one group.");
+                showPopup("Please select at least one group.");
                 return;
             }
 
             const filteredChannels = channels.filter(ch => selected.includes(ch.tv_genre_id));
             if (!filteredChannels.length) {
-                showPopup("No channels found for the selected groups.");
+                showPopup("No channels found for selected groups.");
                 return;
             }
 
@@ -571,10 +548,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!response.ok) {
                     throw new Error(`HTTP error! Status: ${response.status}`);
                 }
-                showPopup(`Playlist generated! Use this URL: ${playlistUrlWithCategories}`);
+                showPopup(`Playlist generated! Copy the URL below.`);
             } catch (error) {
-                console.error("Error verifying playlist:", error);
-                showPopup(`Failed to generate playlist. Error: ${error.message}. Please try again.`);
+                console.error("Error generating playlist:", error);
+                showPopup(`Failed to generate playlist. Error: ${error.message}.`);
             }
         }
 
@@ -603,12 +580,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         <?php if (!empty($storedData)): ?>
             window.onload = fetchGroupsAndChannels;
-        <?php endif; ?>
-
-        <?php if ($show_popup): ?>
-            document.addEventListener('DOMContentLoaded', () => {
-                showPopup('<?= $popup_message ?>');
-            });
         <?php endif; ?>
     </script>
 </body>
