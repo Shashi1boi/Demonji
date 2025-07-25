@@ -36,8 +36,8 @@ function generateRandomDeviceModel() {
 
 // Hardcoded Xtream Codes credentials
 $host = "http://filex.tv:8080"; // Replace with your Xtream server URL
-$username = "Home329"; // Replace with your username
-$password = "Sohailhome"; // Replace with your password
+$username = "646467"; // Replace with your username
+$password = "646467"; // Replace with your password
 
 if (empty($_GET['id'])) {
     exit("Error: Missing or invalid 'id' parameter.");
