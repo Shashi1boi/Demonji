@@ -6,8 +6,8 @@ set_time_limit(0); // Prevent script timeout
 
 // Hardcoded Xtream Codes credentials
 $baseUrl = "http://filex.tv:8080"; // Replace with your Xtream server URL
-$user = "646467"; // Replace with your username
-$password = "646467"; // Replace with your password
+$user = "Home329"; // Replace with your username
+$password = "Sohailhome"; // Replace with your password
 
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
 $host = $_SERVER['HTTP_HOST'];
