@@ -1,8 +1,8 @@
 <?php
 // Hardcoded Xtream Codes credentials
 $serverURL = "http://filex.tv:8080"; // Replace with your Xtream server URL
-$username = "Home329"; // Replace with your username
-$password = "Sohailhome"; // Replace with your password
+$username = "646467"; // Replace with your username
+$password = "646467"; // Replace with your password
 
 $parsedUrl = parse_url($serverURL);
 $hostname = isset($parsedUrl['host']) ? $parsedUrl['host'] : 'playlist';
