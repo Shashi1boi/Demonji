@@ -1,4 +1,9 @@
 <?php
+// Disable HTML error output
+ini_set('display_errors', 0);
+ini_set('display_startup_errors', 0);
+error_reporting(E_ALL);
+
 include "config.php";
 
 $protocol = isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on' ? 'https://' : 'http://';
@@ -7,8 +12,8 @@ $currentScript = parse_url($_SERVER["REQUEST_URI"], PHP_URL_PATH);
 
 // Validate credentials
 if (empty($url) || empty($mac) || empty($sn) || empty($device_id_1) || empty($device_id_2)) {
-    header('Content-Type: text/plain');
-    echo 'Missing required credentials.';
+    header('Content-Type: application/json');
+    echo json_encode(["error" => "Missing required credentials"]);
     exit;
 }
 
@@ -49,8 +54,14 @@ if (isset($_GET['action']) && $_GET['action'] === 'get_channels') {
     ];
 
     $playlist_result = Info($Playlist_url, $Playlist_HED, $mac);
-    $playlist_result_data = $playlist_result["Info_arr"]["data"];
+    $playlist_result_data = $playlist_result["Info_arr"]["data"] ?? '';
     $playlist_json_data = json_decode($playlist_result_data, true);
+    
+    if (!$playlist_json_data || !isset($playlist_json_data["js"]["data"])) {
+        log_error("Channel fetch failed. URL: $Playlist_url, Response: $playlist_result_data");
+        echo json_encode(["error" => "Failed to fetch channels"]);
+        exit;
+    }
     
     header('Content-Type: application/json');
     echo json_encode($playlist_json_data["js"]["data"] ?? []);
@@ -77,12 +88,13 @@ $Playlist_HED = [
 ];
 
 $playlist_result = Info($Playlist_url, $Playlist_HED, $mac);
-$playlist_result_data = $playlist_result["Info_arr"]["data"];
+$playlist_result_data = $playlist_result["Info_arr"]["data"] ?? '';
 $playlist_json_data = json_decode($playlist_result_data, true);
 
 if (empty($playlist_json_data) || !isset($playlist_json_data["js"]["data"])) {
-    header('Content-Type: text/plain');
-    echo 'Empty or invalid response from the server.';
+    log_error("Playlist generation failed. URL: $Playlist_url, Response: $playlist_result_data");
+    header('Content-Type: application/json');
+    echo json_encode(["error" => "Empty or invalid response from the server"]);
     exit;
 }
 
