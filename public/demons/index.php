@@ -359,7 +359,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
 
         <div style="text-align: center; margin-top: 15px; font-size: 16px;">
-            <strong>with ❤️ by DEMONJI</strong>
+            <strong>Coded with ❤️ by PARAG</strong>
         </div>
     </div>
 
@@ -392,19 +392,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             try {
                 const groupRes = await fetch(`config.php?action=get_groups&${new URLSearchParams(credentials)}`);
-                if (!groupRes.ok) {
-                    throw new Error(`HTTP error! Status: ${groupRes.status}`);
+                const groupData = await groupRes.json();
+                if (groupData.error) {
+                    throw new Error(groupData.error);
                 }
-                groups = await groupRes.json();
+                groups = groupData;
                 if (!Object.keys(groups).length) {
                     throw new Error("No groups received from server.");
                 }
 
                 const channelRes = await fetch(`playlist.php?action=get_channels&${new URLSearchParams(credentials)}`);
-                if (!channelRes.ok) {
-                    throw new Error(`HTTP error! Status: ${channelRes.status}`);
+                const channelData = await channelRes.json();
+                if (channelData.error) {
+                    throw new Error(channelData.error);
                 }
-                channels = await channelRes.json();
+                channels = channelData;
                 if (!Array.isArray(channels)) {
                     throw new Error("Invalid channel data received from server.");
                 }
@@ -413,7 +415,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 showPopup("Groups loaded successfully!");
             } catch (error) {
                 console.error("Error fetching data:", error);
-                showPopup(`Failed to load groups. Error: ${error.message}. Please check your credentials.`);
+                showPopup(`Failed to load groups. Error: ${error.message}. Please check your credentials or server.`);
             } finally {
                 document.getElementById("loadingIndicator").style.display = "none";
                 document.getElementById("groupList").style.display = "block";
