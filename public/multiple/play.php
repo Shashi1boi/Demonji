@@ -1,9 +1,15 @@
 <?php
 require_once 'config.php'; // Include the configuration file
 
+// Enable error logging for debugging
+ini_set('log_errors', 1);
+ini_set('error_log', 'php_errors.log');
+
+// Set CORS headers
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+header("Cross-Origin-Resource-Policy: cross-origin"); // Allow cross-origin resource sharing
 set_time_limit(0); // Prevent script timeout
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -42,6 +48,7 @@ $streamId = isset($_GET['streamid']) ? str_replace('.m3u8', '', $_GET['streamid'
 
 $credentials = getCredentialsById($serverId);
 if (!$credentials) {
+    error_log("Invalid or missing stream (server ID): $serverId");
     http_response_code(400);
     exit("Error: Invalid or missing stream (server ID).");
 }
@@ -52,6 +59,7 @@ $username = $credentials['username'];
 $password = $credentials['password'];
 
 if (empty($streamId)) {
+    error_log("Missing or invalid streamid parameter");
     http_response_code(400);
     exit("Error: Missing or invalid streamid parameter.");
 }
@@ -66,7 +74,8 @@ $headers = [
     "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
     "Host: " . parse_url($host, PHP_URL_HOST),
     "Connection: keep-alive",
-    "Accept-Encoding: gzip",
+    "Accept: application/vnd.apple.mpegurl, */*",
+    "Accept-Encoding: gzip, deflate",
     "X-Unique-Token: " . $uniqueToken,
     "X-Request-ID: " . uniqid(),
     "X-Device-Model: {$deviceModel['brand']} {$deviceModel['model']}"
@@ -82,10 +91,20 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 curl_setopt($ch, CURLOPT_TCP_KEEPALIVE, 1);
 curl_setopt($ch, CURLOPT_TCP_KEEPIDLE, 120);
 curl_setopt($ch, CURLOPT_TCP_KEEPINTVL, 60);
+curl_setopt($ch, CURLOPT_HEADER, false);
+
+// Enable verbose mode for debugging
+curl_setopt($ch, CURLOPT_VERBOSE, true);
+$verbose = fopen('php://temp', 'w+');
+curl_setopt($ch, CURLOPT_STDERR, $verbose);
 
 $response = curl_exec($ch);
 if (!$response) {
     $error = curl_error($ch);
+    rewind($verbose);
+    $verboseLog = stream_get_contents($verbose);
+    error_log("cURL request failed: $error\nVerbose log: $verboseLog");
+    fclose($verbose);
     curl_close($ch);
     http_response_code(500);
     exit("Error: cURL request failed. " . $error);
@@ -93,29 +112,43 @@ if (!$response) {
 
 $status_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $final_url = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
-curl_close($ch);
+rewind($verbose);
+$verboseLog = stream_get_contents($verbose);
+fclose($verbose);
 
 if ($status_code != 200) {
+    error_log("Failed to fetch m3u8 file. HTTP status code: $status_code\nVerbose log: $verboseLog");
+    curl_close($ch);
     http_response_code($status_code);
     exit("Error: Failed to fetch the m3u8 file. HTTP status code: $status_code");
 }
 
+curl_close($ch);
+
+// Extract base URL for .ts segments
 $baseUrl = parse_url($final_url, PHP_URL_SCHEME) . '://' . parse_url($final_url, PHP_URL_HOST);
 if ($port = parse_url($final_url, PHP_URL_PORT)) {
     $baseUrl .= ":$port";
 }
+$basePath = dirname(parse_url($final_url, PHP_URL_PATH));
 
-$processedResponse = implode("\n", array_map(function ($line) use ($baseUrl) {
+// Process .m3u8 to ensure absolute URLs for .ts segments
+$processedResponse = implode("\n", array_map(function ($line) use ($baseUrl, $basePath) {
     if (preg_match('#\.ts($|\?)#', $line) && !filter_var($line, FILTER_VALIDATE_URL)) {
-        return $baseUrl . '/' . ltrim($line, '/');
+        return rtrim($baseUrl, '/') . '/' . ltrim($basePath, '/') . '/' . ltrim($line, '/');
+    } elseif (preg_match('#\.m3u8($|\?)#', $line) && !filter_var($line, FILTER_VALIDATE_URL)) {
+        return rtrim($baseUrl, '/') . '/' . ltrim($basePath, '/') . '/' . ltrim($line, '/');
     }
     return $line;
 }, explode("\n", $response)));
 
+// Set headers for browser compatibility
 header('Content-Type: application/vnd.apple.mpegurl');
 header('Content-Disposition: inline; filename="stream.m3u8"');
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Pragma: no-cache");
 header("Expires: 0");
+header("Access-Control-Expose-Headers: Content-Length, Content-Type");
+
 echo trim($processedResponse);
 ?>
