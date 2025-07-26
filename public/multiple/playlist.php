@@ -23,11 +23,11 @@ $password = $credentials['password'];
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
 $host = $_SERVER['HTTP_HOST'];
 $requestUri = $_SERVER['REQUEST_URI'];
-$m3u8Url = $protocol . $host . dirname($requestUri) . "/play.php?server=$serverId&id=";
+$m3u8Url = $protocol . $host . dirname($requestUri) . "/play.php?stream=$serverId&streamid=";
 
 if (empty($baseUrl) || empty($user) || empty($password)) {
     http_response_code(500);
-    die("Error: Missing url, user, or password in script.");
+    exit("Error: Missing url, user, or password in script.");
 }
 
 $parsedUrl = parse_url($baseUrl);
@@ -121,7 +121,7 @@ foreach ($streams as $stream) {
         continue;
     }
 
-    $streamUrl = "$m3u8Url$streamId";
+    $streamUrl = "$m3u8Url$streamId.m3u8";
     $categoryName = $categoryMap[$categoryId] ?? 'Unknown';
 
     $m3uContent .= "#EXTINF:-1 tvg-id=\"$streamId\" tvg-name=\"$streamName\" tvg-logo=\"$streamIcon\" group-title=\"$categoryName\",$streamName\n$streamUrl\n";
