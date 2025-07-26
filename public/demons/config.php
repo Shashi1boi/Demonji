@@ -1,5 +1,5 @@
 <?php
-error_reporting(0);
+error_reporting(E_ALL); // Enable errors for debugging
 date_default_timezone_set("Asia/Kolkata");
 
 // Get credentials from query parameters
@@ -17,6 +17,11 @@ $sig = $sanitize($_GET['sig'] ?? '');
 $api = "263";
 $host = parse_url($url)["host"];
 
+// Log function for debugging
+function log_error($message) {
+    file_put_contents('debug.log', date('Y-m-d H:i:s') . " - $message\n", FILE_APPEND);
+}
+
 // Handshake
 function handshake($host) { 
     $Xurl = "http://$host/stalker_portal/server/load.php?type=stb&action=handshake&token=&JsHttpRequest=1-xml";
@@ -33,6 +38,12 @@ function handshake($host) {
     $Info_Status = $Info_Data["Info_arr"]["info"];
     $Info_Data = $Info_Data["Info_arr"]["data"];
     $Info_Data_Json = json_decode($Info_Data, true);
+    
+    if (!$Info_Data_Json || !isset($Info_Data_Json["js"]["token"])) {
+        log_error("Handshake failed. URL: $Xurl, Response: $Info_Data, Status: " . json_encode($Info_Status));
+        return ["Info_arr" => ["token" => "", "random" => "", "Status Code" => $Info_Status]];
+    }
+    
     $Info_Encode = array(
         "Info_arr" => array(
             "token" => $Info_Data_Json["js"]["token"] ?? '',
@@ -48,10 +59,15 @@ function generate_token($host, $mac, $sn, $device_id_1, $device_id_2, $sig) {
     $Info_Decode = handshake($host);
     $Bearer_token = $Info_Decode["Info_arr"]["token"];
     if (empty($Bearer_token)) {
-        die("Error: Failed to generate token.");
+        log_error("Token generation failed. Host: $host, MAC: $mac");
+        die(json_encode(["error" => "Failed to generate token."]));
     }
     $Bearer_token = re_generate_token($Bearer_token, $host);
     $Bearer_token = $Bearer_token["Info_arr"]["token"];
+    if (empty($Bearer_token)) {
+        log_error("Token re-generation failed. Host: $host, MAC: $mac");
+        die(json_encode(["error" => "Failed to re-generate token."]));
+    }
     get_profile($Bearer_token, $host, $mac, $sn, $device_id_1, $device_id_2, $sig);
     return $Bearer_token;
 }
@@ -71,6 +87,12 @@ function re_generate_token($Bearer_token, $host) {
     $Info_Data = Info($Xurl, $HED, '');
     $Info_Data = $Info_Data["Info_arr"]["data"];
     $Info_Data_Json = json_decode($Info_Data, true);
+    
+    if (!$Info_Data_Json || !isset($Info_Data_Json["js"]["token"])) {
+        log_error("Re-generate token failed. URL: $Xurl, Response: $Info_Data");
+        return ["Info_arr" => ["token" => "", "random" => ""]];
+    }
+    
     $Info_Encode = array(
         "Info_arr" => array(
             "token" => $Info_Data_Json["js"]["token"] ?? '',
@@ -97,7 +119,10 @@ function get_profile($Bearer_token, $host, $mac, $sn, $device_id_1, $device_id_2
         "Host: $host",
         "Connection: Keep-Alive",
     ];
-    Info($Xurl, $HED, $mac);
+    $response = Info($Xurl, $HED, $mac);
+    if (!$response["Info_arr"]["data"]) {
+        log_error("Get profile failed. URL: $Xurl, Response: " . json_encode($response));
+    }
 }
 
 // Info
@@ -116,6 +141,12 @@ function Info($Xurl, $HED, $mac) {
     ]);
     $Info_Data = curl_exec($cURL_Info);
     $Info_Status = curl_getinfo($cURL_Info);
+    if (curl_errno($cURL_Info)) {
+        $error = curl_error($cURL_Info);
+        log_error("CURL error: $error, URL: $Xurl");
+        curl_close($cURL_Info);
+        return ["Info_arr" => ["data" => "", "info" => $Info_Status]];
+    }
     curl_close($cURL_Info);
     $Info_Encode = array(
         "Info_arr" => array(
@@ -143,7 +174,8 @@ function group_title($host, $mac, $sn, $device_id_1, $device_id_2, $sig, $all = 
     $response = Info($group_title_url, $headers, $mac);
     $json_api_data = json_decode($response["Info_arr"]["data"], true);
     
-    if (!isset($json_api_data["js"]) || !is_array($json_api_data["js"])) {
+    if (!$json_api_data || !isset($json_api_data["js"]) || !is_array($json_api_data["js"])) {
+        log_error("Group fetch failed. URL: $group_title_url, Response: " . $response["Info_arr"]["data"]);
         return [];
     }
 
@@ -162,11 +194,17 @@ function group_title($host, $mac, $sn, $device_id_1, $device_id_2, $sig, $all = 
 if (isset($_GET['action']) && $_GET['action'] === 'get_groups') {
     if (empty($url) || empty($mac) || empty($sn) || empty($device_id_1) || empty($device_id_2)) {
         header('Content-Type: application/json');
-        echo json_encode([]);
+        echo json_encode(["error" => "Missing required credentials"]);
         exit;
     }
     header('Content-Type: application/json');
-    echo json_encode(group_title($host, $mac, $sn, $device_id_1, $device_id_2, $sig, true));
+    try {
+        $groups = group_title($host, $mac, $sn, $device_id_1, $device_id_2, $sig, true);
+        echo json_encode($groups);
+    } catch (Exception $e) {
+        log_error("Group fetch exception: " . $e->getMessage());
+        echo json_encode(["error" => "Failed to fetch groups: " . $e->getMessage()]);
+    }
     exit;
 }
 ?>
