@@ -23,7 +23,7 @@ $password = $credentials['password'];
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
 $host = $_SERVER['HTTP_HOST'];
 $requestUri = $_SERVER['REQUEST_URI'];
-$m3u8Url = $protocol . $host . dirname($requestUri) . "/play.php?server=$serverId&id=";
+$m3u8Url = $protocol . $host . dirname($requestUri) . "/stream/$serverId/";
 
 if (empty($baseUrl) || empty($user) || empty($password)) {
     http_response_code(500);
@@ -125,7 +125,7 @@ foreach ($streams as $stream) {
         continue;
     }
 
-    $streamUrl = "$baseUrl/$user/$password/$streamId";
+    $streamUrl = "$m3u8Url$streamId/master.m3u8";
     $categoryName = $categoryMap[$categoryId] ?? 'Unknown';
 
     $m3uContent .= "#EXTINF:-1 tvg-id=\"$streamId\" tvg-name=\"$streamName\" tvg-logo=\"$streamIcon\" group-title=\"$categoryName\",$streamName\n$streamUrl\n";
@@ -136,8 +136,6 @@ if ($streamCount === 0) {
     http_response_code(500);
     die("Error: No valid streams found in API response.");
 }
-
-$m3uContent = str_replace($replaceUrl, $m3u8Url, $m3uContent);
 
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Cache-Control: post-check=0, pre-check=0", false);
