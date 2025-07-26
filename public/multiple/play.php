@@ -36,12 +36,14 @@ function generateRandomDeviceModel() {
     ];
 }
 
-// Get server ID from query parameter
-$serverId = isset($_GET['server']) ? $_GET['server'] : null;
-$credentials = getCredentialsById($serverId);
+// Get server ID and stream ID from query parameters
+$serverId = isset($_GET['stream']) ? $_GET['stream'] : null;
+$streamId = isset($_GET['streamid']) ? str_replace('.m3u8', '', $_GET['streamid']) : null;
 
+$credentials = getCredentialsById($serverId);
 if (!$credentials) {
-    exit("Error: Invalid or missing server ID.");
+    http_response_code(400);
+    exit("Error: Invalid or missing stream (server ID).");
 }
 
 // Use credentials from config
@@ -49,18 +51,19 @@ $host = $credentials['host'];
 $username = $credentials['username'];
 $password = $credentials['password'];
 
-if (empty($_GET['id'])) {
-    exit("Error: Missing or invalid 'id' parameter.");
+if (empty($streamId)) {
+    http_response_code(400);
+    exit("Error: Missing or invalid streamid parameter.");
 }
 
-$id = urlencode($_GET['id']);
-$url = "{$host}/live/{$username}/{$password}/{$id}.m3u8";
+$streamId = urlencode($streamId);
+$url = "{$host}/live/{$username}/{$password}/{$streamId}.m3u8";
 
 $uniqueToken = generateRandomToken();
 $deviceModel = generateRandomDeviceModel();
 
 $headers = [
-    "User-Agent: OTT Navigator/1.6.7.4 (Linux; {$deviceModel['android_version']}; {$deviceModel['brand']} {$deviceModel['model']}) ExoPlayerLib/2.15.1",
+    "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
     "Host: " . parse_url($host, PHP_URL_HOST),
     "Connection: keep-alive",
     "Accept-Encoding: gzip",
@@ -84,6 +87,7 @@ $response = curl_exec($ch);
 if (!$response) {
     $error = curl_error($ch);
     curl_close($ch);
+    http_response_code(500);
     exit("Error: cURL request failed. " . $error);
 }
 
@@ -92,6 +96,7 @@ $final_url = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
 curl_close($ch);
 
 if ($status_code != 200) {
+    http_response_code($status_code);
     exit("Error: Failed to fetch the m3u8 file. HTTP status code: $status_code");
 }
 
@@ -108,7 +113,7 @@ $processedResponse = implode("\n", array_map(function ($line) use ($baseUrl) {
 }, explode("\n", $response)));
 
 header('Content-Type: application/vnd.apple.mpegurl');
-header('Content-Disposition: attachment; filename="' . $id . '.m3u8"');
+header('Content-Disposition: inline; filename="stream.m3u8"');
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
 header("Pragma: no-cache");
 header("Expires: 0");
