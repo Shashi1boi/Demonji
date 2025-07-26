@@ -398,7 +398,7 @@ if (empty($scriptName) || $scriptName == "index.php") {
                     } catch {
                         errorData = { error: channelText || 'Unknown error' };
                     }
-                    throw new Error(`HTTP error! Status: ${channelRes.status} - ${errorData.error || channelRes.statusText}`);
+                    throw new Error(`HTTP error! Status: ${categoryRes.status} - ${errorData.error || channelRes.statusText}`);
                 }
 
                 channels = JSON.parse(channelText);
