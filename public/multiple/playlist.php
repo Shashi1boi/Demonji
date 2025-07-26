@@ -23,7 +23,7 @@ $password = $credentials['password'];
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
 $host = $_SERVER['HTTP_HOST'];
 $requestUri = $_SERVER['REQUEST_URI'];
-$m3u8Url = $protocol . $host . dirname($requestUri) . "/stream/$serverId/";
+$m3u8Url = $protocol . $host . dirname($requestUri) . "/play.php?server=$serverId&id=";
 
 if (empty($baseUrl) || empty($user) || empty($password)) {
     http_response_code(500);
@@ -121,7 +121,7 @@ foreach ($streams as $stream) {
         continue;
     }
 
-    $streamUrl = "$m3u8Url$streamId/master.m3u8";
+    $streamUrl = "$m3u8Url$streamId";
     $categoryName = $categoryMap[$categoryId] ?? 'Unknown';
 
     $m3uContent .= "#EXTINF:-1 tvg-id=\"$streamId\" tvg-name=\"$streamName\" tvg-logo=\"$streamIcon\" group-title=\"$categoryName\",$streamName\n$streamUrl\n";
