@@ -76,14 +76,14 @@ function generate_token($host, $mac, $sn, $device_id_1, $device_id_2, $sig) {
     $Bearer_token = $Info_Decode["Info_arr"]["token"];
     if (empty($Bearer_token)) {
         log_error("Token generation failed. Host: $host, MAC: $mac");
-        echo json_encode(["error" => "Failed to generate token"]);
+        echo json_encode(["error" => "Failed to generate token. Check server or credentials."]);
         exit;
     }
     $Bearer_token = re_generate_token($Bearer_token, $host);
     $Bearer_token = $Bearer_token["Info_arr"]["token"];
     if (empty($Bearer_token)) {
         log_error("Token re-generation failed. Host: $host, MAC: $mac");
-        echo json_encode(["error" => "Failed to re-generate token"]);
+        echo json_encode(["error" => "Failed to re-generate token. Check server or credentials."]);
         exit;
     }
     get_profile($Bearer_token, $host, $mac, $sn, $device_id_1, $device_id_2, $sig);
@@ -148,7 +148,7 @@ function Info($Xurl, $HED, $mac) {
         CURLOPT_RETURNTRANSFER => true,
         CURLOPT_ENCODING => 'gzip',
         CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 60, // Increased timeout
+        CURLOPT_TIMEOUT => 60,
         CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
         CURLOPT_CUSTOMREQUEST => 'GET',
         CURLOPT_COOKIE => "mac=$mac; stb_lang=en; timezone=GMT",
@@ -190,7 +190,8 @@ function group_title($host, $mac, $sn, $device_id_1, $device_id_2, $sig, $all = 
     
     if (!$json_api_data || !isset($json_api_data["js"]) || !is_array($json_api_data["js"])) {
         log_error("Group fetch failed. URL: $group_title_url, Response: " . $response["Info_arr"]["data"]);
-        return [];
+        echo json_encode(["error" => "Failed to fetch groups. Check server response."]);
+        exit;
     }
 
     $filtered_data = [];
