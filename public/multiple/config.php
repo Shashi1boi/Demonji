@@ -8,20 +8,13 @@ $xtreamCredentials = [
         'username' => 'Home329',
         'password' => 'Sohailhome'
     ],
-    [
-        'id' => 'server2',
-        'name' => 'Server 2 (Example TV)',
-        'host' => 'http://example.tv:8080', // Replace with actual server URL
-        'username' => 'user2',             // Replace with actual username
-        'password' => 'pass2'              // Replace with actual password
-    ],
     // Add more servers as needed
     // [
-    //     'id' => 'server3',
-    //     'name' => 'Server 3 (Another TV)',
-    //     'host' => 'http://another.tv:8080',
-    //     'username' => 'user3',
-    //     'password' => 'pass3'
+    //     'id' => 'server2',
+    //     'name' => 'Server 2 (Example TV)',
+    //     'host' => 'http://example.tv:8080',
+    //     'username' => 'user2',
+    //     'password' => 'pass2'
     // ]
 ];
 
