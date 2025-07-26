@@ -1,25 +1,15 @@
 <?php
-require_once 'config.php'; // Include the configuration file
-
 header('Content-Type: application/json');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET');
 
-if (!isset($_GET['url']) || !isset($_GET['server'])) {
+if (!isset($_GET['url'])) {
     http_response_code(400);
-    echo json_encode(['error' => 'URL or server parameter is missing']);
+    echo json_encode(['error' => 'URL parameter is missing']);
     exit;
 }
 
 $targetUrl = $_GET['url'];
-$serverId = $_GET['server'];
-$credentials = getCredentialsById($serverId);
-
-if (!$credentials) {
-    http_response_code(400);
-    echo json_encode(['error' => 'Invalid server ID']);
-    exit;
-}
 
 $parsedUrl = parse_url($targetUrl);
 if (!$parsedUrl || !isset($parsedUrl['scheme'], $parsedUrl['host'])) {
