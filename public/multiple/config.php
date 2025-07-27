@@ -4,9 +4,9 @@ $xtreamCredentials = [
     [
         'id' => 'server1',
         'name' => 'Server 1 (Filex TV)',
-        'host' => 'http://nodns1.top:8080',
-        'username' => '431723547318174',
-        'password' => '5afc489121c7'
+        'host' => 'http://front-main.eagle-4k.me:80',
+        'username' => 'imadfr_551967',
+        'password' => '4fWxfRqg'
     ],
     [
         'id' => 'server2',
