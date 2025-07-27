@@ -5,8 +5,8 @@ $xtreamCredentials = [
         'id' => 'server1',
         'name' => 'Server 1 (Filex TV)',
         'host' => 'http://starshare.org:8080',
-        'username' => 'Sad41',
-        'password' => 'Premium51'
+        'username' => 'Premium51',
+        'password' => 'Sad41'
     ],
     [
         'id' => 'server2',
