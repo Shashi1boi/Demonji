@@ -104,7 +104,7 @@ foreach ($streams as $stream) {
     $streamId = $stream['stream_id'] ?? '';
     $streamName = $stream['name'] ?? 'Unknown Stream';
     $categoryId = $stream['category_id'] ?? '';
-    $streamIcon = !empty($stream['stream_icon']) ? $stream['stream_icon'] : 'https://i.ibb.co/xK5zSMkD/xtream.png';
+    $streamIcon = !empty($stream['stream_icon']) ? $stream['stream_icon'] : 'https://yn2mx9uw.live.codepad.app/Demonji.png';
     if (empty($streamId)) {
         continue;
     }
