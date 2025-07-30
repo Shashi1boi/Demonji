@@ -1,19 +1,14 @@
 <?php
-session_start();
-if (!isset($_SESSION['user'])) {
-    header("Location: login.php");
-    exit();
-}
-
 require_once 'config.php'; // Include the configuration file
 
-$parsedUrl = parse_url($xtreamCredentials['host']);
+$host = $stalkerCredentials['host'];
+$parsedUrl = parse_url($host);
 $hostname = isset($parsedUrl['host']) ? $parsedUrl['host'] : 'playlist';
 $playlistName = preg_replace('/[^a-zA-Z0-9]/', '', $hostname);
 
 $currentUrl = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http") . "://" . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
 $scriptName = basename($_SERVER['SCRIPT_NAME']);
-if (empty($scriptName) || $scriptName == "index.php") {    
+if (empty($scriptName) || $scriptName == "filter.php") {    
     $playlistUrl = rtrim($currentUrl, "/") . "/playlist.php";
 } else {    
     $playlistUrl = str_replace($scriptName, "playlist.php", $currentUrl);
@@ -253,11 +248,6 @@ if (empty($scriptName) || $scriptName == "index.php") {
             color: #e0e0e0;
         }
 
-        .logout-container {
-            text-align: right;
-            margin-top: 20px;
-        }
-
         @media (max-width: 480px) {
             .container {
                 padding: 20px;
@@ -328,13 +318,6 @@ if (empty($scriptName) || $scriptName == "index.php") {
                 <i class="fas fa-copy"></i>
             </button>
         </div>
-        <div class="logout-container">
-            <form action="logout.php" method="POST">
-                <button type="submit" class="btn" style="color: white; font-weight: bold; width: auto;">
-                    <i class="fas fa-sign-out-alt" style="margin-right: 8px;"></i> Logout
-                </button>
-            </form>
-        </div>
     </div>
 
     <div class="overlay" id="overlay"></div>
@@ -348,17 +331,17 @@ if (empty($scriptName) || $scriptName == "index.php") {
         let channels = [];
         let selectedCategories = new Set();
         const basePlaylistUrl = <?php echo json_encode($playlistUrl); ?>;
-        const xtreamCredentials = <?php echo json_encode($xtreamCredentials); ?>;
+        const stalkerCredentials = <?php echo json_encode($stalkerCredentials); ?>;
 
         async function fetchCategoriesAndChannels() {
-            const baseURL = `${xtreamCredentials.host}/player_api.php?username=${xtreamCredentials.username}&password=${xtreamCredentials.password}`;
+            const baseURL = `http://${stalkerCredentials.host}/stalker_portal/server/load.php`;
             document.getElementById("loadingIndicator").style.display = "block";
             document.getElementById("categoryList").style.display = "none";
 
-            try {                
-                const categoryRes = await fetch(`feeder.php?url=${encodeURIComponent(baseURL + '&action=get_live_categories')}`);
+            try {
+                const categoryRes = await fetch(`feeder.php?url=${encodeURIComponent(baseURL + '?type=itv&action=get_genres&JsHttpRequest=1-xml')}`);
                 const categoryText = await categoryRes.text();
-                
+
                 if (!categoryRes.ok) {
                     let errorData;
                     try {
@@ -369,14 +352,15 @@ if (empty($scriptName) || $scriptName == "index.php") {
                     throw new Error(`HTTP error! Status: ${categoryRes.status} - ${errorData.error || categoryRes.statusText}`);
                 }
 
-                categories = JSON.parse(categoryText);
+                const categoryData = JSON.parse(categoryText);
+                categories = categoryData.js.filter(cat => cat.id !== '*');
                 if (!Array.isArray(categories)) {
                     throw new Error("Invalid category data received from server.");
                 }
                 displayCategories(categories);
-                
-                const channelRes = await fetch(`feeder.php?url=${encodeURIComponent(baseURL + '&action=get_live_streams')}`);
-                const channelText = await channelRes.text();                
+
+                const channelRes = await fetch(`feeder.php?url=${encodeURIComponent(baseURL + '?type=itv&action=get_all_channels&JsHttpRequest=1-xml')}`);
+                const channelText = await channelRes.text();
 
                 if (!channelRes.ok) {
                     let errorData;
@@ -388,14 +372,15 @@ if (empty($scriptName) || $scriptName == "index.php") {
                     throw new Error(`HTTP error! Status: ${channelRes.status} - ${errorData.error || channelRes.statusText}`);
                 }
 
-                channels = JSON.parse(channelText);
+                const channelData = JSON.parse(channelText);
+                channels = channelData.js.data;
                 if (!Array.isArray(channels)) {
                     throw new Error("Invalid channel data received from server.");
                 }
                 showPopup("Categories and channels loaded successfully!");
             } catch (error) {
                 console.error("Error fetching data:", error);
-                showPopup(`Failed to fetch categories or channels. Error: ${error.message}. Please check your credentials or server URL.`);
+                showPopup(`Failed to fetch categories or channels. Error: ${error.message}. Please check your server URL or credentials.`);
             } finally {
                 document.getElementById("loadingIndicator").style.display = "none";
                 document.getElementById("categoryList").style.display = "block";
@@ -414,22 +399,22 @@ if (empty($scriptName) || $scriptName == "index.php") {
 
                 const checkbox = document.createElement("input");
                 checkbox.type = "checkbox";
-                checkbox.value = cat.category_id;
-                checkbox.id = `cat_${cat.category_id}`;
-                checkbox.checked = selectedCategories.has(cat.category_id);
+                checkbox.value = cat.id;
+                checkbox.id = `cat_${cat.id}`;
+                checkbox.checked = selectedCategories.has(cat.id);
                 checkbox.addEventListener("change", () => {
                     if (checkbox.checked) {
-                        selectedCategories.add(cat.category_id);
+                        selectedCategories.add(cat.id);
                     } else {
-                        selectedCategories.delete(cat.category_id);
+                        selectedCategories.delete(cat.id);
                     }
                     updateSelectAllCheckbox();
                     updatePlaylistUrl();
                 });
 
                 const label = document.createElement("label");
-                label.htmlFor = `cat_${cat.category_id}`;
-                label.textContent = cat.category_name;
+                label.htmlFor = `cat_${cat.id}`;
+                label.textContent = cat.title;
 
                 formGroup.appendChild(checkbox);
                 formGroup.appendChild(label);
@@ -442,7 +427,7 @@ if (empty($scriptName) || $scriptName == "index.php") {
 
         function filterCategories() {
             const searchValue = document.getElementById("searchBox").value.toLowerCase();
-            const filtered = categories.filter(cat => cat.category_name.toLowerCase().includes(searchValue));
+            const filtered = categories.filter(cat => cat.title.toLowerCase().includes(searchValue));
             displayCategories(filtered);
         }
 
@@ -451,13 +436,13 @@ if (empty($scriptName) || $scriptName == "index.php") {
             const isChecked = selectAllCheckbox.checked;
             const searchValue = document.getElementById("searchBox").value.toLowerCase();
             const filteredCategories = searchValue 
-                ? categories.filter(cat => cat.category_name.toLowerCase().includes(searchValue))
+                ? categories.filter(cat => cat.title.toLowerCase().includes(searchValue))
                 : categories;
 
             if (isChecked) {
-                filteredCategories.forEach(cat => selectedCategories.add(cat.category_id));
+                filteredCategories.forEach(cat => selectedCategories.add(cat.id));
             } else {
-                filteredCategories.forEach(cat => selectedCategories.delete(cat.category_id));
+                filteredCategories.forEach(cat => selectedCategories.delete(cat.id));
             }
 
             document.querySelectorAll('.checkbox-container input[type="checkbox"]:not(#selectAll)').forEach(checkbox => {
@@ -495,7 +480,7 @@ if (empty($scriptName) || $scriptName == "index.php") {
                 return;
             }
 
-            const filteredChannels = channels.filter(ch => selected.includes(ch.category_id));
+            const filteredChannels = channels.filter(ch => selected.includes(ch.tv_genre_id));
             if (!filteredChannels.length) {
                 showPopup("No channels found for the selected categories.");
                 return;
