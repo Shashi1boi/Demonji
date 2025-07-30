@@ -6,26 +6,33 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 set_time_limit(0); // Prevent script timeout
 
-// Use credentials from config
-$baseUrl = $xtreamCredentials['host'];
-$user = $xtreamCredentials['username'];
-$password = $xtreamCredentials['password'];
+$host = $stalkerCredentials['host'];
+$mac = $stalkerCredentials['mac'];
+$token = generate_token();
 
 $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' || $_SERVER['SERVER_PORT'] == 443) ? "https://" : "http://";
-$host = $_SERVER['HTTP_HOST'];
+$server = $_SERVER['HTTP_HOST'];
 $requestUri = $_SERVER['REQUEST_URI'];
-$m3u8Url = $protocol . $host . dirname($requestUri) . "/play.php?id=";
+$m3u8Url = $protocol . $server . dirname($requestUri) . "/play.php?id=";
 
-if (empty($baseUrl) || empty($user) || empty($password)) {
-    http_response_code(500);
-    die("Error: Missing url, user, or password in script.");
+function generateId($cmd) {
+    $cmdParts = explode("/", $cmd);
+    if ($cmdParts[2] === "localhost") {
+        $cmd = str_ireplace('ffrt http://localhost/ch/', '', $cmd);
+    } else if ($cmdParts[2] === "") {
+        $cmd = str_ireplace('ffrt http:///ch/', '', $cmd);
+    }
+    return $cmd;
 }
 
-$parsedUrl = parse_url($baseUrl);
-$hostname = $parsedUrl['host'] ?? '';
-if (empty($hostname)) {
-    http_response_code(500);
-    die("Error: Invalid URL: Unable to extract hostname.");
+function getImageUrl($channel, $host) {
+    $imageExtensions = [".png", ".jpg"];
+    $emptyReplacements = ['', ""];
+    $logo = str_replace($imageExtensions, $emptyReplacements, $channel['logo']);
+    if (is_numeric($logo)) {
+        return 'http://' . $host . '/stalker_portal/misc/logos/320/' . $channel['logo'];
+    }
+    return "https://i.ibb.co/39Nz2wg/stalker.png";
 }
 
 // Get selected categories from query parameter
@@ -35,18 +42,27 @@ if (isset($_GET['categories']) && !empty($_GET['categories'])) {
     $selectedCategories = array_map('trim', $selectedCategories);
 }
 
-$apiUrl = "$baseUrl/player_api.php?username=$user&password=$password&action=get_live_streams";
+$apiUrl = "http://{$host}/stalker_portal/server/load.php?type=itv&action=get_all_channels&JsHttpRequest=1-xml";
+$headers = [
+    "User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3",
+    "Authorization: Bearer {$token}",
+    "X-User-Agent: Model: MAG250; Link: WiFi",
+    "Referer: http://{$host}/stalker_portal/c/",
+    "Cookie: timezone=GMT; stb_lang=en; mac={$mac}",
+    "Accept: */*",
+    "Host: {$host}",
+    "Connection: Keep-Alive",
+    "Accept-Encoding: gzip"
+];
 
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $apiUrl);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+curl_setopt($ch, CURLOPT_ENCODING, 'gzip');
 curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-    "Accept: */*",
-    "Connection: keep-alive"
-]);
+
 $apiResponse = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $error = curl_error($ch);
@@ -54,31 +70,26 @@ curl_close($ch);
 
 if ($apiResponse === false || $httpCode >= 400) {
     http_response_code(500);
-    die("Error: Unable to fetch streams from API at $apiUrl. HTTP $httpCode - $error");
+    die("Error: Unable to fetch channels from API. HTTP $httpCode - $error");
 }
 
-$streams = json_decode($apiResponse, true);
-if (json_last_error() !== JSON_ERROR_NONE) {
+$channels = json_decode($apiResponse, true);
+if (!isset($channels['js']['data']) || !is_array($channels['js']['data'])) {
     http_response_code(500);
-    die("Error: Invalid API response format from $apiUrl: " . json_last_error_msg());
+    die("Error: Invalid channel data received from API.");
 }
 
-if (!is_array($streams)) {
-    http_response_code(500);
-    die("Error: API response is not an array of streams.");
-}
+$channels = $channels['js']['data'];
 
-$categoryApiUrl = "$baseUrl/player_api.php?username=$user&password=$password&action=get_live_categories";
+$categoryApiUrl = "http://{$host}/stalker_portal/server/load.php?type=itv&action=get_genres&JsHttpRequest=1-xml";
 $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $categoryApiUrl);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+curl_setopt($ch, CURLOPT_ENCODING, 'gzip');
 curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-curl_setopt($ch, CURLOPT_HTTPHEADER, [
-    "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-    "Accept: */*",
-    "Connection: keep-alive"
-]);
+
 $categoryResponse = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 $error = curl_error($ch);
@@ -86,26 +97,28 @@ curl_close($ch);
 
 $categories = [];
 if ($categoryResponse !== false && $httpCode < 400) {
-    $categories = json_decode($categoryResponse, true) ?: [];
-    if (!is_array($categories)) {
-        $categories = [];
+    $categoryData = json_decode($categoryResponse, true);
+    if (isset($categoryData['js']) && is_array($categoryData['js'])) {
+        $categories = $categoryData['js'];
     }
 }
 
 $categoryMap = [];
 foreach ($categories as $cat) {
-    $categoryMap[$cat['category_id']] = $cat['category_name'] ?? 'Unknown';
+    if ($cat['id'] !== '*') {
+        $categoryMap[$cat['id']] = $cat['title'] ?? 'Unknown';
+    }
 }
 
 $m3uContent = "#EXTM3U\n";
 $streamCount = 0;
 
-foreach ($streams as $stream) {
-    $streamId = $stream['stream_id'] ?? '';
-    $streamName = $stream['name'] ?? 'Unknown Stream';
-    $categoryId = $stream['category_id'] ?? '';
-    $streamIcon = !empty($stream['stream_icon']) ? $stream['stream_icon'] : 'https://yn2mx9uw.live.codepad.app/Demonji.png';
-    if (empty($streamId)) {
+foreach ($channels as $channel) {
+    $channelId = generateId($channel['cmd'] ?? '');
+    $channelName = $channel['name'] ?? 'Unknown Channel';
+    $categoryId = $channel['tv_genre_id'] ?? '';
+    $streamIcon = getImageUrl($channel, $host);
+    if (empty($channelId)) {
         continue;
     }
 
@@ -114,16 +127,16 @@ foreach ($streams as $stream) {
         continue;
     }
 
-    $streamUrl = "$m3u8Url{$streamId}.m3u8"; // Append .m3u8 to the stream ID
+    $streamUrl = "$m3u8Url{$channelId}.m3u8"; // Append .m3u8 to the stream ID
     $categoryName = $categoryMap[$categoryId] ?? 'Unknown';
 
-    $m3uContent .= "#EXTINF:-1 tvg-id=\"$streamId\" tvg-name=\"$streamName\" tvg-logo=\"$streamIcon\" group-title=\"$categoryName\",$streamName\n$streamUrl\n";
+    $m3uContent .= "#EXTINF:-1 tvg-id=\"$channelId\" tvg-name=\"$channelName\" tvg-logo=\"$streamIcon\" group-title=\"$categoryName\",$channelName\n$streamUrl\n";
     $streamCount++;
 }
 
 if ($streamCount === 0) {
     http_response_code(500);
-    die("Error: No valid streams found in API response.");
+    die("Error: No valid channels found in API response.");
 }
 
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
