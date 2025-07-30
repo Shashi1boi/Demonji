@@ -53,7 +53,9 @@ if (empty($_GET['id'])) {
     exit("Error: Missing or invalid 'id' parameter.");
 }
 
-$id = urlencode($_GET['id']);
+// Extract stream ID by removing .m3u8 extension if present
+$id = preg_replace('/\.m3u8$/', '', $_GET['id']);
+$id = urlencode($id);
 $url = "{$host}/live/{$username}/{$password}/{$id}.m3u8";
 
 $uniqueToken = generateRandomToken();
