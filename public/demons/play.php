@@ -10,37 +10,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(http_response_code(204));
 }
 
-function generateRandomToken($length = 10) {
-    $characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    $token = '';
-    for ($i = 0; $i < $length; $i++) {
-        $token .= $characters[rand(0, strlen($characters) - 1)];
-    }
-    return $token;
-}
-
-function generateRandomDeviceModel() {
-    $models = [
-        'Samsung' => ['Galaxy S21' => 'Android 11', 'Galaxy S22' => 'Android 12', 'Galaxy S23' => 'Android 13'],
-        'Xiaomi' => ['Mi 11' => 'Android 11', 'Mi 12' => 'Android 12', 'Redmi Note 10' => 'Android 11'],
-    ];
-
-    $randomBrand = array_rand($models);
-    $randomModel = array_rand($models[$randomBrand]);
-    $androidVersion = $models[$randomBrand][$randomModel];
-
-    return [
-        'brand' => $randomBrand,
-        'model' => $randomModel,
-        'android_version' => $androidVersion
-    ];
-}
-
-// Use credentials from config
-$host = $xtreamCredentials['host'];
-$username = $xtreamCredentials['username'];
-$password = $xtreamCredentials['password'];
-
 if (empty($_GET['id'])) {
     exit("Error: Missing or invalid 'id' parameter.");
 }
@@ -48,37 +17,92 @@ if (empty($_GET['id'])) {
 // Extract stream ID by removing .m3u8 extension if present
 $id = preg_replace('/\.m3u8$/', '', $_GET['id']);
 $id = urlencode($id);
-$url = "{$host}/live/{$username}/{$password}/{$id}.m3u8";
 
-$uniqueToken = generateRandomToken();
-$deviceModel = generateRandomDeviceModel();
+// Use credentials from config
+$host = $stalkerCredentials['host'];
+$mac = $stalkerCredentials['mac'];
+$token = generate_token(); // Generate or reuse token
+
+$streamUrlEndpoint = "http://{$host}/stalker_portal/server/load.php?type=itv&action=create_link&cmd=ffrt%20http://localhost/ch/{$id}&JsHttpRequest=1-xml";
 
 $headers = [
-    "User-Agent: OTT Navigator/1.6.7.4 (Linux; {$deviceModel['android_version']}; {$deviceModel['brand']} {$deviceModel['model']}) ExoPlayerLib/2.15.1",
-    "Host: " . parse_url($host, PHP_URL_HOST),
-    "Connection: keep-alive",
-    "Accept-Encoding: gzip",
-    "X-Unique-Token: " . $uniqueToken,
-    "X-Request-ID: " . uniqid(),
-    "X-Device-Model: {$deviceModel['brand']} {$deviceModel['model']}"
+    "Cookie: timezone=GMT; stb_lang=en; mac={$mac}",
+    "Referer: http://{$host}/stalker_portal/c/",
+    "Accept: */*",
+    "User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3",
+    "X-User-Agent: Model: MAG250; Link: WiFi",
+    "Authorization: Bearer {$token}",
+    "Host: {$host}",
+    "Connection: Keep-Alive",
+    "Accept-Encoding: gzip"
 ];
 
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $url);
+curl_setopt($ch, CURLOPT_URL, $streamUrlEndpoint);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
 curl_setopt($ch, CURLOPT_TIMEOUT, 0); // No timeout for streaming
-curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-curl_setopt($ch, CURLOPT_TCP_KEEPALIVE, 1);
-curl_setopt($ch, CURLOPT_TCP_KEEPIDLE, 120);
-curl_setopt($ch, CURLOPT_TCP_KEEPINTVL, 60);
+curl_setopt($ch, CURLOPT_ENCODING, 'gzip');
 
 $response = curl_exec($ch);
 if (!$response) {
     $error = curl_error($ch);
     curl_close($ch);
     exit("Error: cURL request failed. " . $error);
+}
+
+$status_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$final_url = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+curl_close($ch);
+
+if ($status_code != 200) {
+    // Retry with a new token if the current one is invalid
+    $token = generate_token(true); // Force regenerate token
+    $headers[5] = "Authorization: Bearer {$token}";
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $streamUrlEndpoint);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 0);
+    curl_setopt($ch, CURLOPT_ENCODING, 'gzip');
+    $response = curl_exec($ch);
+    $status_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $final_url = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+    curl_close($ch);
+}
+
+if ($status_code != 200) {
+    exit("Error: Failed to fetch stream URL. HTTP status code: $status_code");
+}
+
+$data = json_decode($response, true);
+$streamUrl = $data['js']['cmd'] ?? '';
+if (empty($streamUrl)) {
+    exit("Error: Failed to retrieve stream URL for channel ID: {$id}.");
+}
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $streamUrl);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+    "User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3",
+    "Accept: */*",
+    "Connection: keep-alive",
+    "Accept-Encoding: gzip"
+]);
+curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+curl_setopt($ch, CURLOPT_TIMEOUT, 0);
+
+$response = curl_exec($ch);
+if (!$response) {
+    $error = curl_error($ch);
+    curl_close($ch);
+    exit("Error: cURL request failed for stream. " . $error);
 }
 
 $status_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
