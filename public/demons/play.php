@@ -1,75 +1,110 @@
 <?php
-include "config.php";
+require_once 'config.php'; // Include the configuration file
 
-if (empty($_GET['id']) || empty($_GET['url']) || empty($_GET['mac']) || empty($_GET['sn']) || empty($_GET['device_id_1']) || empty($_GET['device_id_2'])) {
-    die("Error: Missing required parameters.");
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
+set_time_limit(0); // Prevent script timeout
+
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(http_response_code(204));
 }
 
-$channelId = $_GET['id'];
-$host = parse_url($_GET['url'])["host"];
-$mac = htmlspecialchars(trim($_GET['mac']));
-$sn = htmlspecialchars(trim($_GET['sn']));
-$device_id_1 = htmlspecialchars(trim($_GET['device_id_1']));
-$device_id_2 = htmlspecialchars(trim($_GET['device_id_2']));
-$sig = htmlspecialchars(trim($_GET['sig'] ?? ''));
-
-$Bearer_token = generate_token($host, $mac, $sn, $device_id_1, $device_id_2, $sig);
-
-$config = [
-    'stalkerUrl' => "http://$host/stalker_portal/",
-    'macAddress' => $mac,
-    'authorizationToken' => "Bearer $Bearer_token",
-];
-
-function fetchStreamUrl($config, $channelId) {
-    $headers = getHeaders($config);
-    $streamUrlEndpoint = "{$config['stalkerUrl']}server/load.php?type=itv&action=create_link&cmd=ffrt%20http://localhost/ch/{$channelId}&JsHttpRequest=1-xml";
-    
-    $data = executeCurl($streamUrlEndpoint, $headers);
-    
-    if (!isset($data['js']['cmd'])) {
-        global $host, $mac, $sn, $device_id_1, $device_id_2, $sig;
-        $config['authorizationToken'] = "Bearer " . generate_token($host, $mac, $sn, $device_id_1, $device_id_2, $sig);
-        $headers = getHeaders($config);
-        $data = executeCurl($streamUrlEndpoint, $headers);
+function generateRandomToken($length = 10) {
+    $characters = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    $token = '';
+    for ($i = 0; $i < $length; $i++) {
+        $token .= $characters[rand(0, strlen($characters) - 1)];
     }
-    
-    return $data['js']['cmd'] ?? die("Failed to retrieve stream URL for channel ID: {$channelId}.");
+    return $token;
 }
 
-function getHeaders($config) {
+function generateRandomDeviceModel() {
+    $models = [
+        'Samsung' => ['Galaxy S21' => 'Android 11', 'Galaxy S22' => 'Android 12', 'Galaxy S23' => 'Android 13'],
+        'Xiaomi' => ['Mi 11' => 'Android 11', 'Mi 12' => 'Android 12', 'Redmi Note 10' => 'Android 11'],
+    ];
+
+    $randomBrand = array_rand($models);
+    $randomModel = array_rand($models[$randomBrand]);
+    $androidVersion = $models[$randomBrand][$randomModel];
+
     return [
-        "Cookie: timezone=GMT; stb_lang=en; mac={$config['macAddress']}",
-        "Referer: {$config['stalkerUrl']}",
-        "Accept: */*",
-        "User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3",
-        "X-User-Agent: Model: MAG250; Link: WiFi",
-        "Authorization: {$config['authorizationToken']}",
-        "Host: " . parse_url($config['stalkerUrl'], PHP_URL_HOST),
-        "Connection: Keep-Alive",
-        "Accept-Encoding: gzip"
+        'brand' => $randomBrand,
+        'model' => $randomModel,
+        'android_version' => $androidVersion
     ];
 }
 
-function executeCurl($url, $headers) {
-    $ch = curl_init();
-    curl_setopt_array($ch, [
-        CURLOPT_URL => $url,
-        CURLOPT_HTTPHEADER => $headers,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_ENCODING => 'gzip',
-    ]);
-    
-    $response = curl_exec($ch);
-    if (curl_errno($ch)) {
-        die("cURL Error: " . curl_error($ch));
-    }
-    curl_close($ch);
-    
-    return json_decode($response, true);
+// Use credentials from config
+$host = $xtreamCredentials['host'];
+$username = $xtreamCredentials['username'];
+$password = $xtreamCredentials['password'];
+
+if (empty($_GET['id'])) {
+    exit("Error: Missing or invalid 'id' parameter.");
 }
 
-$streamUrl = fetchStreamUrl($config, $channelId);
-header("Location: $streamUrl");
-exit;
+// Extract stream ID by removing .m3u8 extension if present
+$id = preg_replace('/\.m3u8$/', '', $_GET['id']);
+$id = urlencode($id);
+$url = "{$host}/live/{$username}/{$password}/{$id}.m3u8";
+
+$uniqueToken = generateRandomToken();
+$deviceModel = generateRandomDeviceModel();
+
+$headers = [
+    "User-Agent: OTT Navigator/1.6.7.4 (Linux; {$deviceModel['android_version']}; {$deviceModel['brand']} {$deviceModel['model']}) ExoPlayerLib/2.15.1",
+    "Host: " . parse_url($host, PHP_URL_HOST),
+    "Connection: keep-alive",
+    "Accept-Encoding: gzip",
+    "X-Unique-Token: " . $uniqueToken,
+    "X-Request-ID: " . uniqid(),
+    "X-Device-Model: {$deviceModel['brand']} {$deviceModel['model']}"
+];
+
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $url);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
+curl_setopt($ch, CURLOPT_TIMEOUT, 0); // No timeout for streaming
+curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+curl_setopt($ch, CURLOPT_TCP_KEEPALIVE, 1);
+curl_setopt($ch, CURLOPT_TCP_KEEPIDLE, 120);
+curl_setopt($ch, CURLOPT_TCP_KEEPINTVL, 60);
+
+$response = curl_exec($ch);
+if (!$response) {
+    $error = curl_error($ch);
+    curl_close($ch);
+    exit("Error: cURL request failed. " . $error);
+}
+
+$status_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$final_url = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
+curl_close($ch);
+
+if ($status_code != 200) {
+    exit("Error: Failed to fetch the m3u8 file. HTTP status code: $status_code");
+}
+
+$baseUrl = parse_url($final_url, PHP_URL_SCHEME) . '://' . parse_url($final_url, PHP_URL_HOST);
+if ($port = parse_url($final_url, PHP_URL_PORT)) {
+    $baseUrl .= ":$port";
+}
+
+$processedResponse = implode("\n", array_map(function ($line) use ($baseUrl) {
+    if (preg_match('#\.ts($|\?)#', $line) && !filter_var($line, FILTER_VALIDATE_URL)) {
+        return $baseUrl . '/' . ltrim($line, '/');
+    }
+    return $line;
+}, explode("\n", $response)));
+
+header('Content-Type: application/vnd.apple.mpegurl');
+header('Content-Disposition: attachment; filename="' . $id . '.m3u8"');
+header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
+header("Pragma: no-cache");
+header("Expires: 0");
+echo trim($processedResponse);
 ?>
