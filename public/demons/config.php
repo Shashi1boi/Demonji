@@ -1,222 +1,89 @@
 <?php
-// Disable HTML error output
-ini_set('display_errors', 0);
-ini_set('display_startup_errors', 0);
-error_reporting(E_ALL);
-date_default_timezone_set("Asia/Kolkata");
+// Configuration file for Stalker Portal credentials
+$stalkerCredentials = [
+    'host' => 'pxy.proxytx.cloud:80',
+    'mac' => '00:1A:79:2C:5F:12',
+    'serial_number' => 'ebc9fa2d343cc4086b76bf5d21211b54',
+    'device_id_1' => '6BEF928E9577D0B1FB8535C44308F6B99B0BB009A0D2A1AEA4E37865CDD2CA3D',
+    'device_id_2' => '1C77B13A4BAC3544AF2C9E96DE9A06F813A7CEACC2D58A79E5FC6F68F12A68D7',
+    'signature' => '3950ED6DA5A9D14A4CDEC12035DD1668C42155C228A00DC7714560760FC83879',
+    'api_version' => '263'
+];
 
-// Force JSON content type
-header('Content-Type: application/json');
-
-// Log function for debugging
-function log_error($message) {
-    file_put_contents('debug.log', date('Y-m-d H:i:s') . " - $message\n", FILE_APPEND);
-}
-
-// Sanitize inputs
-$sanitize = function ($input) {
-    return htmlspecialchars(trim($input));
-};
-
-$url = $sanitize($_GET['url'] ?? '');
-$mac = $sanitize($_GET['mac'] ?? '');
-$sn = $sanitize($_GET['sn'] ?? '');
-$device_id_1 = $sanitize($_GET['device_id_1'] ?? '');
-$device_id_2 = $sanitize($_GET['device_id_2'] ?? '');
-$sig = $sanitize($_GET['sig'] ?? '');
-
-if (empty($url) || empty($mac) || empty($sn) || empty($device_id_1) || empty($device_id_2)) {
-    log_error("Missing required credentials: url=$url, mac=$mac, sn=$sn, device_id_1=$device_id_1, device_id_2=$device_id_2");
-    echo json_encode(["error" => "Missing required credentials"]);
-    exit;
-}
-
-$host = parse_url($url, PHP_URL_HOST);
-if (!$host) {
-    log_error("Invalid URL: $url");
-    echo json_encode(["error" => "Invalid URL"]);
-    exit;
-}
-
-$api = "263";
-
-// Handshake
-function handshake($host) { 
-    $Xurl = "http://$host/stalker_portal/server/load.php?type=stb&action=handshake&token=&JsHttpRequest=1-xml";
-    $HED = [
-        'User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3',
-        'Connection: Keep-Alive',
-        'Accept-Encoding: gzip',
-        'X-User-Agent: Model: MAG250; Link: WiFi',
-        "Referer: http://$host/stalker_portal/c/",
-        "Host: $host",
-    ];
-    $Info_Data = Info($Xurl, $HED, '');
-    $Info_Status = $Info_Data["Info_arr"]["info"] ?? [];
-    $Info_Data = $Info_Data["Info_arr"]["data"] ?? '';
-    
-    $Info_Data_Json = json_decode($Info_Data, true);
-    if (!$Info_Data_Json || !isset($Info_Data_Json["js"]["token"])) {
-        log_error("Handshake failed. URL: $Xurl, Response: $Info_Data, Status: " . json_encode($Info_Status));
-        return ["Info_arr" => ["token" => "", "random" => "", "Status Code" => $Info_Status]];
-    }
-    
-    return [
-        "Info_arr" => [
-            "token" => $Info_Data_Json["js"]["token"] ?? '',
-            "random" => $Info_Data_Json["js"]["random"] ?? '',
-            "Status Code" => $Info_Status
-        ]
-    ];
-}
-
-// Generate Token
-function generate_token($host, $mac, $sn, $device_id_1, $device_id_2, $sig) {
-    $Info_Decode = handshake($host);
-    $Bearer_token = $Info_Decode["Info_arr"]["token"];
-    if (empty($Bearer_token)) {
-        log_error("Token generation failed. Host: $host, MAC: $mac");
-        echo json_encode(["error" => "Failed to generate token. Check server or credentials."]);
-        exit;
-    }
-    $Bearer_token = re_generate_token($Bearer_token, $host);
-    $Bearer_token = $Bearer_token["Info_arr"]["token"];
-    if (empty($Bearer_token)) {
-        log_error("Token re-generation failed. Host: $host, MAC: $mac");
-        echo json_encode(["error" => "Failed to re-generate token. Check server or credentials."]);
-        exit;
-    }
-    get_profile($Bearer_token, $host, $mac, $sn, $device_id_1, $device_id_2, $sig);
-    return $Bearer_token;
-}
-
-// Re Generate Token
-function re_generate_token($Bearer_token, $host) {
-    $Xurl = "http://$host/stalker_portal/server/load.php?type=stb&action=handshake&token=$Bearer_token&JsHttpRequest=1-xml";
-    $HED = [
-        'User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3',
-        'Connection: Keep-Alive',
-        'Accept-Encoding: gzip',
-        'X-User-Agent: Model: MAG250; Link: WiFi',
-        "Referer: http://$host/stalker_portal/c/",
-        "Host: $host",
-    ];
-    $Info_Data = Info($Xurl, $HED, '');
-    $Info_Data = $Info_Data["Info_arr"]["data"] ?? '';
-    $Info_Data_Json = json_decode($Info_Data, true);
-    
-    if (!$Info_Data_Json || !isset($Info_Data_Json["js"]["token"])) {
-        log_error("Re-generate token failed. URL: $Xurl, Response: $Info_Data");
-        return ["Info_arr" => ["token" => "", "random" => ""]];
-    }
-    
-    return [
-        "Info_arr" => [
-            "token" => $Info_Data_Json["js"]["token"] ?? '',
-            "random" => $Info_Data_Json["js"]["random"] ?? ''
-        ]
-    ];
-}
-
-// Get Profile
-function get_profile($Bearer_token, $host, $mac, $sn, $device_id_1, $device_id_2, $sig) {
-    global $api;
-    $timestamp = time();
-    $Info_Decode = handshake($host);
-    $Info_Decode_Random = $Info_Decode["Info_arr"]["random"] ?? '';
-    $Xurl = "http://$host/stalker_portal/server/load.php?type=stb&action=get_profile&hd=1&ver=ImageDescription%3A+0.2.18-r14-pub-250%3B+ImageDate%3A+Fri+Jan+15+15%3A20%3A44+EET+2016%3B+PORTAL+version%3A+5.1.0%3B+API+Version%3A+JS+API+version%3A+328%3B+STB+API+version%3A+134%3B+Player+Engine+version%3A+0x566&num_banks=2&sn=$sn&stb_type=MAG250&image_version=218&video_out=hdmi&device_id=$device_id_1&device_id2=$device_id_2&signature=$sig&auth_second_step=1&hw_version=1.7-BD-00&not_valid_token=0&client_type=STB&hw_version_2=08e10744513ba2b4847402b6718c0eae&timestamp=$timestamp&api_signature=$api&metrics=%7B%22mac%22%3A%22$mac%22%2C%22sn%22%3A%22$sn%22%2C%22model%22%3A%22MAG250%22%2C%22type%22%3A%22STB%22%2C%22uid%22%3A%22%22%2C%22random%22%3A%22$Info_Decode_Random%22%7D&JsHttpRequest=1-xml";
-    $HED = [
-        'User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3',
-        'Connection: Keep-Alive',
-        'Accept-Encoding: gzip',
-        'X-User-Agent: Model: MAG250; Link: WiFi',
-        "Referer: http://$host/stalker_portal/c/",
-        "Authorization: Bearer $Bearer_token",
-        "Host: $host",
-    ];
-    $response = Info($Xurl, $HED, $mac);
-    if (empty($response["Info_arr"]["data"])) {
-        log_error("Get profile failed. URL: $Xurl, Response: " . json_encode($response));
-    }
-}
-
-// Info
-function Info($Xurl, $HED, $mac) {
-    $cURL_Info = curl_init();
-    curl_setopt_array($cURL_Info, [
-        CURLOPT_URL => $Xurl,
-        CURLOPT_RETURNTRANSFER => true,
-        CURLOPT_ENCODING => 'gzip',
-        CURLOPT_MAXREDIRS => 10,
-        CURLOPT_TIMEOUT => 60,
-        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
-        CURLOPT_CUSTOMREQUEST => 'GET',
-        CURLOPT_COOKIE => "mac=$mac; stb_lang=en; timezone=GMT",
-        CURLOPT_HTTPHEADER => $HED,
-    ]);
-    $Info_Data = curl_exec($cURL_Info);
-    $Info_Status = curl_getinfo($cURL_Info);
-    if (curl_errno($cURL_Info)) {
-        $error = curl_error($cURL_Info);
-        log_error("CURL error: $error, URL: $Xurl");
-        curl_close($cURL_Info);
-        return ["Info_arr" => ["data" => "", "info" => $Info_Status]];
-    }
-    curl_close($cURL_Info);
-    return [
-        "Info_arr" => [
-            "data" => $Info_Data,
-            "info" => $Info_Status,
-        ]
-    ];
-}
-
-// Get Groups
-function group_title($host, $mac, $sn, $device_id_1, $device_id_2, $sig, $all = false) {
-    $group_title_url = "http://$host/stalker_portal/server/load.php?type=itv&action=get_genres&JsHttpRequest=1-xml";
+function handshake($host, $mac) {
+    $url = "http://{$host}/stalker_portal/server/load.php?type=stb&action=handshake&token=&JsHttpRequest=1-xml";
     $headers = [
-        "User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3",
-        "Authorization: Bearer " . generate_token($host, $mac, $sn, $device_id_1, $device_id_2, $sig),
-        "X-User-Agent: Model: MAG250; Link: WiFi",
-        "Referer: http://$host/stalker_portal/c/",
-        "Accept: */*",
-        "Host: $host",
-        "Connection: Keep-Alive",
-        "Accept-Encoding: gzip",
+        'User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3',
+        'Connection: Keep-Alive',
+        'Accept-Encoding: gzip',
+        'X-User-Agent: Model: MAG250; Link: WiFi',
+        "Referer: http://{$host}/stalker_portal/c/",
+        "Host: {$host}",
+        "Connection: Keep-Alive"
     ];
 
-    $response = Info($group_title_url, $headers, $mac);
-    $json_api_data = json_decode($response["Info_arr"]["data"], true);
-    
-    if (!$json_api_data || !isset($json_api_data["js"]) || !is_array($json_api_data["js"])) {
-        log_error("Group fetch failed. URL: $group_title_url, Response: " . $response["Info_arr"]["data"]);
-        echo json_encode(["error" => "Failed to fetch groups. Check server response."]);
-        exit;
-    }
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_COOKIE, "mac={$mac}; stb_lang=en; timezone=GMT");
+    curl_setopt($ch, CURLOPT_ENCODING, 'gzip');
+    $response = curl_exec($ch);
+    curl_close($ch);
 
-    $filtered_data = [];
-    foreach ($json_api_data["js"] as $genre) {
-        if ($genre['id'] === "*") {
-            continue;
-        }
-        $filtered_data[$genre['id']] = $genre['title'];
-    }
-
-    return $filtered_data;
+    $data = json_decode($response, true);
+    return $data['js']['token'] ?? '';
 }
 
-// AJAX endpoint for groups
-if (isset($_GET['action']) && $_GET['action'] === 'get_groups') {
-    try {
-        $groups = group_title($host, $mac, $sn, $device_id_1, $device_id_2, $sig, true);
-        echo json_encode($groups);
-    } catch (Exception $e) {
-        log_error("Group fetch exception: " . $e->getMessage());
-        echo json_encode(["error" => "Failed to fetch groups: " . $e->getMessage()]);
-    }
-    exit;
+function get_profile($host, $mac, $serial_number, $device_id_1, $device_id_2, $signature, $api_version, $token) {
+    $timestamp = time();
+    $url = "http://{$host}/stalker_portal/server/load.php?type=stb&action=get_profile&hd=1&ver=ImageDescription%3A+0.2.18-r14-pub-250%3B+ImageDate%3A+Fri+Jan+15+15%3A20%3A44+EET+2016%3B+PORTAL+version%3A+5.1.0%3B+API+Version%3A+JS+API+version%3A+328%3B+STB+API+version%3A+134%3B+Player+Engine+version%3A+0x566&num_banks=2&sn={$serial_number}&stb_type=MAG250&image_version=218&video_out=hdmi&device_id={$device_id_1}&device_id2={$device_id_2}&signature={$signature}&auth_second_step=1&hw_version=1.7-BD-00&not_valid_token=0&client_type=STB&hw_version_2=08e10744513ba2b4847402b6718c0eae&timestamp={$timestamp}&api_signature={$api_version}&metrics=%7B%22mac%22%3A%22{$mac}%22%2C%22sn%22%3A%22{$serial_number}%22%2C%22model%22%3A%22MAG250%22%2C%22type%22%3A%22STB%22%2C%22uid%22%3A%22%22%2C%22random%22%3A%22%22%7D&JsHttpRequest=1-xml";
+    $headers = [
+        'User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3',
+        'Connection: Keep-Alive',
+        'Accept-Encoding: gzip',
+        'X-User-Agent: Model: MAG250; Link: WiFi',
+        "Referer: http://{$host}/stalker_portal/c/",
+        "Authorization: Bearer {$token}",
+        "Host: {$host}",
+        "Connection: Keep-Alive"
+    ];
+
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $url);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_COOKIE, "mac={$mac}; stb_lang=en; timezone=GMT");
+    curl_setopt($ch, CURLOPT_ENCODING, 'gzip');
+    $response = curl_exec($ch);
+    curl_close($ch);
 }
 
-echo json_encode(["error" => "Invalid action"]);
-exit;
+function generate_token($forceRegenerate = false) {
+    global $stalkerCredentials;
+    static $cachedToken = null;
+
+    if (!$forceRegenerate && $cachedToken) {
+        return $cachedToken;
+    }
+
+    $token = handshake($stalkerCredentials['host'], $stalkerCredentials['mac']);
+    if (empty($token)) {
+        die("Error: Failed to generate token.");
+    }
+
+    get_profile(
+        $stalkerCredentials['host'],
+        $stalkerCredentials['mac'],
+        $stalkerCredentials['serial_number'],
+        $stalkerCredentials['device_id_1'],
+        $stalkerCredentials['device_id_2'],
+        $stalkerCredentials['signature'],
+        $stalkerCredentials['api_version'],
+        $token
+    );
+
+    $cachedToken = $token;
+    return $token;
+}
 ?>
