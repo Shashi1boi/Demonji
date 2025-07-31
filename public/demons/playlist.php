@@ -17,9 +17,9 @@ $m3u8Url = $protocol . $server . dirname($requestUri) . "/play.php?id=";
 
 function generateId($cmd) {
     $cmdParts = explode("/", $cmd);
-    if ($cmdParts[2] === "localhost") {
+    if (isset($cmdParts[2]) && $cmdParts[2] === "localhost") {
         $cmd = str_ireplace('ffrt http://localhost/ch/', '', $cmd);
-    } else if ($cmdParts[2] === "") {
+    } else if (isset($cmdParts[2]) && $cmdParts[2] === "") {
         $cmd = str_ireplace('ffrt http:///ch/', '', $cmd);
     }
     return $cmd;
@@ -28,7 +28,7 @@ function generateId($cmd) {
 function getImageUrl($channel, $host) {
     $imageExtensions = [".png", ".jpg"];
     $emptyReplacements = ['', ""];
-    $logo = str_replace($imageExtensions, $emptyReplacements, $channel['logo']);
+    $logo = str_replace($imageExtensions, $emptyReplacements, $channel['logo'] ?? '');
     if (is_numeric($logo)) {
         return 'http://' . $host . '/stalker_portal/misc/logos/320/' . $channel['logo'];
     }
@@ -44,13 +44,11 @@ if (isset($_GET['categories']) && !empty($_GET['categories'])) {
 
 $apiUrl = "http://{$host}/stalker_portal/server/load.php?type=itv&action=get_all_channels&JsHttpRequest=1-xml";
 $headers = [
+    "Cookie: mac={$mac}; stb_lang=en; timezone=GMT",
     "User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3",
     "Authorization: Bearer {$token}",
-    "X-User-Agent: Model: MAG250; Link: WiFi",
-    "Referer: http://{$host}/stalker_portal/c/",
-    "Cookie: timezone=GMT; stb_lang=en; mac={$mac}",
     "Accept: */*",
-    "Host: {$host}",
+    "Referer: http://{$host}/stalker_portal/c/",
     "Connection: Keep-Alive",
     "Accept-Encoding: gzip"
 ];
@@ -62,16 +60,20 @@ curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 curl_setopt($ch, CURLOPT_ENCODING, 'gzip');
 curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+curl_setopt($ch, CURLOPT_HEADER, true);
 
 $apiResponse = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+$headersReceived = substr($apiResponse, 0, $headerSize);
+$body = substr($apiResponse, $headerSize);
 $error = curl_error($ch);
 curl_close($ch);
 
 if ($apiResponse === false || $httpCode >= 400) {
     // Retry with a new token
     $token = generate_token(true);
-    $headers[1] = "Authorization: Bearer {$token}";
+    $headers[2] = "Authorization: Bearer {$token}";
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $apiUrl);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -79,21 +81,25 @@ if ($apiResponse === false || $httpCode >= 400) {
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
     curl_setopt($ch, CURLOPT_ENCODING, 'gzip');
     curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    curl_setopt($ch, CURLOPT_HEADER, true);
     $apiResponse = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    $headersReceived = substr($apiResponse, 0, $headerSize);
+    $body = substr($apiResponse, $headerSize);
     $error = curl_error($ch);
     curl_close($ch);
 }
 
 if ($apiResponse === false || $httpCode >= 400) {
     http_response_code(500);
-    die("Error: Unable to fetch channels from API. HTTP $httpCode - $error");
+    die("Error: Unable to fetch channels from API. HTTP $httpCode\nHeaders: $headersReceived\nBody: $body\nError: $error");
 }
 
-$channels = json_decode($apiResponse, true);
+$channels = json_decode($body, true);
 if (!isset($channels['js']['data']) || !is_array($channels['js']['data'])) {
     http_response_code(500);
-    die("Error: Invalid channel data received from API.");
+    die("Error: Invalid channel data received from API. Response: $body");
 }
 
 $channels = $channels['js']['data'];
@@ -106,15 +112,19 @@ curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
 curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 curl_setopt($ch, CURLOPT_ENCODING, 'gzip');
 curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+curl_setopt($ch, CURLOPT_HEADER, true);
 
 $categoryResponse = curl_exec($ch);
 $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+$categoryHeaders = substr($categoryResponse, 0, $headerSize);
+$categoryBody = substr($categoryResponse, $headerSize);
 $error = curl_error($ch);
 curl_close($ch);
 
 $categories = [];
 if ($categoryResponse !== false && $httpCode < 400) {
-    $categoryData = json_decode($categoryResponse, true);
+    $categoryData = json_decode($categoryBody, true);
     if (isset($categoryData['js']) && is_array($categoryData['js'])) {
         $categories = $categoryData['js'];
     }
@@ -153,7 +163,7 @@ foreach ($channels as $channel) {
 
 if ($streamCount === 0) {
     http_response_code(500);
-    die("Error: No valid channels found in API response.");
+    die("Error: No valid channels found in API response. Response: $body");
 }
 
 header("Cache-Control: no-store, no-cache, must-revalidate, max-age=0");
