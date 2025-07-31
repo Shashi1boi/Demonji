@@ -1,12 +1,12 @@
 <?php
 // Configuration file for Stalker Portal credentials
 $stalkerCredentials = [
-    'host' => 'pxy.proxytx.cloud:80',
-    'mac' => '00:1A:79:2C:5F:12',
-    'serial_number' => 'ebc9fa2d343cc4086b76bf5d21211b54',
-    'device_id_1' => '6BEF928E9577D0B1FB8535C44308F6B99B0BB009A0D2A1AEA4E37865CDD2CA3D',
-    'device_id_2' => '1C77B13A4BAC3544AF2C9E96DE9A06F813A7CEACC2D58A79E5FC6F68F12A68D7',
-    'signature' => '3950ED6DA5A9D14A4CDEC12035DD1668C42155C228A00DC7714560760FC83879',
+    'host' => 'eagle2024.xyz:80/c',
+    'mac' => '00:1A:79:C1:E3:9A',
+    'serial_number' => '',
+    'device_id_1' => '',
+    'device_id_2' => '',
+    'signature' => '',
     'api_version' => '263'
 ];
 
