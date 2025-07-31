@@ -69,6 +69,23 @@ $error = curl_error($ch);
 curl_close($ch);
 
 if ($apiResponse === false || $httpCode >= 400) {
+    // Retry with a new token
+    $token = generate_token(true);
+    $headers[1] = "Authorization: Bearer {$token}";
+    $ch = curl_init();
+    curl_setopt($ch, CURLOPT_URL, $apiUrl);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_ENCODING, 'gzip');
+    curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+    $apiResponse = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $error = curl_error($ch);
+    curl_close($ch);
+}
+
+if ($apiResponse === false || $httpCode >= 400) {
     http_response_code(500);
     die("Error: Unable to fetch channels from API. HTTP $httpCode - $error");
 }
