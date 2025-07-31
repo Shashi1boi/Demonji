@@ -3,10 +3,10 @@
 $xtreamCredentials = [
     [
         'id' => 'server1',
-        'name' => 'Server 1 (Filex TV)',
-        'host' => 'http://front-main.eagle-4k.me:80',
-        'username' => 'imadfr_551967',
-        'password' => '4fWxfRqg'
+        'name' => 'Server 1 (B1G)',
+        'host' => 'http://cp.b1g.ooo',
+        'username' => '1122334455',
+        'password' => '6677889900'
     ],
     [
         'id' => 'server2',
