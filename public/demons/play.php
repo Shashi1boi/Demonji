@@ -26,13 +26,11 @@ $token = generate_token(); // Generate or reuse token
 $streamUrlEndpoint = "http://{$host}/stalker_portal/server/load.php?type=itv&action=create_link&cmd=ffrt%20http://localhost/ch/{$id}&JsHttpRequest=1-xml";
 
 $headers = [
-    "Cookie: timezone=GMT; stb_lang=en; mac={$mac}",
-    "Referer: http://{$host}/stalker_portal/c/",
-    "Accept: */*",
+    "Cookie: mac={$mac}; stb_lang=en; timezone=GMT",
     "User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3",
-    "X-User-Agent: Model: MAG250; Link: WiFi",
     "Authorization: Bearer {$token}",
-    "Host: {$host}",
+    "Accept: */*",
+    "Referer: http://{$host}/stalker_portal/c/",
     "Connection: Keep-Alive",
     "Accept-Encoding: gzip"
 ];
@@ -45,22 +43,25 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
 curl_setopt($ch, CURLOPT_TIMEOUT, 0); // No timeout for streaming
 curl_setopt($ch, CURLOPT_ENCODING, 'gzip');
+curl_setopt($ch, CURLOPT_HEADER, true); // Capture headers for debugging
 
 $response = curl_exec($ch);
-if (!$response) {
-    $error = curl_error($ch);
-    curl_close($ch);
-    exit("Error: cURL request failed. " . $error);
-}
-
-$status_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+$headersReceived = substr($response, 0, $headerSize);
+$body = substr($response, $headerSize);
+$error = curl_error($ch);
 $final_url = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
 curl_close($ch);
 
-if ($status_code != 200) {
-    // Retry with a new token if the current one is invalid
+if ($response === false) {
+    exit("Error: cURL request failed. $error");
+}
+
+if ($httpCode != 200) {
+    // Retry with a new token
     $token = generate_token(true); // Force regenerate token
-    $headers[5] = "Authorization: Bearer {$token}";
+    $headers[2] = "Authorization: Bearer {$token}";
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $streamUrlEndpoint);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -69,20 +70,25 @@ if ($status_code != 200) {
     curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
     curl_setopt($ch, CURLOPT_TIMEOUT, 0);
     curl_setopt($ch, CURLOPT_ENCODING, 'gzip');
+    curl_setopt($ch, CURLOPT_HEADER, true);
     $response = curl_exec($ch);
-    $status_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    $headersReceived = substr($response, 0, $headerSize);
+    $body = substr($response, $headerSize);
+    $error = curl_error($ch);
     $final_url = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
     curl_close($ch);
+
+    if ($httpCode != 200) {
+        exit("Error: Failed to fetch stream URL. HTTP $httpCode\nHeaders: $headersReceived\nBody: $body");
+    }
 }
 
-if ($status_code != 200) {
-    exit("Error: Failed to fetch stream URL. HTTP status code: $status_code");
-}
-
-$data = json_decode($response, true);
+$data = json_decode($body, true);
 $streamUrl = $data['js']['cmd'] ?? '';
 if (empty($streamUrl)) {
-    exit("Error: Failed to retrieve stream URL for channel ID: {$id}.");
+    exit("Error: Failed to retrieve stream URL for channel ID: {$id}. Response: $body");
 }
 
 $ch = curl_init();
@@ -97,20 +103,23 @@ curl_setopt($ch, CURLOPT_HTTPHEADER, [
 ]);
 curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 30);
 curl_setopt($ch, CURLOPT_TIMEOUT, 0);
+curl_setopt($ch, CURLOPT_HEADER, true);
 
 $response = curl_exec($ch);
-if (!$response) {
-    $error = curl_error($ch);
-    curl_close($ch);
-    exit("Error: cURL request failed for stream. " . $error);
-}
-
-$status_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+$headersReceived = substr($response, 0, $headerSize);
+$body = substr($response, $headerSize);
+$error = curl_error($ch);
 $final_url = curl_getinfo($ch, CURLINFO_EFFECTIVE_URL);
 curl_close($ch);
 
-if ($status_code != 200) {
-    exit("Error: Failed to fetch the m3u8 file. HTTP status code: $status_code");
+if ($response === false) {
+    exit("Error: cURL request failed for stream. $error");
+}
+
+if ($httpCode != 200) {
+    exit("Error: Failed to fetch the m3u8 file. HTTP $httpCode\nHeaders: $headersReceived\nBody: $body");
 }
 
 $baseUrl = parse_url($final_url, PHP_URL_SCHEME) . '://' . parse_url($final_url, PHP_URL_HOST);
@@ -123,7 +132,7 @@ $processedResponse = implode("\n", array_map(function ($line) use ($baseUrl) {
         return $baseUrl . '/' . ltrim($line, '/');
     }
     return $line;
-}, explode("\n", $response)));
+}, explode("\n", $body)));
 
 header('Content-Type: application/vnd.apple.mpegurl');
 header('Content-Disposition: attachment; filename="' . $id . '.m3u8"');
