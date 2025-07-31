@@ -380,7 +380,7 @@ if (empty($scriptName) || $scriptName == "filter.php") {
                 showPopup("Categories and channels loaded successfully!");
             } catch (error) {
                 console.error("Error fetching data:", error);
-                showPopup(`Failed to fetch categories or channels. Error: ${error.message}. Please check your server URL or credentials.`);
+                showPopup(`Failed to fetch categories or channels. Error: ${error.message}. Please check your server URL or MAC address.`);
             } finally {
                 document.getElementById("loadingIndicator").style.display = "none";
                 document.getElementById("categoryList").style.display = "block";
