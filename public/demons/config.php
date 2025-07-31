@@ -8,34 +8,37 @@ $stalkerCredentials = [
 function handshake($host, $mac) {
     $url = "http://{$host}/stalker_portal/server/load.php?type=stb&action=handshake&token=&JsHttpRequest=1-xml";
     $headers = [
-        'User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3',
-        'Connection: Keep-Alive',
-        'Accept-Encoding: gzip',
-        'X-User-Agent: Model: MAG250; Link: WiFi',
+        "Cookie: mac={$mac}; stb_lang=en; timezone=GMT",
+        "User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3",
+        "Accept: */*",
         "Referer: http://{$host}/stalker_portal/c/",
-        "Host: {$host}",
-        "Connection: Keep-Alive"
+        "Connection: Keep-Alive",
+        "Accept-Encoding: gzip"
     ];
 
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    curl_setopt($ch, CURLOPT_COOKIE, "mac={$mac}; stb_lang=en; timezone=GMT");
     curl_setopt($ch, CURLOPT_ENCODING, 'gzip');
+    curl_setopt($ch, CURLOPT_HEADER, true);
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    $headerSize = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
+    $headersReceived = substr($response, 0, $headerSize);
+    $body = substr($response, $headerSize);
     $error = curl_error($ch);
     curl_close($ch);
 
     if ($response === false || $httpCode >= 400) {
-        die("Error: Handshake failed. HTTP $httpCode - $error");
+        die("Error: Handshake failed. HTTP $httpCode\nHeaders: $headersReceived\nBody: $body\nError: $error");
     }
 
-    $data = json_decode($response, true);
+    $data = json_decode($body, true);
     $token = $data['js']['token'] ?? '';
     if (empty($token)) {
-        die("Error: Failed to generate token.");
+        die("Error: Failed to generate token. Response: $body");
     }
 
     return $token;
