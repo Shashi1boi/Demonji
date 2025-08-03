@@ -3,10 +3,10 @@
 $xtreamCredentials = [
     [
         'id' => 'server1',
-        'name' => 'Server 1 (ULTRAB)',
-        'host' => 'http://line.ultrab.xyz:80',
-        'username' => 'ZeeALI1',
-        'password' => '465841'
+        'name' => 'Server 1 (Filex tv)',
+        'host' => 'http://filex.me:8080',
+        'username' => '7580',
+        'password' => '7580'
     ],
     [
         'id' => 'server2',
