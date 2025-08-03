@@ -10,10 +10,10 @@ $xtreamCredentials = [
     ],
     [
         'id' => 'server2',
-        'name' => 'Server 2 (Example TV)',
-        'host' => 'http://example.tv:8080', // Replace with actual server URL
-        'username' => 'user2',             // Replace with actual username
-        'password' => 'pass2'              // Replace with actual password
+        'name' => 'Server 2 (New)',
+        'host' => 'http://rfye55.xyz', // Replace with actual server URL
+        'username' => '98:06:3c:98:da:fa',             // Replace with actual username
+        'password' => '881A863F2BD7'              // Replace with actual password
     ],
     // Add more servers as needed
     // [
