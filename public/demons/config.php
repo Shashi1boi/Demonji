@@ -1,7 +1,7 @@
 <?php
 // Configuration file for Stalker Portal credentials
 $stalkerCredentials = [
-    'host' => 'http://Jiotv.be',
+    'host' => 'http://jiotv.be',
     'mac' => '00:1A:79:F3:B2:FF'
 ];
 
