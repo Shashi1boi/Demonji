@@ -1,8 +1,8 @@
 <?php
 // Configuration file for Stalker Portal credentials
 $stalkerCredentials = [
-    'host' => 'eagle2024.xyz:80',
-    'mac' => '00:1A:79:C1:E3:9A'
+    'host' => 'http://Jiotv.be',
+    'mac' => '00:1A:79:F3:B2:FF'
 ];
 
 function handshake($host, $mac) {
