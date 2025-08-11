@@ -1,8 +1,8 @@
 <?php
 // Configuration file for Stalker Portal credentials
 $stalkerCredentials = [
-    'host' => 'http://jiotv.be',
-    'mac' => '00:1A:79:F3:B2:FF'
+    'host' => 'http://tv.max4k.us',
+    'mac' => '00:1A:79:00:24:0C'
 ];
 
 function handshake($host, $mac) {
