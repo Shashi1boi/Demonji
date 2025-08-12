@@ -27,8 +27,8 @@ $xtreamCredentials = [
         'id' => 'server4',
         'name' => 'Server 4 (Test)',
         'host' => 'http://tatatv.cc', // Replace with actual server URL
-        'username' => '00:1A:79:00:13:DA',             // Replace with actual username
-        'password' => '8DC34D20E1021'              // Replace with actual password
+        'username' => '001a790013da',             // Replace with actual username
+        'password' => '8dc34d20e1021'              // Replace with actual password
     ],
 ];
 
