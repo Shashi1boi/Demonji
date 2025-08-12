@@ -15,14 +15,14 @@ $xtreamCredentials = [
         'username' => '98:06:3c:98:da:fa',             // Replace with actual username
         'password' => '881A863F2BD7'              // Replace with actual password
     ],
-    // Add more servers as needed
-    // [
-    //     'id' => 'server3',
-    //     'name' => 'Server 3 (Another TV)',
-    //     'host' => 'http://another.tv:8080',
-    //     'username' => 'user3',
-    //     'password' => 'pass3'
-    // ]
+    
+    [
+         'id' => 'server3',
+         'name' => 'Server 3 (Another TV)',
+         'host' => 'http://newton68769.cdngold.me:80',
+         'username' => '84e409ccbe',
+         'password' => 'a2d7b7b506'
+     ]
 ];
 
 // Function to get credentials by server ID
