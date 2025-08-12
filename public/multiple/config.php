@@ -22,7 +22,14 @@ $xtreamCredentials = [
          'host' => 'http://newton68769.cdngold.me:80',
          'username' => '84e409ccbe',
          'password' => 'a2d7b7b506'
-     ]
+     ],
+    [
+        'id' => 'server4',
+        'name' => 'Server 2 (New)',
+        'host' => 'http://tatatv.cc', // Replace with actual server URL
+        'username' => '00:1A:79:00:13:DA',             // Replace with actual username
+        'password' => '8DC34D20E1021'              // Replace with actual password
+    ],
 ];
 
 // Function to get credentials by server ID
