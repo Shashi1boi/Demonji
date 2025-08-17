@@ -25,10 +25,10 @@ $xtreamCredentials = [
      ],
     [
         'id' => 'server4',
-        'name' => 'Server 4 (Tara)',
-        'host' => 'http://starshare.fun:80', // Replace with actual server URL
-        'username' => '4578997',             // Replace with actual username
-        'password' => '3578990'              // Replace with actual password
+        'name' => 'Server 4 (d4k4u)',
+        'host' => 'http://d4k4u.com:80', // Replace with actual server URL
+        'username' => 'saidsaid_958478',             // Replace with actual username
+        'password' => 'oETiwt65'              // Replace with actual password
     ],
 ];
 
