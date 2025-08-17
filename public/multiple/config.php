@@ -25,10 +25,10 @@ $xtreamCredentials = [
      ],
     [
         'id' => 'server4',
-        'name' => 'Server 4 (4k-soy)',
-        'host' => 'http://line.4k-soy.cc:80', // Replace with actual server URL
-        'username' => '101558',             // Replace with actual username
-        'password' => '0C447C'              // Replace with actual password
+        'name' => 'Server 4 (king4k)',
+        'host' => 'http://line.king-4k.cc', // Replace with actual server URL
+        'username' => '063FD0',             // Replace with actual username
+        'password' => 'C0F748'              // Replace with actual password
     ],
 ];
 
