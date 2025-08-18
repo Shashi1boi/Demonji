@@ -1,132 +1,134 @@
 <?php
-// Universal CORS Proxy for All URLs
+// HLS Streaming Proxy with CORS Support
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, Range, X-Requested-With");
+header("Access-Control-Allow-Methods: GET, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Range");
+header("Access-Control-Expose-Headers: Content-Length, Content-Range");
 
 // Handle preflight request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    header("Access-Control-Max-Age: 86400");
+    header("Access-Control-Max-Age: 1728000");
     header("Content-Length: 0");
     exit(0);
 }
 
-// Get the full encoded URL from the query string
-$raw_url = isset($_SERVER['QUERY_STRING']) ? $_SERVER['QUERY_STRING'] : '';
-$raw_url = preg_replace('/^url=/', '', $raw_url);
-$target_url = urldecode($raw_url);
+// Get the target URL
+$query = $_SERVER['QUERY_STRING'];
+$url = '';
+if (preg_match('/url=(.+)/', $query, $matches)) {
+    $url = urldecode($matches[1]);
+}
 
-if (empty($target_url)) {
+if (empty($url)) {
     http_response_code(400);
-    header('Content-Type: application/json');
-    die(json_encode(['error' => 'URL parameter is required']));
+    die('URL parameter is required');
 }
 
-// Validate URL format
-if (!filter_var($target_url, FILTER_VALIDATE_URL)) {
-    http_response_code(400);
-    header('Content-Type: application/json');
-    die(json_encode(['error' => 'Invalid URL format']));
+// Special handling for .m3u8 playlists
+if (preg_match('/\.m3u8($|\?)/i', $url)) {
+    proxyM3U8Playlist($url);
+    exit;
 }
 
-// Initialize cURL
-$ch = curl_init();
-$headers = [];
+// Handle .ts segments and other media files
+proxyMediaFile($url);
 
-// Set basic cURL options
-curl_setopt_array($ch, [
-    CURLOPT_URL => $target_url,
-    CURLOPT_RETURNTRANSFER => false,
-    CURLOPT_FOLLOWLOCATION => true,
-    CURLOPT_HEADER => false,
-    CURLOPT_CONNECTTIMEOUT => 15,
-    CURLOPT_TIMEOUT => 60,
-    CURLOPT_BUFFERSIZE => 131072, // 128KB chunks
-    CURLOPT_NOPROGRESS => false,
-    CURLOPT_FAILONERROR => false,
-]);
-
-// Forward headers (excluding some sensitive ones)
-foreach (getallheaders() as $name => $value) {
-    $lower_name = strtolower($name);
-    if (!in_array($lower_name, ['host', 'connection', 'expect', 'content-length'])) {
-        $headers[] = "$name: $value";
-    }
-}
-curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-
-// Handle different request methods
-switch ($_SERVER['REQUEST_METHOD']) {
-    case 'POST':
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, file_get_contents('php://input'));
-        break;
-    case 'PUT':
-    case 'DELETE':
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $_SERVER['REQUEST_METHOD']);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, file_get_contents('php://input'));
-        break;
-    case 'GET':
-        // Handle byte range requests for media files
-        if (isset($_SERVER['HTTP_RANGE'])) {
-            curl_setopt($ch, CURLOPT_RANGE, $_SERVER['HTTP_RANGE']);
-        }
-        break;
-}
-
-// Handle response headers
-curl_setopt($ch, CURLOPT_HEADERFUNCTION, function($curl, $header_line) {
-    $forward_headers = [
-        'content-type',
-        'content-length',
-        'accept-ranges',
-        'content-range',
-        'content-disposition',
-        'cache-control',
-        'last-modified',
-        'etag'
-    ];
-    
-    $header_parts = explode(':', $header_line, 2);
-    if (count($header_parts) === 2) {
-        $header_name = strtolower(trim($header_parts[0]));
-        if (in_array($header_name, $forward_headers)) {
-            header($header_line);
-        }
-    }
-    return strlen($header_line);
-});
-
-// Stream the response directly to output
-curl_setopt($ch, CURLOPT_WRITEFUNCTION, function($curl, $data) {
-    echo $data;
-    return strlen($data);
-});
-
-// Handle connection abort
-curl_setopt($ch, CURLOPT_PROGRESSFUNCTION, function($resource, $dl_size, $dl, $ul_size, $ul) {
-    return connection_aborted() ? 1 : 0;
-});
-
-// Execute the request
-curl_exec($ch);
-
-// Handle errors
-if (curl_errno($ch)) {
-    $error_msg = curl_error($ch);
-    $error_no = curl_errno($ch);
-    $http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE) ?: 502;
-    
-    http_response_code($http_code);
-    header('Content-Type: application/json');
-    echo json_encode([
-        'error' => 'Proxy request failed',
-        'curl_error' => $error_msg,
-        'curl_errno' => $error_no,
-        'http_code' => $http_code,
-        'target_url' => $target_url
+function proxyM3U8Playlist($playlistUrl) {
+    $ch = curl_init($playlistUrl);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HEADER => false,
+        CURLOPT_HTTPHEADER => [
+            'Connection: keep-alive',
+            'Accept: */*',
+        ],
     ]);
+    
+    $content = curl_exec($ch);
+    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    
+    if (curl_errno($ch) || $status !== 200) {
+        http_response_code($status ?: 502);
+        die('Failed to fetch playlist');
+    }
+    
+    curl_close($ch);
+    
+    // Rewrite URLs in the playlist to point back through our proxy
+    $baseUrl = getBaseUrl($playlistUrl);
+    $proxyBase = getProxyBaseUrl();
+    
+    // Handle different cases of segment references
+    $content = preg_replace_callback('/((?:URI|URL)=")([^"]+)"/', function($m) use ($proxyBase) {
+        return $m[1] . $proxyBase . urlencode($m[2]) . '"';
+    }, $content);
+    
+    $content = preg_replace_callback('/\n([^#][^\n]*\.ts(?:\?[^\n]*)?)/', function($m) use ($proxyBase, $baseUrl) {
+        $segment = $m[1];
+        // Handle relative URLs
+        if (!preg_match('/^https?:\/\//i', $segment)) {
+            $segment = rtrim($baseUrl, '/') . '/' . ltrim($segment, '/');
+        }
+        return "\n" . $proxyBase . urlencode($segment);
+    }, $content);
+    
+    header('Content-Type: application/vnd.apple.mpegurl');
+    header('Content-Length: ' . strlen($content));
+    echo $content;
 }
 
-curl_close($ch);
+function proxyMediaFile($fileUrl) {
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $fileUrl,
+        CURLOPT_RETURNTRANSFER => false,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HEADER => false,
+        CURLOPT_HTTPHEADER => [
+            'Connection: keep-alive',
+            'Accept: */*',
+        ],
+        CURLOPT_BUFFERSIZE => 131072, // 128KB buffer
+        CURLOPT_RANGE => $_SERVER['HTTP_RANGE'] ?? '', // Support byte ranges
+        CURLOPT_WRITEFUNCTION => function($ch, $data) {
+            echo $data;
+            return strlen($data);
+        },
+    ]);
+    
+    // Forward important headers
+    curl_setopt($ch, CURLOPT_HEADERFUNCTION, function($ch, $header) {
+        $forward = ['content-type', 'content-length', 'content-range', 'accept-ranges'];
+        $parts = explode(':', $header, 2);
+        if (count($parts) === 2 && in_array(strtolower(trim($parts[0])), $forward)) {
+            header($header);
+        }
+        return strlen($header);
+    });
+    
+    curl_exec($ch);
+    
+    if (curl_errno($ch)) {
+        http_response_code(502);
+        die('Proxy error: ' . curl_error($ch));
+    }
+    
+    curl_close($ch);
+}
+
+function getBaseUrl($url) {
+    $parts = parse_url($url);
+    $scheme = $parts['scheme'] ?? 'https';
+    $host = $parts['host'] ?? '';
+    $path = dirname($parts['path'] ?? '/');
+    return "$scheme://$host$path";
+}
+
+function getProxyBaseUrl() {
+    $scheme = isset($_SERVER['HTTPS']) ? 'https://' : 'http://';
+    $host = $_SERVER['HTTP_HOST'];
+    $script = $_SERVER['SCRIPT_NAME'];
+    return "$scheme$host$script?url=";
+}
 ?>
