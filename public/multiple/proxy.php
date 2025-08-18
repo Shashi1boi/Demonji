@@ -1,5 +1,5 @@
 <?php
-// CORS Proxy Script in PHP
+// Simple CORS Proxy Script in PHP
 
 // Allow from any origin
 header("Access-Control-Allow-Origin: *");
@@ -17,25 +17,6 @@ $targetUrl = isset($_GET['url']) ? $_GET['url'] : '';
 if (empty($targetUrl)) {
     http_response_code(400);
     echo json_encode(['error' => 'Missing URL parameter']);
-    exit;
-}
-
-// Validate the URL to prevent SSRF attacks
-$parsedUrl = parse_url($targetUrl);
-if (!isset($parsedUrl['host']) || !filter_var($targetUrl, FILTER_VALIDATE_URL)) {
-    http_response_code(400);
-    echo json_encode(['error' => 'Invalid URL']);
-    exit;
-}
-
-// Optional: Restrict to specific domains for security
-$allowedDomains = [
-    'api.example.com',
-    'another-api.com'
-];
-if (!in_array($parsedUrl['host'], $allowedDomains)) {
-    http_response_code(403);
-    echo json_encode(['error' => 'Domain not allowed']);
     exit;
 }
 
