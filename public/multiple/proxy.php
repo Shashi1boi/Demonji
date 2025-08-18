@@ -1,5 +1,5 @@
 <?php
-// HLS Streaming Proxy with CORS Support
+// HLS Streaming Proxy with Proper TS Segment Handling
 header("Access-Control-Allow-Origin: *");
 header("Access-Control-Allow-Methods: GET, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Range");
@@ -30,8 +30,8 @@ if (preg_match('/\.m3u8($|\?)/i', $url)) {
     exit;
 }
 
-// Handle .ts segments and other media files
-proxyMediaFile($url);
+// Handle .ts segments
+proxyTSsegment($url);
 
 function proxyM3U8Playlist($playlistUrl) {
     $ch = curl_init($playlistUrl);
@@ -59,14 +59,12 @@ function proxyM3U8Playlist($playlistUrl) {
     $baseUrl = getBaseUrl($playlistUrl);
     $proxyBase = getProxyBaseUrl();
     
-    // Handle different cases of segment references
     $content = preg_replace_callback('/((?:URI|URL)=")([^"]+)"/', function($m) use ($proxyBase) {
         return $m[1] . $proxyBase . urlencode($m[2]) . '"';
     }, $content);
     
     $content = preg_replace_callback('/\n([^#][^\n]*\.ts(?:\?[^\n]*)?)/', function($m) use ($proxyBase, $baseUrl) {
         $segment = $m[1];
-        // Handle relative URLs
         if (!preg_match('/^https?:\/\//i', $segment)) {
             $segment = rtrim($baseUrl, '/') . '/' . ltrim($segment, '/');
         }
@@ -78,10 +76,10 @@ function proxyM3U8Playlist($playlistUrl) {
     echo $content;
 }
 
-function proxyMediaFile($fileUrl) {
+function proxyTSsegment($segmentUrl) {
     $ch = curl_init();
     curl_setopt_array($ch, [
-        CURLOPT_URL => $fileUrl,
+        CURLOPT_URL => $segmentUrl,
         CURLOPT_RETURNTRANSFER => false,
         CURLOPT_FOLLOWLOCATION => true,
         CURLOPT_HEADER => false,
@@ -89,8 +87,8 @@ function proxyMediaFile($fileUrl) {
             'Connection: keep-alive',
             'Accept: */*',
         ],
-        CURLOPT_BUFFERSIZE => 131072, // 128KB buffer
-        CURLOPT_RANGE => $_SERVER['HTTP_RANGE'] ?? '', // Support byte ranges
+        CURLOPT_BUFFERSIZE => 131072,
+        CURLOPT_RANGE => $_SERVER['HTTP_RANGE'] ?? '',
         CURLOPT_WRITEFUNCTION => function($ch, $data) {
             echo $data;
             return strlen($data);
@@ -112,6 +110,11 @@ function proxyMediaFile($fileUrl) {
     if (curl_errno($ch)) {
         http_response_code(502);
         die('Proxy error: ' . curl_error($ch));
+    }
+    
+    $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
+    if (empty($contentType)) {
+        header('Content-Type: video/MP2T');
     }
     
     curl_close($ch);
