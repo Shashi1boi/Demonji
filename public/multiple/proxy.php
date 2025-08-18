@@ -1,72 +1,78 @@
 <?php
-// Simple CORS Proxy Script in PHP
-
-// Allow from any origin
+// Enhanced CORS Proxy with File Download Support
 header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
-// Handle preflight requests
-if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+// Handle preflight request
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-// Get the target URL from the query parameter
-$targetUrl = isset($_GET['url']) ? $_GET['url'] : '';
-
+$targetUrl = $_GET['url'] ?? '';
 if (empty($targetUrl)) {
     http_response_code(400);
-    echo json_encode(['error' => 'Missing URL parameter']);
-    exit;
+    die(json_encode(['error' => 'URL parameter is required']));
 }
 
 // Initialize cURL
 $ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $targetUrl);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+curl_setopt_array($ch, [
+    CURLOPT_URL => $targetUrl,
+    CURLOPT_RETURNTRANSFER => false, // Stream directly to output
+    CURLOPT_FOLLOWLOCATION => true,
+    CURLOPT_HEADERFUNCTION => function($curl, $header) {
+        // Forward specific headers only
+        $forwardHeaders = [
+            'content-type',
+            'content-length',
+            'accept-ranges',
+            'content-disposition'
+        ];
+        
+        $headerParts = explode(':', $header, 2);
+        if (count($headerParts) === 2) {
+            $headerName = strtolower(trim($headerParts[0]));
+            if (in_array($headerName, $forwardHeaders)) {
+                header($header);
+            }
+        }
+        return strlen($header);
+    },
+    CURLOPT_WRITEFUNCTION => function($curl, $data) {
+        echo $data;
+        return strlen($data);
+    },
+    CURLOPT_BUFFERSIZE => 8192, // Stream in 8KB chunks
+    CURLOPT_NOPROGRESS => false,
+    CURLOPT_PROGRESSFUNCTION => function(
+        $resource, $download_size, $downloaded, $upload_size, $uploaded
+    ) {
+        // Abort if client disconnects
+        return connection_aborted() ? 1 : 0;
+    }
+]);
 
-// Forward headers (optional)
-$headers = [];
-foreach (getallheaders() as $name => $value) {
-    if (strtolower($name) === 'host') continue;
-    $headers[] = "$name: $value";
+// Set request method
+$method = $_SERVER['REQUEST_METHOD'];
+if ($method === 'POST') {
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, file_get_contents('php://input'));
+} else {
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
 }
-curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
-// Forward the request method
-curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $_SERVER['REQUEST_METHOD']);
-
-// Forward POST data if present
-if ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT') {
-    $postData = file_get_contents('php://input');
-    curl_setopt($ch, CURLOPT_POSTFIELDS, $postData);
-}
-
-// Execute the request
-$response = curl_exec($ch);
-$statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-
-// Check for errors
-if (curl_errno($ch)) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Proxy error: ' . curl_error($ch)]);
-    curl_close($ch);
-    exit;
-}
-
-// Forward the status code
-http_response_code($statusCode);
-
-// Forward the content type
-$contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-if ($contentType) {
-    header("Content-Type: $contentType");
-}
-
-// Output the response
-echo $response;
-
-// Close cURL
+// Execute and close
+curl_exec($ch);
+$error = curl_error($ch);
+$status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
+
+if (!empty($error)) {
+    http_response_code(500);
+    die(json_encode(['error' => $error]));
+}
+
+// If we got here, the transfer completed
+http_response_code($status);
 ?>
