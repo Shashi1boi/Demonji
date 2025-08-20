@@ -25,10 +25,10 @@ $xtreamCredentials = [
      ],
     [
         'id' => 'server4',
-        'name' => 'Server 4 (xott)',
-        'host' => 'http://xott.live:8080', // Replace with actual server URL
-        'username' => 'Shahid',             // Replace with actual username
-        'password' => '12345'              // Replace with actual password
+        'name' => 'Server 4 (sawai)',
+        'host' => 'http://sawaiptv.vip', // Replace with actual server URL
+        'username' => 'drahme1101',             // Replace with actual username
+        'password' => 'edweeryqokh65429'              // Replace with actual password
     ],
 ];
 
