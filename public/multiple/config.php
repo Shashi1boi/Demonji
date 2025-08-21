@@ -11,9 +11,9 @@ $xtreamCredentials = [
     [
         'id' => 'server2',
         'name' => 'Server 2 (New)',
-        'host' => 'http://65618-mercy.ott-tx.com:80', // Replace with actual server URL
-        'username' => '096dcd2525',             // Replace with actual username
-        'password' => 'e4bf35fa43'              // Replace with actual password
+        'host' => 'http://zamlb.co.uk/', // Replace with actual server URL
+        'username' => 'Fraser123',             // Replace with actual username
+        'password' => 'Fraser123'              // Replace with actual password
     ],
     
     [
