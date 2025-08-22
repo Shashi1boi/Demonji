@@ -4,9 +4,9 @@ $xtreamCredentials = [
     [
         'id' => 'server1',
         'name' => 'Server 1 (xtrea)',
-        'host' => 'http://supzaza.xyz',
-        'username' => 'PE75S5L',
-        'password' => 'ZHPJPKT'
+        'host' => 'http://ktv.im:8080',
+        'username' => '120820243509',
+        'password' => '45092025457'
     ],
     [
         'id' => 'server2',
