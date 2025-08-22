@@ -4,9 +4,9 @@ $xtreamCredentials = [
     [
         'id' => 'server1',
         'name' => 'Server 1 (b1g)',
-        'host' => 'http://b1g.ooo',
-        'username' => 'Baby',
-        'password' => 'Baby1'
+        'host' => 'http://starshare.fun',
+        'username' => 'keerthi5599',
+        'password' => 'superdeal34'
     ],
     [
         'id' => 'server2',
