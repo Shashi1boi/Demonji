@@ -4,9 +4,9 @@ $xtreamCredentials = [
     [
         'id' => 'server1',
         'name' => 'Server 1 (xtrea)',
-        'host' => 'http://703145.vpn-xtra.vip:80',
-        'username' => '92wktmwxsq',
-        'password' => '3y7k1vf0b0'
+        'host' => 'http://supzaza.xyz/',
+        'username' => 'PE75S5L',
+        'password' => 'ZHPJPKT'
     ],
     [
         'id' => 'server2',
