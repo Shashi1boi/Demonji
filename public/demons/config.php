@@ -1,8 +1,8 @@
 <?php
 // Configuration file for Stalker Portal credentials
 $stalkerCredentials = [
-    'host' => 'http://tv.max4k.us',
-    'mac' => '00:1A:79:00:24:0C'
+    'host' => 'http://line.crystal-ott.com/c',
+    'mac' => '00:1a:79:57:a4:30'
 ];
 
 function handshake($host, $mac) {
