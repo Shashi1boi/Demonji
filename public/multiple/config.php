@@ -25,10 +25,10 @@ $xtreamCredentials = [
      ],
     [
         'id' => 'server4',
-        'name' => 'Server 4 (sawai)',
-        'host' => 'http://look4k.com:8080', // Replace with actual server URL
-        'username' => '651428809451',             // Replace with actual username
-        'password' => '431764093255'              // Replace with actual password
+        'name' => 'Server 4 (norf)',
+        'host' => 'http://norfcfk.top:8080', // Replace with actual server URL
+        'username' => '8961728659334190',             // Replace with actual username
+        'password' => 'c9d9f6967673'              // Replace with actual password
     ],
 ];
 
