@@ -26,9 +26,9 @@ $xtreamCredentials = [
     [
         'id' => 'server4',
         'name' => 'Server 4 (sawai)',
-        'host' => 'http://front-main.eagle-4k.me', // Replace with actual server URL
-        'username' => 'm7t7u5p96o',             // Replace with actual username
-        'password' => 'g4xb6pbb1r'              // Replace with actual password
+        'host' => 'http://look4k.com:8080', // Replace with actual server URL
+        'username' => '651428809451',             // Replace with actual username
+        'password' => '431764093255'              // Replace with actual password
     ],
 ];
 
