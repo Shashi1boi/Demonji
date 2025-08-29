@@ -25,10 +25,10 @@ $xtreamCredentials = [
      ],
     [
         'id' => 'server4',
-        'name' => 'Server 4 (norf)',
-        'host' => 'http://norfcfk.top:8080', // Replace with actual server URL
-        'username' => '8961728659334190',             // Replace with actual username
-        'password' => 'c9d9f6967673'              // Replace with actual password
+        'name' => 'Server 4 (starshare)',
+        'host' => 'http://starshare.org:8080', // Replace with actual server URL
+        'username' => 'keerthi5599',             // Replace with actual username
+        'password' => 'superdeal34'              // Replace with actual password
     ],
 ];
 
