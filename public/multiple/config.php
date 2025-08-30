@@ -26,9 +26,9 @@ $xtreamCredentials = [
     [
         'id' => 'server4',
         'name' => 'Server 4 (starshare)',
-        'host' => 'http://starshare.org:8080', // Replace with actual server URL
-        'username' => 'keerthi5599',             // Replace with actual username
-        'password' => 'superdeal34'              // Replace with actual password
+        'host' => 'http://ottsansat.org:88', // Replace with actual server URL
+        'username' => '02001873588502',             // Replace with actual username
+        'password' => '1729756703'              // Replace with actual password
     ],
 ];
 
