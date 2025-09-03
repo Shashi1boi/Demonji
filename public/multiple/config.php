@@ -4,9 +4,9 @@ $xtreamCredentials = [
     [
         'id' => 'server1',
         'name' => 'Server 1 (1)',
-        'host' => 'http://agh2019.xyz:80',
-        'username' => 'SOFIANBENAISSA',
-        'password' => 'X7KJL94'
+        'host' => 'http://royalibox.com:80',
+        'username' => 'm7t7u5p96o',
+        'password' => 'g4xb6pbb1r'
     ],
     [
         'id' => 'server2',
