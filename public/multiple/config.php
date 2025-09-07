@@ -19,9 +19,9 @@ $xtreamCredentials = [
     [
          'id' => 'server3',
          'name' => 'Server 3 (Another TV)',
-         'host' => 'http://vocotv.pro',
-         'username' => 'n3ketPpxs',
-         'password' => '88237138'
+         'host' => 'http://filex.me:8080',
+         'username' => 'Ghosia104',
+         'password' => 'pathan104'
      ],
     [
         'id' => 'server4',
