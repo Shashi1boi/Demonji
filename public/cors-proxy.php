@@ -1,9 +1,8 @@
 <?php
 /**
- * YouTube PHP Proxy – Robust extraction with fallbacks.
+ * YouTube Proxy using Invidious/Piped APIs (reliable, no scraping)
  */
 
-// CORS headers
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
 header('Access-Control-Allow-Headers: *');
@@ -12,20 +11,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit(0);
 }
 
-function fetchUrl($url, $headers = [], $cookie = '') {
+// --------------------------------------------------------------------
+// Configuration: list of API sources (priority order)
+// --------------------------------------------------------------------
+$API_SOURCES = [
+    // Invidious instances (use /api/v1/videos/{id})
+    ['type' => 'invidious', 'name' => 'Invidious (vern.cc)', 'url' => 'https://inv.vern.cc/api/v1/videos/'],
+    ['type' => 'invidious', 'name' => 'Invidious (yewtu.be)', 'url' => 'https://yewtu.be/api/v1/videos/'],
+    ['type' => 'invidious', 'name' => 'Invidious (tube.cthd.icu)', 'url' => 'https://tube.cthd.icu/api/v1/videos/'],
+    ['type' => 'invidious', 'name' => 'Invidious (inv.odyssey346.dev)', 'url' => 'https://inv.odyssey346.dev/api/v1/videos/'],
+    ['type' => 'invidious', 'name' => 'Invidious (iv.melmac.space)', 'url' => 'https://iv.melmac.space/api/v1/videos/'],
+    ['type' => 'invidious', 'name' => 'Invidious (inv.riverside.rocks)', 'url' => 'https://inv.riverside.rocks/api/v1/videos/'],
+    // Piped instances (use /streams/{id})
+    ['type' => 'piped', 'name' => 'Piped (piped.video)', 'url' => 'https://pipedapi.piped.video/streams/'],
+    ['type' => 'piped', 'name' => 'Piped (kavin.rocks)', 'url' => 'https://pipedapi.kavin.rocks/streams/'],
+    ['type' => 'piped', 'name' => 'Piped (smnz.de)', 'url' => 'https://pipedapi.smnz.de/streams/'],
+    ['type' => 'piped', 'name' => 'Piped (adminforge.de)', 'url' => 'https://pipedapi.adminforge.de/streams/'],
+    ['type' => 'piped', 'name' => 'Piped (moomoo.me)', 'url' => 'https://pipedapi.moomoo.me/streams/'],
+    ['type' => 'piped', 'name' => 'Piped (privacydev.net)', 'url' => 'https://pipedapi.privacydev.net/streams/'],
+];
+
+// --------------------------------------------------------------------
+// Helper: fetch a URL with cURL
+// --------------------------------------------------------------------
+function fetchUrl($url) {
     $ch = curl_init();
     curl_setopt($ch, CURLOPT_URL, $url);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
     curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36');
-    if ($cookie) {
-        curl_setopt($ch, CURLOPT_COOKIE, $cookie);
-    }
-    if (!empty($headers)) {
-        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
-    }
-    curl_setopt($ch, CURLOPT_TIMEOUT, 20);
+    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; PHP-Proxy/1.0)');
+    curl_setopt($ch, CURLOPT_TIMEOUT, 15);
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
@@ -35,6 +51,179 @@ function fetchUrl($url, $headers = [], $cookie = '') {
     return $response;
 }
 
+// --------------------------------------------------------------------
+// Convert Invidious API response to our standard format
+// --------------------------------------------------------------------
+function convertInvidious($data) {
+    $formats = [];
+
+    // Video+audio formats
+    if (isset($data['formatStreams'])) {
+        foreach ($data['formatStreams'] as $f) {
+            $formats[] = [
+                'format_id' => $f['itag'],
+                'ext' => $f['container'],
+                'height' => $f['qualityLabel'] ? (int) filter_var($f['qualityLabel'], FILTER_SANITIZE_NUMBER_INT) : null,
+                'width' => null,
+                'fps' => null,
+                'vcodec' => $f['type'],
+                'acodec' => 'audio present',
+                'filesize' => $f['size'] ?? null,
+                'url' => $f['url'],
+                'quality' => $f['qualityLabel'] ?? $f['quality'],
+                'hasVideo' => true,
+                'hasAudio' => true,
+            ];
+        }
+    }
+
+    // Adaptive formats
+    if (isset($data['adaptiveFormats'])) {
+        foreach ($data['adaptiveFormats'] as $f) {
+            $hasVideo = strpos($f['type'], 'video/') !== false;
+            $hasAudio = strpos($f['type'], 'audio/') !== false;
+            $formats[] = [
+                'format_id' => $f['itag'],
+                'ext' => $f['container'],
+                'height' => $hasVideo ? (int) filter_var($f['qualityLabel'], FILTER_SANITIZE_NUMBER_INT) : null,
+                'width' => null,
+                'fps' => null,
+                'vcodec' => $hasVideo ? $f['type'] : 'none',
+                'acodec' => $hasAudio ? $f['type'] : 'none',
+                'filesize' => $f['size'] ?? null,
+                'url' => $f['url'],
+                'quality' => $hasVideo ? ($f['qualityLabel'] ?? $f['quality']) : "Audio " . ($f['bitrate'] ? floor($f['bitrate']/1000)."kbps" : ''),
+                'hasVideo' => $hasVideo,
+                'hasAudio' => $hasAudio,
+            ];
+        }
+    }
+
+    // Sort by height descending
+    usort($formats, function($a, $b) {
+        return ($b['height'] ?? 0) - ($a['height'] ?? 0);
+    });
+
+    $bestFormat = null;
+    foreach ($formats as $f) {
+        if ($f['hasVideo'] && $f['hasAudio']) {
+            $bestFormat = $f;
+            break;
+        }
+    }
+    if (!$bestFormat && !empty($formats)) {
+        $bestFormat = $formats[0];
+    }
+
+    // Subtitles
+    $subtitles = [];
+    if (isset($data['captions'])) {
+        foreach ($data['captions'] as $cap) {
+            $subtitles[] = [
+                'language' => $cap['languageCode'],
+                'name' => $cap['name'] ?? $cap['languageCode'],
+                'url' => $cap['url'],
+                'format' => 'vtt'
+            ];
+        }
+    }
+
+    return [
+        'title' => $data['title'] ?? 'Unknown',
+        'uploader' => $data['author'] ?? 'Unknown',
+        'duration' => $data['lengthSeconds'] ?? 0,
+        'thumbnail' => $data['videoThumbnails'][0]['url'] ?? '',
+        'formats' => $formats,
+        'best_format' => $bestFormat,
+        'subtitles' => $subtitles,
+    ];
+}
+
+// --------------------------------------------------------------------
+// Convert Piped API response to our standard format
+// --------------------------------------------------------------------
+function convertPiped($data) {
+    $formats = [];
+
+    if (isset($data['videoStreams'])) {
+        foreach ($data['videoStreams'] as $f) {
+            $formats[] = [
+                'format_id' => $f['itag'],
+                'ext' => $f['format'],
+                'height' => $f['quality'] === 'audio' ? null : (int) filter_var($f['quality'], FILTER_SANITIZE_NUMBER_INT),
+                'width' => null,
+                'fps' => null,
+                'vcodec' => $f['codec'],
+                'acodec' => $f['codec'],
+                'filesize' => null,
+                'url' => $f['url'],
+                'quality' => $f['quality'],
+                'hasVideo' => $f['quality'] !== 'audio',
+                'hasAudio' => true,
+            ];
+        }
+    }
+
+    if (isset($data['audioStreams'])) {
+        foreach ($data['audioStreams'] as $f) {
+            $formats[] = [
+                'format_id' => $f['itag'],
+                'ext' => $f['format'],
+                'height' => null,
+                'width' => null,
+                'fps' => null,
+                'vcodec' => 'none',
+                'acodec' => $f['codec'],
+                'filesize' => null,
+                'url' => $f['url'],
+                'quality' => "Audio " . ($f['bitrate'] ? floor($f['bitrate']/1000)."kbps" : ''),
+                'hasVideo' => false,
+                'hasAudio' => true,
+            ];
+        }
+    }
+
+    usort($formats, function($a, $b) {
+        return ($b['height'] ?? 0) - ($a['height'] ?? 0);
+    });
+
+    $bestFormat = null;
+    foreach ($formats as $f) {
+        if ($f['hasVideo'] && $f['hasAudio']) {
+            $bestFormat = $f;
+            break;
+        }
+    }
+    if (!$bestFormat && !empty($formats)) {
+        $bestFormat = $formats[0];
+    }
+
+    $subtitles = [];
+    if (isset($data['subtitles'])) {
+        foreach ($data['subtitles'] as $sub) {
+            $subtitles[] = [
+                'language' => $sub['code'],
+                'name' => $sub['name'],
+                'url' => $sub['url'],
+                'format' => 'vtt'
+            ];
+        }
+    }
+
+    return [
+        'title' => $data['title'] ?? 'Unknown',
+        'uploader' => $data['uploader'] ?? 'Unknown',
+        'duration' => $data['duration'] ?? 0,
+        'thumbnail' => $data['thumbnailUrl'] ?? '',
+        'formats' => $formats,
+        'best_format' => $bestFormat,
+        'subtitles' => $subtitles,
+    ];
+}
+
+// --------------------------------------------------------------------
+// Extract video ID from input (same as before)
+// --------------------------------------------------------------------
 function extractVideoId($input) {
     $patterns = [
         '/youtube\.com\/watch\?v=([a-zA-Z0-9_-]{11})/',
@@ -50,127 +239,8 @@ function extractVideoId($input) {
     return null;
 }
 
-/**
- * Try to get the player response by multiple methods.
- */
-function getPlayerResponse($videoId) {
-    $cookie = 'CONSENT=YES+cb.20231201-18-p0.en+FX+123;';
-    $url = "https://www.youtube.com/watch?v=$videoId";
-    $html = fetchUrl($url, [], $cookie);
-    if (!$html) {
-        return ['error' => 'Failed to fetch YouTube page'];
-    }
-
-    // 1. Try ytInitialPlayerResponse
-    if (preg_match('/ytInitialPlayerResponse\s*=\s*({.+?})\s*;\s*(?:var|<\/script)/s', $html, $match)) {
-        $json = $match[1];
-        $data = json_decode($json, true);
-        if ($data && isset($data['streamingData'])) {
-            return $data;
-        }
-    }
-
-    // 2. Try var ytInitialPlayerResponse = ...
-    if (preg_match('/var ytInitialPlayerResponse = ({.+?});/', $html, $match)) {
-        $json = $match[1];
-        $data = json_decode($json, true);
-        if ($data && isset($data['streamingData'])) {
-            return $data;
-        }
-    }
-
-    // 3. Try to find the JSON in a script tag with a specific regex (sometimes escaped)
-    if (preg_match('/<script\s+nonce="[^"]*">\s*var\s+ytInitialPlayerResponse\s*=\s*({.+?})\s*;<\/script>/s', $html, $match)) {
-        $json = $match[1];
-        $data = json_decode($json, true);
-        if ($data && isset($data['streamingData'])) {
-            return $data;
-        }
-    }
-
-    // 4. Fallback: look for a 'ytInitialData' which may contain video details (but it's more complex)
-    if (preg_match('/ytInitialData\s*=\s*({.+?})\s*;\s*(?:var|<\/script)/s', $html, $match)) {
-        $json = $match[1];
-        $data = json_decode($json, true);
-        if ($data && isset($data['contents']['twoColumnWatchNextResults']['results']['results']['contents'])) {
-            // We could try to extract video info from here, but it's more work.
-            // Return a friendly error.
-            return ['error' => 'Found ytInitialData but could not extract streaming data. YouTube may have changed the structure.'];
-        }
-    }
-
-    return ['error' => 'Could not extract player response from page'];
-}
-
-function extractFormats($playerResponse) {
-    $formats = [];
-
-    if (!empty($playerResponse['streamingData']['formats'])) {
-        foreach ($playerResponse['streamingData']['formats'] as $fmt) {
-            if (empty($fmt['url'])) continue;
-            $formats[] = [
-                'format_id' => $fmt['itag'],
-                'ext' => explode(';', explode('/', $fmt['mimeType'])[1])[0],
-                'height' => $fmt['height'] ?? null,
-                'width' => $fmt['width'] ?? null,
-                'fps' => $fmt['fps'] ?? null,
-                'vcodec' => $fmt['mimeType'] ?? '',
-                'acodec' => 'audio present',
-                'filesize' => $fmt['contentLength'] ?? null,
-                'url' => $fmt['url'],
-                'quality' => ($fmt['qualityLabel'] ?? $fmt['quality']) . ($fmt['fps'] ? " ({$fmt['fps']}fps)" : ''),
-                'hasVideo' => true,
-                'hasAudio' => true,
-            ];
-        }
-    }
-
-    if (!empty($playerResponse['streamingData']['adaptiveFormats'])) {
-        foreach ($playerResponse['streamingData']['adaptiveFormats'] as $fmt) {
-            if (empty($fmt['url'])) continue;
-            $hasVideo = strpos($fmt['mimeType'], 'video/') !== false;
-            $hasAudio = strpos($fmt['mimeType'], 'audio/') !== false;
-            $formats[] = [
-                'format_id' => $fmt['itag'],
-                'ext' => explode(';', explode('/', $fmt['mimeType'])[1])[0],
-                'height' => $fmt['height'] ?? null,
-                'width' => $fmt['width'] ?? null,
-                'fps' => $fmt['fps'] ?? null,
-                'vcodec' => $hasVideo ? ($fmt['mimeType'] ?? '') : 'none',
-                'acodec' => $hasAudio ? ($fmt['mimeType'] ?? '') : 'none',
-                'filesize' => $fmt['contentLength'] ?? null,
-                'url' => $fmt['url'],
-                'quality' => $hasVideo ? ($fmt['qualityLabel'] ?? $fmt['quality']) : "Audio " . ($fmt['bitrate'] ? floor($fmt['bitrate']/1000)."kbps" : ''),
-                'hasVideo' => $hasVideo,
-                'hasAudio' => $hasAudio,
-            ];
-        }
-    }
-
-    usort($formats, function($a, $b) {
-        return ($b['height'] ?? 0) - ($a['height'] ?? 0);
-    });
-
-    return $formats;
-}
-
-function extractSubtitles($playerResponse) {
-    $subtitles = [];
-    if (!empty($playerResponse['captions']['playerCaptionsTracklistRenderer']['captionTracks'])) {
-        foreach ($playerResponse['captions']['playerCaptionsTracklistRenderer']['captionTracks'] as $track) {
-            $subtitles[] = [
-                'language' => $track['languageCode'],
-                'name' => $track['name']['simpleText'] ?? $track['languageCode'],
-                'url' => $track['baseUrl'],
-                'format' => 'vtt'
-            ];
-        }
-    }
-    return $subtitles;
-}
-
 // --------------------------------------------------------------------
-// INFO endpoint
+// INFO endpoint: try each API source until one works
 // --------------------------------------------------------------------
 if (isset($_GET['info'])) {
     $videoId = extractVideoId($_GET['info']);
@@ -179,46 +249,55 @@ if (isset($_GET['info'])) {
         die(json_encode(['error' => 'Invalid video ID']));
     }
 
-    $playerResponse = getPlayerResponse($videoId);
-    if (isset($playerResponse['error'])) {
-        http_response_code(500);
-        die(json_encode(['error' => $playerResponse['error']]));
-    }
+    $convertedData = null;
+    $lastError = null;
 
-    $videoDetails = $playerResponse['videoDetails'] ?? [];
+    global $API_SOURCES;
+    foreach ($API_SOURCES as $source) {
+        $url = $source['url'] . $videoId;
+        $response = fetchUrl($url);
+        if ($response === false) {
+            $lastError = "Failed to fetch from " . $source['name'];
+            continue;
+        }
+        $data = json_decode($response, true);
+        if (!$data) {
+            $lastError = "Invalid JSON from " . $source['name'];
+            continue;
+        }
+        if (isset($data['error'])) {
+            $lastError = "API error from " . $source['name'] . ": " . $data['error'];
+            continue;
+        }
 
-    $formats = extractFormats($playerResponse);
-    $subtitles = extractSubtitles($playerResponse);
+        // Convert to our standard format
+        if ($source['type'] === 'invidious') {
+            $convertedData = convertInvidious($data);
+        } else {
+            $convertedData = convertPiped($data);
+        }
 
-    // Determine best format (prefer video+audio, highest quality)
-    $bestFormat = null;
-    foreach ($formats as $f) {
-        if ($f['hasVideo'] && $f['hasAudio']) {
-            $bestFormat = $f;
+        // If we got at least one format, stop trying
+        if (!empty($convertedData['formats'])) {
             break;
+        } else {
+            $lastError = "No formats found from " . $source['name'];
+            $convertedData = null;
         }
     }
-    if (!$bestFormat && !empty($formats)) {
-        $bestFormat = $formats[0];
+
+    if (!$convertedData) {
+        http_response_code(500);
+        die(json_encode(['error' => 'All API sources failed: ' . $lastError]));
     }
 
-    $response = [
-        'title' => $videoDetails['title'] ?? 'Unknown',
-        'uploader' => $videoDetails['author'] ?? 'Unknown',
-        'duration' => $videoDetails['lengthSeconds'] ?? 0,
-        'thumbnail' => $videoDetails['thumbnail']['thumbnails'][0]['url'] ?? '',
-        'formats' => $formats,
-        'best_format' => $bestFormat,
-        'subtitles' => $subtitles,
-    ];
-
     header('Content-Type: application/json');
-    echo json_encode($response);
+    echo json_encode($convertedData);
     exit;
 }
 
 // --------------------------------------------------------------------
-// STREAM endpoint
+// STREAM endpoint: proxy the video URL (no CORS)
 // --------------------------------------------------------------------
 if (isset($_GET['stream'])) {
     $videoId = extractVideoId($_GET['stream']);
@@ -228,41 +307,49 @@ if (isset($_GET['stream'])) {
     }
 
     $formatId = isset($_GET['format']) ? $_GET['format'] : null;
-
-    $playerResponse = getPlayerResponse($videoId);
-    if (isset($playerResponse['error'])) {
-        http_response_code(500);
-        die($playerResponse['error']);
-    }
-
-    $formats = extractFormats($playerResponse);
     $targetUrl = null;
 
-    if ($formatId) {
-        foreach ($formats as $f) {
-            if ($f['format_id'] == $formatId) {
-                $targetUrl = $f['url'];
+    // First find the format in the same way as INFO
+    foreach ($API_SOURCES as $source) {
+        $url = $source['url'] . $videoId;
+        $response = fetchUrl($url);
+        if ($response === false) continue;
+        $data = json_decode($response, true);
+        if (!$data) continue;
+
+        // Convert to our format
+        if ($source['type'] === 'invidious') {
+            $formats = convertInvidious($data)['formats'];
+        } else {
+            $formats = convertPiped($data)['formats'];
+        }
+
+        if ($formatId) {
+            foreach ($formats as $f) {
+                if ($f['format_id'] == $formatId) {
+                    $targetUrl = $f['url'];
+                    break 2;
+                }
+            }
+        } else {
+            // No format specified: use best video+audio
+            foreach ($formats as $f) {
+                if ($f['hasVideo'] && $f['hasAudio']) {
+                    $targetUrl = $f['url'];
+                    break 2;
+                }
+            }
+            // fallback to first format
+            if (!$targetUrl && !empty($formats)) {
+                $targetUrl = $formats[0]['url'];
                 break;
             }
         }
-        if (!$targetUrl) {
-            http_response_code(404);
-            die('Format not found');
-        }
-    } else {
-        foreach ($formats as $f) {
-            if ($f['hasVideo'] && $f['hasAudio']) {
-                $targetUrl = $f['url'];
-                break;
-            }
-        }
-        if (!$targetUrl && !empty($formats)) {
-            $targetUrl = $formats[0]['url'];
-        }
-        if (!$targetUrl) {
-            http_response_code(404);
-            die('No stream URL found');
-        }
+    }
+
+    if (!$targetUrl) {
+        http_response_code(404);
+        die('Stream URL not found');
     }
 
     // Proxy the video
