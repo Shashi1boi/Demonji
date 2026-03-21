@@ -1,6 +1,6 @@
 <?php
 /**
- * Improved PHP YouTube Proxy – Works even when YouTube changes the page.
+ * YouTube PHP Proxy – Robust extraction with fallbacks.
  */
 
 // CORS headers
@@ -50,8 +50,10 @@ function extractVideoId($input) {
     return null;
 }
 
+/**
+ * Try to get the player response by multiple methods.
+ */
 function getPlayerResponse($videoId) {
-    // First, try with a simple consent cookie to avoid age‑gate
     $cookie = 'CONSENT=YES+cb.20231201-18-p0.en+FX+123;';
     $url = "https://www.youtube.com/watch?v=$videoId";
     $html = fetchUrl($url, [], $cookie);
@@ -59,29 +61,42 @@ function getPlayerResponse($videoId) {
         return ['error' => 'Failed to fetch YouTube page'];
     }
 
-    // Look for ytInitialPlayerResponse
+    // 1. Try ytInitialPlayerResponse
     if (preg_match('/ytInitialPlayerResponse\s*=\s*({.+?})\s*;\s*(?:var|<\/script)/s', $html, $match)) {
         $json = $match[1];
         $data = json_decode($json, true);
-        if ($data) {
+        if ($data && isset($data['streamingData'])) {
             return $data;
         }
     }
 
-    // Try another pattern
+    // 2. Try var ytInitialPlayerResponse = ...
     if (preg_match('/var ytInitialPlayerResponse = ({.+?});/', $html, $match)) {
         $json = $match[1];
         $data = json_decode($json, true);
-        if ($data) {
+        if ($data && isset($data['streamingData'])) {
             return $data;
         }
     }
 
-    // Fallback: maybe the page contains a different variable
+    // 3. Try to find the JSON in a script tag with a specific regex (sometimes escaped)
+    if (preg_match('/<script\s+nonce="[^"]*">\s*var\s+ytInitialPlayerResponse\s*=\s*({.+?})\s*;<\/script>/s', $html, $match)) {
+        $json = $match[1];
+        $data = json_decode($json, true);
+        if ($data && isset($data['streamingData'])) {
+            return $data;
+        }
+    }
+
+    // 4. Fallback: look for a 'ytInitialData' which may contain video details (but it's more complex)
     if (preg_match('/ytInitialData\s*=\s*({.+?})\s*;\s*(?:var|<\/script)/s', $html, $match)) {
-        // Sometimes the video details are inside ytInitialData – we could parse it,
-        // but it's more complex. For now, we return an error.
-        return ['error' => 'Found ytInitialData but not ytInitialPlayerResponse – YouTube may have changed the structure'];
+        $json = $match[1];
+        $data = json_decode($json, true);
+        if ($data && isset($data['contents']['twoColumnWatchNextResults']['results']['results']['contents'])) {
+            // We could try to extract video info from here, but it's more work.
+            // Return a friendly error.
+            return ['error' => 'Found ytInitialData but could not extract streaming data. YouTube may have changed the structure.'];
+        }
     }
 
     return ['error' => 'Could not extract player response from page'];
@@ -154,6 +169,9 @@ function extractSubtitles($playerResponse) {
     return $subtitles;
 }
 
+// --------------------------------------------------------------------
+// INFO endpoint
+// --------------------------------------------------------------------
 if (isset($_GET['info'])) {
     $videoId = extractVideoId($_GET['info']);
     if (!$videoId) {
@@ -199,6 +217,9 @@ if (isset($_GET['info'])) {
     exit;
 }
 
+// --------------------------------------------------------------------
+// STREAM endpoint
+// --------------------------------------------------------------------
 if (isset($_GET['stream'])) {
     $videoId = extractVideoId($_GET['stream']);
     if (!$videoId) {
