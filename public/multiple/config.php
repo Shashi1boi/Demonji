@@ -4,9 +4,9 @@ $xtreamCredentials = [
     [
         'id' => 'server1',
         'name' => 'Server 1 (1)',
-        'host' => 'http://iptv2017.ddns.net:8100/',
-        'username' => 'IPtvFull',
-        'password' => 'yx77yonb'
+        'host' => 'http://kingtr.xyz:8080',
+        'username' => 'iptvtr800',
+        'password' => 'arCtV7xSdc'
     ],
     [
         'id' => 'server2',
