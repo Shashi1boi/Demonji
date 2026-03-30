@@ -4,9 +4,9 @@ $xtreamCredentials = [
     [
         'id' => 'server1',
         'name' => 'Server 1',
-        'host' => 'http://nocable.cc:8080',
-        'username' => '8exHxh',
-        'password' => '731630'
+        'host' => 'http://31.43.191.125:8080',
+        'username' => 'VIP014391751994706511',
+        'password' => 'b425720d22ff'
     ],
     [
         'id' => 'server2',
