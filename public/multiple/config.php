@@ -4,9 +4,9 @@ $xtreamCredentials = [
     [
         'id' => 'server1',
         'name' => 'Server 1 (new)',
-        'host' => 'http://vipbayi303.top:8080',
-        'username' => '5352440542',
-        'password' => '22.08.2022'
+        'host' => 'http://canal-pro.xyz:8080',
+        'username' => '974794810tv',
+        'password' => 'lgofrqym0'
     ],
     [
         'id' => 'server2',
