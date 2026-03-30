@@ -4,9 +4,9 @@ $xtreamCredentials = [
     [
         'id' => 'server1',
         'name' => 'Server 1 (new)',
-        'host' => 'http://fortv.cc:8080',
-        'username' => '9569049913',
-        'password' => 'jay6292@yahoo.com'
+        'host' => 'http://op.web24.live:8080',
+        'username' => 'recycle_n24',
+        'password' => 'network24_selfrestream'
     ],
     [
         'id' => 'server2',
