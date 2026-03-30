@@ -4,7 +4,7 @@ $xtreamCredentials = [
     [
         'id' => 'server1',
         'name' => 'Server 1',
-        'host' => 'http://trbuscanin.com:80',
+        'host' => 'http://trbuscanin.com',
         'username' => 'Amersudin1234',
         'password' => 'N2udSxrBjj'
     ],
