@@ -3,10 +3,10 @@
 $xtreamCredentials = [
     [
         'id' => 'server1',
-        'name' => 'Server 1 (1)',
-        'host' => 'http://smartntv.pro:25461',
-        'username' => 'ALEN-SVE-1',
-        'password' => 'm9BTs59RN58y'
+        'name' => 'Server 1',
+        'host' => 'http://trbuscanin.com:80',
+        'username' => 'Amersudin1234',
+        'password' => 'N2udSxrBjj'
     ],
     [
         'id' => 'server2',
