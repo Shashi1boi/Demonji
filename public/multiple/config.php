@@ -4,9 +4,9 @@ $xtreamCredentials = [
     [
         'id' => 'server1',
         'name' => 'Server 1 (new)',
-        'host' => 'http://canal-pro.xyz:8080',
-        'username' => '974794810tv',
-        'password' => 'lgofrqym0'
+        'host' => 'http://fortv.cc:8080',
+        'username' => '9569049913',
+        'password' => 'jay6292@yahoo.com'
     ],
     [
         'id' => 'server2',
