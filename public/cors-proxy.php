@@ -1,47 +1,79 @@
 <?php
 /**
- * Simple CORS Proxy – forwards any GET request
+ * Advanced Universal CORS Proxy for IPTV & HLS Streams
+ * Bypasses CORS and User-Agent blocking.
  */
-header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, OPTIONS');
-header('Access-Control-Allow-Headers: *');
 
+// 1. Setup CORS Headers for the Browser
+header("Access-Control-Allow-Origin: *");
+header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
+header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Range");
+header("Access-Control-Expose-Headers: Content-Length, Content-Range");
+
+// Handle Preflight OPTIONS request
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
-    exit(0);
+    exit;
 }
 
-if (!isset($_GET['url'])) {
+// 2. Validate URL
+$url = isset($_GET['url']) ? $_GET['url'] : null;
+if (!$url) {
     http_response_code(400);
-    die('Missing url parameter');
+    die("Error: 'url' parameter is missing.");
 }
 
-$targetUrl = $_GET['url'];
-if (!filter_var($targetUrl, FILTER_VALIDATE_URL)) {
-    http_response_code(400);
-    die('Invalid URL');
+// Ensure URL is decoded
+$url = urldecode($url);
+
+// 3. Setup Request Headers (Spoofing)
+$options = [
+    "http" => [
+        "method" => "GET",
+        "follow_location" => 1, // Follow redirects automatically
+        "header" => [
+            "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept: */*",
+            "Connection: keep-alive",
+            "Referer: http://172.110.220.239/" // Fake the referer to match the server IP
+        ],
+        "timeout" => 15,
+        "ignore_errors" => true
+    ]
+];
+
+// If the browser sends a Range request (common in video), pass it to the source
+if (isset($_SERVER['HTTP_RANGE'])) {
+    $options['http']['header'][] = "Range: " . $_SERVER['HTTP_RANGE'];
 }
 
-$ch = curl_init();
-curl_setopt($ch, CURLOPT_URL, $targetUrl);
-curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (compatible; CORS-Proxy/1.0)');
-curl_setopt($ch, CURLOPT_TIMEOUT, 15);
-$response = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
-curl_close($ch);
+$context = stream_context_create($options);
 
-if ($response === false) {
-    http_response_code(500);
-    die('Proxy error: Failed to fetch URL');
+// 4. Open the Stream and Proxy Headers
+$fp = fopen($url, 'rb', false, $context);
+
+if (!$fp) {
+    http_response_code(502);
+    die("Proxy Error: Failed to connect to remote server.");
 }
 
-if ($httpCode !== 200) {
-    http_response_code($httpCode);
+// Forward headers from the IPTV server back to the browser
+$meta = stream_get_meta_data($fp);
+if (isset($meta['wrapper_data'])) {
+    foreach ($meta['wrapper_data'] as $header) {
+        // Skip restricted headers that PHP/Server handles
+        if (stripos($header, 'Transfer-Encoding') === false && 
+            stripos($header, 'Access-Control-Allow-Origin') === false) {
+            header($header);
+        }
+    }
 }
-if ($contentType) {
-    header('Content-Type: ' . $contentType);
+
+// 5. Stream the Body (Chunked Transfer)
+// Use a 8KB buffer to keep memory low and speed high
+while (!feof($fp)) {
+    echo fread($fp, 8192);
+    flush(); // Send chunk to browser immediately
 }
-echo $response;
+
+fclose($fp);
+?>
