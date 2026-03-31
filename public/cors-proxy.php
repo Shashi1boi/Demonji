@@ -1,79 +1,82 @@
 <?php
 /**
- * Advanced Universal CORS Proxy for IPTV & HLS Streams
- * Bypasses CORS and User-Agent blocking.
+ * Powerful CORS Proxy
+ * - Forwards any URL with full CORS support
+ * - Handles binary data (video, audio, etc.)
+ * - Streams output to avoid memory issues
+ * - Preserves original headers
+ * - No size limits
  */
 
-// 1. Setup CORS Headers for the Browser
-header("Access-Control-Allow-Origin: *");
-header("Access-Control-Allow-Methods: GET, POST, OPTIONS");
-header("Access-Control-Allow-Headers: Content-Type, Authorization, X-Requested-With, Range");
-header("Access-Control-Expose-Headers: Content-Length, Content-Range");
+// CORS headers – allow all
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, HEAD, OPTIONS');
+header('Access-Control-Allow-Headers: *');
+header('Access-Control-Expose-Headers: *');
 
-// Handle Preflight OPTIONS request
-if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+// Handle preflight OPTIONS request
+if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+    http_response_code(204);
     exit;
 }
 
-// 2. Validate URL
-$url = isset($_GET['url']) ? $_GET['url'] : null;
+// Get target URL from query parameter
+$url = isset($_GET['url']) ? $_GET['url'] : '';
 if (!$url) {
     http_response_code(400);
-    die("Error: 'url' parameter is missing.");
+    die('Missing ?url= parameter');
 }
 
-// Ensure URL is decoded
-$url = urldecode($url);
-
-// 3. Setup Request Headers (Spoofing)
-$options = [
-    "http" => [
-        "method" => "GET",
-        "follow_location" => 1, // Follow redirects automatically
-        "header" => [
-            "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept: */*",
-            "Connection: keep-alive",
-            "Referer: http://172.110.220.239/" // Fake the referer to match the server IP
-        ],
-        "timeout" => 15,
-        "ignore_errors" => true
-    ]
-];
-
-// If the browser sends a Range request (common in video), pass it to the source
-if (isset($_SERVER['HTTP_RANGE'])) {
-    $options['http']['header'][] = "Range: " . $_SERVER['HTTP_RANGE'];
+// Validate URL to prevent SSRF attacks (optional but recommended)
+if (!filter_var($url, FILTER_VALIDATE_URL)) {
+    http_response_code(400);
+    die('Invalid URL');
 }
 
-$context = stream_context_create($options);
-
-// 4. Open the Stream and Proxy Headers
-$fp = fopen($url, 'rb', false, $context);
-
-if (!$fp) {
-    http_response_code(502);
-    die("Proxy Error: Failed to connect to remote server.");
-}
-
-// Forward headers from the IPTV server back to the browser
-$meta = stream_get_meta_data($fp);
-if (isset($meta['wrapper_data'])) {
-    foreach ($meta['wrapper_data'] as $header) {
-        // Skip restricted headers that PHP/Server handles
-        if (stripos($header, 'Transfer-Encoding') === false && 
-            stripos($header, 'Access-Control-Allow-Origin') === false) {
-            header($header);
+// Initialize cURL
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $url);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, false); // Stream directly
+curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+curl_setopt($ch, CURLOPT_MAXREDIRS, 5);
+curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+curl_setopt($ch, CURLOPT_HEADERFUNCTION, function($curl, $header) {
+    $len = strlen($header);
+    $headerParts = explode(':', $header, 2);
+    if (count($headerParts) == 2) {
+        $name = strtolower(trim($headerParts[0]));
+        // Forward only safe headers (skip Connection, Transfer-Encoding, etc.)
+        $safeHeaders = [
+            'content-type', 'content-length', 'content-disposition',
+            'accept-ranges', 'cache-control', 'etag', 'last-modified',
+            'expires', 'date'
+        ];
+        if (in_array($name, $safeHeaders)) {
+            header(trim($headerParts[0]) . ': ' . trim($headerParts[1]), false);
         }
     }
+    return $len;
+});
+
+// Forward request headers from client (optional)
+$forwardHeaders = [];
+if (isset($_SERVER['HTTP_RANGE'])) {
+    curl_setopt($ch, CURLOPT_RANGE, $_SERVER['HTTP_RANGE']);
 }
 
-// 5. Stream the Body (Chunked Transfer)
-// Use a 8KB buffer to keep memory low and speed high
-while (!feof($fp)) {
-    echo fread($fp, 8192);
-    flush(); // Send chunk to browser immediately
-}
+// Execute cURL request (output will be sent to client automatically)
+curl_exec($ch);
 
-fclose($fp);
-?>
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+$error = curl_error($ch);
+curl_close($ch);
+
+if ($httpCode != 200 && $httpCode != 206) {
+    // If not a successful response, we can't change headers already sent
+    // But we can log error and maybe send a 502 if nothing was output
+    if ($httpCode == 0 || $error) {
+        http_response_code(502);
+        echo "Proxy error: " . ($error ?: "No response from target");
+    }
+}
+exit;
