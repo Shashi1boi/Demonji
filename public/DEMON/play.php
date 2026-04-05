@@ -15,8 +15,8 @@ if (!$server) {
     die('Invalid server');
 }
 
-// Gather advanced params from the request
-$model = $_GET['model'] ?? $server['model'] ?? 'MAG250';
+// Gather advanced params from the request (including auto-detected model)
+$model = $_GET['model'] ?? 'MAG250';
 $extras = [];
 if (isset($_GET['sn_cut']))     $extras['sn_cut'] = $_GET['sn_cut'];
 if (isset($_GET['device_id']))  $extras['device_id'] = $_GET['device_id'];
@@ -52,9 +52,8 @@ if (!$streamUrl) {
     die('Could not resolve stream URL');
 }
 
-// Proxy mode – fetch and relay (basic HLS support)
+// --- Proxy mode (fetch and relay) ---
 if ($proxyMode === 'proxy') {
-    // Detect if it's an HLS manifest or a direct stream
     $ch = curl_init();
     curl_setopt_array($ch, [
         CURLOPT_URL => $streamUrl,
@@ -75,9 +74,9 @@ if ($proxyMode === 'proxy') {
         exit;
     }
     
-    // Check if it's a playlist
+    // Check if it's an HLS manifest
     if (strpos($data, '#EXTM3U') !== false) {
-        // Rewrite relative URLs to absolute (simple version)
+        // Rewrite relative URLs to absolute
         $base = parse_url($streamUrl, PHP_URL_SCHEME) . '://' . parse_url($streamUrl, PHP_URL_HOST);
         $lines = explode("\n", $data);
         $newLines = [];
@@ -95,14 +94,14 @@ if ($proxyMode === 'proxy') {
         header('Content-Type: application/vnd.apple.mpegurl');
         echo implode("\n", $newLines);
     } else {
-        // Assume it's a binary stream (TS, MP4)
+        // Assume binary stream (TS, MP4)
         header('Content-Type: video/mp2t');
         echo $data;
     }
     exit;
 }
 
-// Default: redirect directly to CDN
+// --- Default: redirect directly to CDN (no server bandwidth) ---
 header('Location: ' . $streamUrl, true, 302);
 exit;
 ?>
