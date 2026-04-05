@@ -1,19 +1,16 @@
 <?php
-// Stalker servers – add as many as you want
 $stalkerServers = [
     [
         'id'    => 'server1',
-        'name'  => 'My Stalker Portal',
-        'url'   => 'http://play.zee5.live/stalker_portal/c/',
-        'mac'   => '00:1A:79:BC:A8:EF',
-        'model' => 'MAG250'
+        'name'  => 'My Portal',
+        'url'   => 'http://your-portal.com/stalker_portal/c/',
+        'mac'   => '00:1A:79:AA:BB:CC',
     ],
     [
         'id'    => 'server2',
         'name'  => 'Another Portal',
         'url'   => 'http://another.com/c/',
         'mac'   => '00:1A:79:11:22:33',
-        'model' => 'MAG254'
     ],
 ];
 
