@@ -15,16 +15,24 @@ if (!$server) {
     die('Invalid server');
 }
 
-$stalker = new StalkerLite($server['url'], $server['mac'], $server['model'] ?? 'MAG250');
+// Gather advanced params from the request
+$model = $_GET['model'] ?? $server['model'] ?? 'MAG250';
+$extras = [];
+if (isset($_GET['sn_cut']))     $extras['sn_cut'] = $_GET['sn_cut'];
+if (isset($_GET['device_id']))  $extras['device_id'] = $_GET['device_id'];
+if (isset($_GET['device_id2'])) $extras['device_id2'] = $_GET['device_id2'];
+if (isset($_GET['signature']))  $extras['signature'] = $_GET['signature'];
 
-// Try to use existing token? We'll just do a quick handshake if needed.
+$proxyMode = $_GET['proxy'] ?? 'redirect';
+
+$stalker = new StalkerLite($server['url'], $server['mac'], $model, $extras);
 $connect = $stalker->connect();
 if (!$connect['success']) {
     http_response_code(503);
     die('Handshake failed');
 }
 
-// Get all channels to find the cmd for this ID
+// Find the channel cmd
 $channels = $stalker->getChannels();
 $cmd = null;
 foreach ($channels as $ch) {
@@ -44,7 +52,57 @@ if (!$streamUrl) {
     die('Could not resolve stream URL');
 }
 
-// Simple redirect – no proxy, saves your bandwidth
+// Proxy mode – fetch and relay (basic HLS support)
+if ($proxyMode === 'proxy') {
+    // Detect if it's an HLS manifest or a direct stream
+    $ch = curl_init();
+    curl_setopt_array($ch, [
+        CURLOPT_URL => $streamUrl,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_TIMEOUT => 30,
+        CURLOPT_HTTPHEADER => [
+            'User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3'
+        ]
+    ]);
+    $data = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+    
+    if ($httpCode !== 200 || empty($data)) {
+        // Fallback to redirect
+        header('Location: ' . $streamUrl);
+        exit;
+    }
+    
+    // Check if it's a playlist
+    if (strpos($data, '#EXTM3U') !== false) {
+        // Rewrite relative URLs to absolute (simple version)
+        $base = parse_url($streamUrl, PHP_URL_SCHEME) . '://' . parse_url($streamUrl, PHP_URL_HOST);
+        $lines = explode("\n", $data);
+        $newLines = [];
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line) || strpos($line, '#') === 0) {
+                $newLines[] = $line;
+                continue;
+            }
+            if (!filter_var($line, FILTER_VALIDATE_URL)) {
+                $line = $base . '/' . ltrim($line, '/');
+            }
+            $newLines[] = $line;
+        }
+        header('Content-Type: application/vnd.apple.mpegurl');
+        echo implode("\n", $newLines);
+    } else {
+        // Assume it's a binary stream (TS, MP4)
+        header('Content-Type: video/mp2t');
+        echo $data;
+    }
+    exit;
+}
+
+// Default: redirect directly to CDN
 header('Location: ' . $streamUrl, true, 302);
 exit;
 ?>
