@@ -3,7 +3,7 @@ $stalkerServers = [
     [
         'id'    => 'server1',
         'name'  => 'My Portal',
-        'url'   => 'http://portal.elite4k.co/stalker_portal/c/',
+        'url'   => 'http://exa_edge_2skyd.cdn77.me/stalker_portal/c/',
         'mac'   => '00:1A:79:55:89:12',
     ],
     [
