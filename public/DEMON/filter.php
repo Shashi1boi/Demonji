@@ -23,7 +23,7 @@
             border-radius: 24px;
             padding: 30px;
             width: 100%;
-            max-width: 550px;
+            max-width: 600px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.3);
             border: 1px solid rgba(255,255,255,0.2);
         }
@@ -123,6 +123,11 @@
         .row2 > div {
             flex: 1;
         }
+        .auto-badge {
+            font-size: 11px;
+            color: #00d8ff;
+            margin-left: 8px;
+        }
     </style>
 </head>
 <body>
@@ -141,18 +146,8 @@
     <div id="advancedSection" class="advanced-section">
         <div class="row2">
             <div>
-                <label>Device Model</label>
-                <select id="model">
-                    <option value="MAG250">MAG250</option>
-                    <option value="MAG254">MAG254</option>
-                    <option value="MAG256">MAG256</option>
-                    <option value="MAG322">MAG322</option>
-                    <option value="MAG324">MAG324</option>
-                    <option value="MAG349">MAG349</option>
-                    <option value="MAG351">MAG351</option>
-                    <option value="MAG420">MAG420</option>
-                    <option value="MAG424">MAG424</option>
-                </select>
+                <label>MAG Model <span class="auto-badge">(Auto-detected if empty)</span></label>
+                <input type="text" id="model" placeholder="Leave empty for auto">
             </div>
             <div>
                 <label>SN Cut (optional)</label>
@@ -193,7 +188,7 @@
     <div class="loading" id="loading">Generating playlist, please wait...</div>
     <div class="note">
         <i class="fas fa-shield-alt"></i> No login, no storage – all settings are in the URL.<br>
-        Advanced options are optional – leave empty for auto-generation.
+        Leave MAG model empty to auto‑detect the correct model for your portal.
     </div>
 </div>
 
@@ -210,7 +205,7 @@
 
     function updatePlaylistUrl() {
         const serverId = serverSelect.value;
-        const model = document.getElementById('model').value;
+        const model = document.getElementById('model').value.trim();
         const sn_cut = document.getElementById('sn_cut').value.trim();
         const device_id = document.getElementById('device_id').value.trim();
         const device_id2 = document.getElementById('device_id2').value.trim();
@@ -230,6 +225,7 @@
         playlistInput.value = url;
 
         loadingDiv.style.display = 'block';
+        // HEAD request to verify
         fetch(url, { method: 'HEAD' })
             .then(res => {
                 if (res.ok) alert('Playlist generated successfully!');
@@ -245,7 +241,7 @@
         alert('Playlist URL copied!');
     }
 
-    // Load saved advanced options from localStorage (optional)
+    // Load/save advanced settings from localStorage
     function loadSaved() {
         const saved = localStorage.getItem('demonji_advanced');
         if (saved) {
@@ -269,7 +265,7 @@
         };
         localStorage.setItem('demonji_advanced', JSON.stringify(data));
     }
-    document.getElementById('model').addEventListener('change', saveAdvanced);
+    document.getElementById('model').addEventListener('input', saveAdvanced);
     document.getElementById('sn_cut').addEventListener('input', saveAdvanced);
     document.getElementById('device_id').addEventListener('input', saveAdvanced);
     document.getElementById('device_id2').addEventListener('input', saveAdvanced);
