@@ -4,8 +4,8 @@ $stalkerServers = [
     [
         'id'    => 'server1',
         'name'  => 'My Stalker Portal',
-        'url'   => 'http://cineplus-hd.com:80/c/',
-        'mac'   => '00:1A:79:2A:3F:36',
+        'url'   => 'http://play.zee5.live/stalker_portal/c/',
+        'mac'   => '00:1A:79:BC:A8:EF',
         'model' => 'MAG250'
     ],
     [
