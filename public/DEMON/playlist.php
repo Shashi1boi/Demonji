@@ -28,7 +28,13 @@ $proxyMode = $_GET['proxy'] ?? 'redirect';
 
 // --- Auto-detect model if not provided ---
 if (empty($model)) {
-    $commonModels = ['MAG250', 'MAG254', 'MAG256', 'MAG322', 'MAG324', 'MAG349', 'MAG351', 'MAG420', 'MAG424'];
+    // Extended list: newer models first, then classic ones for backward compatibility
+    $commonModels = [
+        // Newest MAG models (optimised for Ministra 5.x / Stalker 5.x)
+        'MAG524', 'MAG544w3', 'MAG500A', 'MAG520', 'MAG522', 'MAG528', 'MAG540',
+        // Classic models (fallback for older portals)
+        'MAG250', 'MAG254', 'MAG256', 'MAG322', 'MAG324', 'MAG349', 'MAG351', 'MAG420', 'MAG424'
+    ];
     $detectedModel = null;
     foreach ($commonModels as $testModel) {
         $testStalker = new StalkerLite($url, $mac, $testModel, $extras);
