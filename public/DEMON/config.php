@@ -3,8 +3,8 @@ $stalkerServers = [
     [
         'id'    => 'server1',
         'name'  => 'My Portal',
-        'url'   => 'http://alpha-2ott.me/c/',
-        'mac'   => '00:1A:79:84:DF:02',
+        'url'   => 'http://new.jiotv.be/stalker_portal/c/',
+        'mac'   => '00:1A:79:C4:A4:F8',
     ],
     [
         'id'    => 'server2',
