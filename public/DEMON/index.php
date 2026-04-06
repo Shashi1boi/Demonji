@@ -32,7 +32,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'playlist') {
         $detected = null;
         foreach ($commonModels as $testModel) {
             $test = new StalkerLite($portalUrl, $mac, $testModel, $extras);
-            if ($test->connect()['success']) {
+            $testConnect = $test->connect();
+            if ($testConnect['success']) {
                 $detected = $testModel;
                 break;
             }
@@ -101,6 +102,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
     $model     = $_GET['model'] ?? 'MAG250';
     $channelId = $_GET['id'] ?? '';
     $proxyMode = $_GET['proxy'] ?? 'redirect';
+    $debug     = isset($_GET['debug']);
     
     $extras = [];
     if (!empty($_GET['sn_cut']))     $extras['sn_cut'] = $_GET['sn_cut'];
@@ -109,26 +111,60 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
     if (!empty($_GET['signature']))  $extras['signature'] = $_GET['signature'];
     
     if (!$portalUrl || !$mac || !$channelId) {
+        if ($debug) { header('Content-Type: text/plain'); die("DEBUG: Missing parameters\n"); }
         http_response_code(400);
         die('Missing parameters');
+    }
+    
+    // Debug: output all params
+    if ($debug) {
+        header('Content-Type: text/plain');
+        echo "=== DEMONJI STREAM DEBUG ===\n";
+        echo "Portal URL: $portalUrl\n";
+        echo "MAC: $mac\n";
+        echo "Model: $model\n";
+        echo "Proxy Mode: $proxyMode\n";
+        echo "Channel ID: $channelId\n";
+        echo "Extras: " . print_r($extras, true) . "\n";
     }
     
     $stalker = new StalkerLite($portalUrl, $mac, $model, $extras);
     $connect = $stalker->connect();
     if (!$connect['success']) {
+        if ($debug) { echo "Handshake failed: " . ($connect['error'] ?? 'unknown') . "\n"; exit; }
         http_response_code(503);
         die('Handshake failed');
     }
+    if ($debug) echo "Handshake OK, token: " . substr($stalker->getToken(), 0, 20) . "...\n";
     
     $channels = $stalker->getChannels();
+    if ($debug) echo "Total channels fetched: " . count($channels) . "\n";
+    
     $cmd = null;
     foreach ($channels as $ch) {
-        if ($ch['id'] == $channelId) { $cmd = $ch['cmd']; break; }
+        if ($ch['id'] == $channelId) {
+            $cmd = $ch['cmd'];
+            if ($debug) echo "Found channel: {$ch['name']} (ID {$ch['id']})\nCMD: $cmd\n";
+            break;
+        }
     }
-    if (!$cmd) { http_response_code(404); die('Channel not found'); }
+    if (!$cmd) {
+        if ($debug) { echo "Channel ID $channelId not found in channel list.\n"; exit; }
+        http_response_code(404);
+        die('Channel not found');
+    }
     
     $streamUrl = $stalker->createLink($cmd);
-    if (!$streamUrl) { http_response_code(502); die('Could not resolve stream'); }
+    if ($debug) {
+        echo "createLink returned: $streamUrl\n";
+        if (empty($streamUrl)) echo "ERROR: createLink returned empty!\n";
+        exit;
+    }
+    
+    if (empty($streamUrl)) {
+        http_response_code(502);
+        die('Could not resolve stream URL');
+    }
     
     if ($proxyMode === 'proxy') {
         // Simple proxy – forward with headers
@@ -142,12 +178,17 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
         $data = curl_exec($ch);
         $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
-        if ($httpCode !== 200 || !$data) { header('Location: ' . $streamUrl); exit; }
+        if ($httpCode !== 200 || !$data) { 
+            header('Location: ' . $streamUrl); 
+            exit; 
+        }
         if (strpos($data, '#EXTM3U') !== false) {
             $base = parse_url($streamUrl, PHP_URL_SCHEME) . '://' . parse_url($streamUrl, PHP_URL_HOST);
             $lines = explode("\n", $data);
             foreach ($lines as &$line) {
-                if (strpos($line, '#') !== 0 && !filter_var($line, FILTER_VALIDATE_URL)) {
+                $line = trim($line);
+                if (empty($line) || strpos($line, '#') === 0) continue;
+                if (!filter_var($line, FILTER_VALIDATE_URL)) {
                     $line = $base . '/' . ltrim($line, '/');
                 }
             }
@@ -382,7 +423,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'categories') {
     
     <div class="note">
         <i class="fas fa-shield-alt"></i> No storage, no login – everything is passed in the URL.<br>
-        Advanced options are optional – leave empty for automatic generation.
+        Advanced options are optional – leave empty for automatic generation.<br>
+        <strong>Troubleshooting:</strong> Append <code>&debug=1</code> to any stream URL to see diagnostic output.
     </div>
 </div>
 
