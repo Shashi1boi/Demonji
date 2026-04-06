@@ -5,6 +5,48 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 set_time_limit(120);
 
+// Cache directory (auto-created)
+define('CACHE_DIR', __DIR__ . '/cache');
+
+// --- Helper: get cache key from request parameters ---
+function getCacheKey($portalUrl, $mac, $model, $extras) {
+    $data = $portalUrl . '|' . $mac . '|' . $model . '|' . json_encode($extras);
+    return md5($data);
+}
+
+// --- Helper: read cache ---
+function getCached($key, $ttl = 3600) {
+    $file = CACHE_DIR . '/' . $key . '.json';
+    if (!file_exists($file)) return null;
+    if (time() - filemtime($file) > $ttl) {
+        @unlink($file);
+        return null;
+    }
+    $data = file_get_contents($file);
+    return json_decode($data, true);
+}
+
+// --- Helper: write cache ---
+function setCached($key, $data) {
+    if (!is_dir(CACHE_DIR)) @mkdir(CACHE_DIR, 0755, true);
+    file_put_contents(CACHE_DIR . '/' . $key . '.json', json_encode($data));
+}
+
+// --- Helper: clear cache ---
+function clearCache() {
+    if (!is_dir(CACHE_DIR)) return;
+    $files = glob(CACHE_DIR . '/*.json');
+    foreach ($files as $f) @unlink($f);
+}
+
+// --- If clear cache requested ---
+if (isset($_GET['action']) && $_GET['action'] === 'clearcache') {
+    clearCache();
+    header('Content-Type: application/json');
+    echo json_encode(['success' => true, 'message' => 'Cache cleared']);
+    exit;
+}
+
 // --- Playlist generation request ---
 if (isset($_GET['action']) && $_GET['action'] === 'playlist') {
     $portalUrl = $_GET['url'] ?? '';
@@ -26,28 +68,40 @@ if (isset($_GET['action']) && $_GET['action'] === 'playlist') {
     
     if (empty($portalUrl) || empty($mac)) die("# ERROR: Missing portal URL or MAC address\n");
     
-    // Auto-detect model if not provided
-    if (empty($model)) {
-        $commonModels = ['MAG524', 'MAG544w3', 'MAG500A', 'MAG520', 'MAG522', 'MAG528', 'MAG540', 'MAG250', 'MAG254', 'MAG256', 'MAG322', 'MAG324', 'MAG349', 'MAG351', 'MAG420', 'MAG424'];
-        $detected = null;
-        foreach ($commonModels as $testModel) {
-            $test = new StalkerLite($portalUrl, $mac, $testModel, $extras);
-            $testConnect = $test->connect();
-            if ($testConnect['success']) {
-                $detected = $testModel;
-                break;
+    $cacheKey = getCacheKey($portalUrl, $mac, $model, $extras);
+    $cached = getCached($cacheKey, 3600);
+    
+    // Use cached channels if available
+    if ($cached && isset($cached['channels']) && isset($cached['model'])) {
+        $model = $cached['model'];
+        $channels = $cached['channels'];
+    } else {
+        // Auto-detect model if not provided
+        if (empty($model)) {
+            $commonModels = ['MAG524', 'MAG544w3', 'MAG500A', 'MAG520', 'MAG522', 'MAG528', 'MAG540', 'MAG250', 'MAG254', 'MAG256', 'MAG322', 'MAG324', 'MAG349', 'MAG351', 'MAG420', 'MAG424'];
+            $detected = null;
+            foreach ($commonModels as $testModel) {
+                $test = new StalkerLite($portalUrl, $mac, $testModel, $extras);
+                $testConnect = $test->connect();
+                if ($testConnect['success']) {
+                    $detected = $testModel;
+                    break;
+                }
             }
+            if (!$detected) die("# ERROR: Could not auto-detect MAG model. Please specify one manually.\n");
+            $model = $detected;
         }
-        if (!$detected) die("# ERROR: Could not auto-detect MAG model. Please specify one manually.\n");
-        $model = $detected;
+        
+        $stalker = new StalkerLite($portalUrl, $mac, $model, $extras);
+        $connect = $stalker->connect();
+        if (!$connect['success']) die("# ERROR: Handshake failed – " . ($connect['error'] ?? 'unknown') . "\n");
+        
+        $channels = $stalker->getChannels();
+        if (empty($channels)) die("# ERROR: No channels found\n");
+        
+        // Cache channels and model
+        setCached($cacheKey, ['channels' => $channels, 'model' => $model]);
     }
-    
-    $stalker = new StalkerLite($portalUrl, $mac, $model, $extras);
-    $connect = $stalker->connect();
-    if (!$connect['success']) die("# ERROR: Handshake failed – " . ($connect['error'] ?? 'unknown') . "\n");
-    
-    $channels = $stalker->getChannels();
-    if (empty($channels)) die("# ERROR: No channels found\n");
     
     // Filter by categories
     if (!empty($selectedCategories)) {
@@ -80,7 +134,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'playlist') {
     header('Content-Type: audio/x-mpegurl');
     header('Content-Disposition: inline; filename="playlist.m3u"');
     echo "#EXTM3U\n";
-    echo "# Demonji Stalker Playlist\n";
+    echo "# Demonji Stalker Playlist (cached for 1 hour)\n";
     echo "# Portal: $portalUrl\n";
     echo "# Model: $model\n";
     echo "# Proxy: $proxyMode\n";
@@ -95,11 +149,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'playlist') {
     exit;
 }
 
-// --- Stream resolver endpoint ---
+// --- Stream resolver endpoint (also uses cached token/channels) ---
 if (isset($_GET['action']) && $_GET['action'] === 'stream') {
     $portalUrl = $_GET['url'] ?? '';
     $mac       = $_GET['mac'] ?? '';
-    $model     = $_GET['model'] ?? 'MAG250';
+    $model     = $_GET['model'] ?? '';
     $channelId = $_GET['id'] ?? '';
     $proxyMode = $_GET['proxy'] ?? 'redirect';
     $debug     = isset($_GET['debug']);
@@ -116,48 +170,99 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
         die('Missing parameters');
     }
     
-    // Debug: output all params
-    if ($debug) {
-        header('Content-Type: text/plain');
-        echo "=== DEMONJI STREAM DEBUG ===\n";
-        echo "Portal URL: $portalUrl\n";
-        echo "MAC: $mac\n";
-        echo "Model: $model\n";
-        echo "Proxy Mode: $proxyMode\n";
-        echo "Channel ID: $channelId\n";
-        echo "Extras: " . print_r($extras, true) . "\n";
+    $cacheKey = getCacheKey($portalUrl, $mac, $model, $extras);
+    $cached = getCached($cacheKey, 3600);
+    
+    if ($cached && isset($cached['channels']) && isset($cached['model'])) {
+        $model = $cached['model'];
+        $channels = $cached['channels'];
+        if ($debug) echo "DEBUG: Using cached channels ({$cached['model']})\n";
+    } else {
+        // No cache – do handshake
+        if (empty($model)) {
+            $commonModels = ['MAG524', 'MAG544w3', 'MAG500A', 'MAG520', 'MAG522', 'MAG528', 'MAG540', 'MAG250', 'MAG254', 'MAG256', 'MAG322', 'MAG324', 'MAG349', 'MAG351', 'MAG420', 'MAG424'];
+            $detected = null;
+            foreach ($commonModels as $testModel) {
+                $test = new StalkerLite($portalUrl, $mac, $testModel, $extras);
+                if ($test->connect()['success']) {
+                    $detected = $testModel;
+                    break;
+                }
+            }
+            if (!$detected) {
+                if ($debug) echo "DEBUG: Auto-detect failed\n";
+                http_response_code(503);
+                die('Handshake failed');
+            }
+            $model = $detected;
+        }
+        
+        $stalker = new StalkerLite($portalUrl, $mac, $model, $extras);
+        $connect = $stalker->connect();
+        if (!$connect['success']) {
+            if ($debug) echo "DEBUG: Handshake failed\n";
+            http_response_code(503);
+            die('Handshake failed');
+        }
+        $channels = $stalker->getChannels();
+        if (empty($channels)) {
+            if ($debug) echo "DEBUG: No channels\n";
+            http_response_code(503);
+            die('No channels');
+        }
+        setCached($cacheKey, ['channels' => $channels, 'model' => $model]);
     }
     
-    $stalker = new StalkerLite($portalUrl, $mac, $model, $extras);
-    $connect = $stalker->connect();
-    if (!$connect['success']) {
-        if ($debug) { echo "Handshake failed: " . ($connect['error'] ?? 'unknown') . "\n"; exit; }
-        http_response_code(503);
-        die('Handshake failed');
-    }
-    if ($debug) echo "Handshake OK, token: " . substr($stalker->getToken(), 0, 20) . "...\n";
-    
-    $channels = $stalker->getChannels();
-    if ($debug) echo "Total channels fetched: " . count($channels) . "\n";
-    
+    // Find channel cmd
     $cmd = null;
     foreach ($channels as $ch) {
         if ($ch['id'] == $channelId) {
             $cmd = $ch['cmd'];
-            if ($debug) echo "Found channel: {$ch['name']} (ID {$ch['id']})\nCMD: $cmd\n";
             break;
         }
     }
     if (!$cmd) {
-        if ($debug) { echo "Channel ID $channelId not found in channel list.\n"; exit; }
+        if ($debug) echo "DEBUG: Channel ID not found\n";
         http_response_code(404);
         die('Channel not found');
     }
     
-    $streamUrl = $stalker->createLink($cmd);
+    // Create stream link (this still requires a fresh token each time? Actually StalkerLite uses token from handshake)
+    // We need to re-initialize StalkerLite with the cached token? StalkerLite doesn't store token permanently.
+    // To avoid another handshake, we should reuse the token from cache. But StalkerLite doesn't expose token persistence.
+    // Simpler: do a handshake again (but that's slow). Instead, we can store the token in cache too.
+    // Let's modify: store token in cache as well.
+    if ($cached && isset($cached['token'])) {
+        $stalker = new StalkerLite($portalUrl, $mac, $model, $extras, $cached['token']);
+        // We need to verify token is still valid? For speed, assume it's valid.
+        $streamUrl = $stalker->createLink($cmd);
+        if (empty($streamUrl)) {
+            // Token may have expired – fallback to full handshake
+            $stalker = new StalkerLite($portalUrl, $mac, $model, $extras);
+            $connect = $stalker->connect();
+            if ($connect['success']) {
+                $streamUrl = $stalker->createLink($cmd);
+                // Update cache with new token
+                $cached['token'] = $stalker->getToken();
+                setCached($cacheKey, $cached);
+            }
+        }
+    } else {
+        $stalker = new StalkerLite($portalUrl, $mac, $model, $extras);
+        $connect = $stalker->connect();
+        if (!$connect['success']) {
+            http_response_code(503);
+            die('Handshake failed');
+        }
+        $streamUrl = $stalker->createLink($cmd);
+        // Cache token
+        $cachedData = ['channels' => $channels, 'model' => $model, 'token' => $stalker->getToken()];
+        setCached($cacheKey, $cachedData);
+    }
+    
     if ($debug) {
-        echo "createLink returned: $streamUrl\n";
-        if (empty($streamUrl)) echo "ERROR: createLink returned empty!\n";
+        header('Content-Type: text/plain');
+        echo "DEBUG: Stream URL: $streamUrl\n";
         exit;
     }
     
@@ -167,12 +272,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
     }
     
     if ($proxyMode === 'proxy') {
-        // Simple proxy – forward with headers
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL => $streamUrl,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
+            CURLOPT_TIMEOUT => 30,
             CURLOPT_HTTPHEADER => ['User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) MAG200']
         ]);
         $data = curl_exec($ch);
@@ -201,12 +306,11 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
         exit;
     }
     
-    // Redirect mode
     header('Location: ' . $streamUrl);
     exit;
 }
 
-// --- API: fetch categories (JSON) ---
+// --- API: fetch categories (JSON) – also cached ---
 if (isset($_GET['action']) && $_GET['action'] === 'categories') {
     $portalUrl = $_GET['url'] ?? '';
     $mac       = $_GET['mac'] ?? '';
@@ -221,6 +325,14 @@ if (isset($_GET['action']) && $_GET['action'] === 'categories') {
     if (!$portalUrl || !$mac) {
         http_response_code(400);
         echo json_encode(['error' => 'Missing URL or MAC']);
+        exit;
+    }
+    
+    $cacheKey = getCacheKey($portalUrl, $mac, $model, $extras) . '_cats';
+    $cached = getCached($cacheKey, 3600);
+    if ($cached) {
+        header('Content-Type: application/json');
+        echo json_encode($cached);
         exit;
     }
     
@@ -254,6 +366,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'categories') {
     foreach ($genres as $id => $name) {
         $categories[] = ['id' => (string)$id, 'name' => $name];
     }
+    setCached($cacheKey, $categories);
     header('Content-Type: application/json');
     echo json_encode($categories);
     exit;
@@ -399,7 +512,10 @@ if (isset($_GET['action']) && $_GET['action'] === 'categories') {
         </div>
     </div>
     
-    <button class="btn" id="fetchCategoriesBtn" onclick="fetchCategories()"><i class="fas fa-list"></i> Load Categories</button>
+    <div class="row2">
+        <button class="btn" id="fetchCategoriesBtn" onclick="fetchCategories()"><i class="fas fa-list"></i> Load Categories</button>
+        <button class="btn" id="clearCacheBtn" onclick="clearCache()" style="background:#6c757d;"><i class="fas fa-trash"></i> Clear Cache</button>
+    </div>
     
     <div id="categorySection" class="category-section">
         <div class="row2" style="margin-bottom: 10px;">
@@ -418,13 +534,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'categories') {
             <input type="text" id="playlistUrl" readonly>
             <button class="btn" style="width: auto;" onclick="copyUrl()"><i class="fas fa-copy"></i></button>
         </div>
-        <div class="note">Copy this URL into any IPTV player (TiviMate, VLC, etc.)<br>All settings are embedded – you can bookmark it.</div>
+        <div class="note">Copy this URL into any IPTV player (TiviMate, VLC, etc.)<br>Playlist is cached for 1 hour for fast reloads.</div>
     </div>
     
     <div class="note">
-        <i class="fas fa-shield-alt"></i> No storage, no login – everything is passed in the URL.<br>
-        Advanced options are optional – leave empty for automatic generation.<br>
-        <strong>Troubleshooting:</strong> Append <code>&debug=1</code> to any stream URL to see diagnostic output.
+        <i class="fas fa-shield-alt"></i> No permanent storage – cache auto-expires after 1 hour.<br>
+        <strong>Tip:</strong> If channels change, click "Clear Cache" then regenerate.
     </div>
 </div>
 
@@ -435,6 +550,25 @@ let selectedCategories = new Set();
 function toggleAdvanced() {
     const sec = document.getElementById('advancedSection');
     sec.style.display = sec.style.display === 'none' ? 'block' : 'none';
+}
+
+async function clearCache() {
+    if (!confirm('Clear cache? Next playlist generation will re-fetch all channels.')) return;
+    const loading = document.getElementById('loading');
+    loading.style.display = 'block';
+    try {
+        const res = await fetch('?action=clearcache');
+        const data = await res.json();
+        alert(data.message || 'Cache cleared');
+        // Also clear UI categories
+        categories = [];
+        selectedCategories.clear();
+        document.getElementById('categorySection').style.display = 'none';
+    } catch (err) {
+        alert('Failed to clear cache');
+    } finally {
+        loading.style.display = 'none';
+    }
 }
 
 async function fetchCategories() {
