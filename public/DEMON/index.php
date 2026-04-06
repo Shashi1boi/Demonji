@@ -1,12 +1,11 @@
 <?php
 require_once 'StalkerLite.php';
 
-// No config file – all settings come from URL or POST
 error_reporting(E_ALL);
 ini_set('display_errors', 0);
 set_time_limit(120);
 
-// --- If this is a playlist generation request (URL contains all params) ---
+// --- Playlist generation request ---
 if (isset($_GET['action']) && $_GET['action'] === 'playlist') {
     $portalUrl = $_GET['url'] ?? '';
     $mac       = $_GET['mac'] ?? '';
@@ -25,9 +24,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'playlist') {
         $selectedCategories = array_map('trim', $selectedCategories);
     }
     
-    if (empty($portalUrl) || empty($mac)) {
-        die("# ERROR: Missing portal URL or MAC address\n");
-    }
+    if (empty($portalUrl) || empty($mac)) die("# ERROR: Missing portal URL or MAC address\n");
     
     // Auto-detect model if not provided
     if (empty($model)) {
@@ -61,40 +58,43 @@ if (isset($_GET['action']) && $_GET['action'] === 'playlist') {
         $channels = $filtered;
     }
     
-    // Build stream proxy URL (self)
+    // Build stream proxy URL
     $protocol = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https://' : 'http://';
     $host = $_SERVER['HTTP_HOST'];
     $self = $protocol . $host . rtrim(dirname($_SERVER['SCRIPT_NAME']), '/') . '/index.php';
     
-    // Forward parameters to stream resolver
-    $forward = http_build_query([
+    // Forward all advanced params to stream resolver
+    $forwardParams = [
         'action' => 'stream',
         'url' => $portalUrl,
         'mac' => $mac,
         'model' => $model,
         'proxy' => $proxyMode,
-        'sn_cut' => $extras['sn_cut'] ?? '',
-        'device_id' => $extras['device_id'] ?? '',
-        'device_id2' => $extras['device_id2'] ?? '',
-        'signature' => $extras['signature'] ?? ''
-    ]);
+    ];
+    foreach (['sn_cut', 'device_id', 'device_id2', 'signature'] as $p) {
+        if (!empty($_GET[$p])) $forwardParams[$p] = $_GET[$p];
+    }
+    $forwardQuery = http_build_query($forwardParams);
     
     header('Content-Type: audio/x-mpegurl');
     header('Content-Disposition: inline; filename="playlist.m3u"');
     echo "#EXTM3U\n";
     echo "# Demonji Stalker Playlist\n";
     echo "# Portal: $portalUrl\n";
-    echo "# Model: $model\n\n";
+    echo "# Model: $model\n";
+    echo "# Proxy: $proxyMode\n";
+    if (!empty($selectedCategories)) echo "# Categories: " . implode(',', $selectedCategories) . "\n";
+    echo "# Channels: " . count($channels) . "\n\n";
     
     foreach ($channels as $ch) {
-        $streamUrl = $self . '?' . $forward . '&id=' . urlencode($ch['id']);
+        $streamUrl = $self . '?' . $forwardQuery . '&id=' . urlencode($ch['id']);
         echo '#EXTINF:-1 tvg-id="' . htmlspecialchars($ch['id']) . '" tvg-name="' . htmlspecialchars($ch['name']) . '" tvg-logo="' . htmlspecialchars($ch['logo']) . '" group-title="' . htmlspecialchars($ch['genre_name'] ?? 'General') . '",' . $ch['name'] . "\n";
         echo $streamUrl . "\n";
     }
     exit;
 }
 
-// --- Stream resolver endpoint (handles ?action=stream&id=xxx) ---
+// --- Stream resolver endpoint ---
 if (isset($_GET['action']) && $_GET['action'] === 'stream') {
     $portalUrl = $_GET['url'] ?? '';
     $mac       = $_GET['mac'] ?? '';
@@ -131,7 +131,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
     if (!$streamUrl) { http_response_code(502); die('Could not resolve stream'); }
     
     if ($proxyMode === 'proxy') {
-        // Simple proxy – forward the stream
+        // Simple proxy – forward with headers
         $ch = curl_init();
         curl_setopt_array($ch, [
             CURLOPT_URL => $streamUrl,
@@ -144,7 +144,6 @@ if (isset($_GET['action']) && $_GET['action'] === 'stream') {
         curl_close($ch);
         if ($httpCode !== 200 || !$data) { header('Location: ' . $streamUrl); exit; }
         if (strpos($data, '#EXTM3U') !== false) {
-            // Rewrite relative URLs (simplified)
             $base = parse_url($streamUrl, PHP_URL_SCHEME) . '://' . parse_url($streamUrl, PHP_URL_HOST);
             $lines = explode("\n", $data);
             foreach ($lines as &$line) {
@@ -245,7 +244,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'categories') {
             border-radius: 24px;
             padding: 30px;
             width: 100%;
-            max-width: 700px;
+            max-width: 750px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.3);
         }
         h2 { color: #f0f0f0; text-align: center; margin-bottom: 20px; }
@@ -273,7 +272,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'categories') {
             margin-top: 10px;
         }
         .btn-primary { background: #00d8ff; color: #1a1a2e; }
-        .category-section {
+        .btn-secondary { background: #0f3460; margin-top: 5px; }
+        .category-section, .advanced-section {
             background: rgba(15,52,96,0.5);
             border-radius: 12px;
             padding: 15px;
@@ -301,6 +301,17 @@ if (isset($_GET['action']) && $_GET['action'] === 'categories') {
             margin: 0;
         }
         .note { font-size: 12px; color: #ccc; text-align: center; margin-top: 20px; }
+        .adv-toggle {
+            background: none;
+            border: none;
+            color: #00d8ff;
+            cursor: pointer;
+            font-size: 14px;
+            text-align: left;
+            margin: 10px 0;
+            width: 100%;
+        }
+        .auto-badge { font-size: 11px; color: #00d8ff; margin-left: 8px; }
     </style>
 </head>
 <body>
@@ -314,9 +325,36 @@ if (isset($_GET['action']) && $_GET['action'] === 'categories') {
         <div><input type="text" id="model" placeholder="MAG Model (leave empty for auto-detect)"></div>
         <div>
             <select id="proxyMode">
-                <option value="redirect">Redirect (no server bandwidth)</option>
-                <option value="proxy">Proxy (hide real URL)</option>
+                <option value="redirect">Redirect (direct CDN, zero server bandwidth)</option>
+                <option value="proxy">Proxy (through server, hides real URL)</option>
             </select>
+        </div>
+    </div>
+    
+    <!-- Advanced Options Toggle -->
+    <button class="adv-toggle" onclick="toggleAdvanced()">
+        <i class="fas fa-sliders-h"></i> Advanced Configuration (SN Cut, Device IDs, Signature)
+    </button>
+    <div id="advancedSection" class="advanced-section">
+        <div class="row2">
+            <div>
+                <label>SN Cut <span class="auto-badge">(auto if empty)</span></label>
+                <input type="text" id="sn_cut" placeholder="Auto-generate from MAC">
+            </div>
+            <div>
+                <label>Device ID</label>
+                <input type="text" id="device_id" placeholder="Auto from MAC">
+            </div>
+        </div>
+        <div class="row2">
+            <div>
+                <label>Device ID 2</label>
+                <input type="text" id="device_id2" placeholder="Same as Device ID">
+            </div>
+            <div>
+                <label>Signature</label>
+                <input type="text" id="signature" placeholder="Auto from SN Cut + MAC">
+            </div>
         </div>
     </div>
     
@@ -330,7 +368,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'categories') {
         <div id="categoryList" class="checkbox-container">Loading...</div>
     </div>
     
-    <div class="loading" id="loading">Generating playlist...</div>
+    <div class="loading" id="loading">Processing...</div>
     
     <button class="btn btn-primary" id="generateBtn" onclick="generatePlaylist()"><i class="fas fa-link"></i> Generate Playlist URL</button>
     
@@ -339,12 +377,12 @@ if (isset($_GET['action']) && $_GET['action'] === 'categories') {
             <input type="text" id="playlistUrl" readonly>
             <button class="btn" style="width: auto;" onclick="copyUrl()"><i class="fas fa-copy"></i></button>
         </div>
-        <div class="note">Copy this URL into any IPTV player (TiviMate, VLC, etc.)</div>
+        <div class="note">Copy this URL into any IPTV player (TiviMate, VLC, etc.)<br>All settings are embedded – you can bookmark it.</div>
     </div>
     
     <div class="note">
-        <i class="fas fa-shield-alt"></i> No storage, no login – all settings are in the URL.<br>
-        You can bookmark the generated playlist URL for later use.
+        <i class="fas fa-shield-alt"></i> No storage, no login – everything is passed in the URL.<br>
+        Advanced options are optional – leave empty for automatic generation.
     </div>
 </div>
 
@@ -352,19 +390,28 @@ if (isset($_GET['action']) && $_GET['action'] === 'categories') {
 let categories = [];
 let selectedCategories = new Set();
 
+function toggleAdvanced() {
+    const sec = document.getElementById('advancedSection');
+    sec.style.display = sec.style.display === 'none' ? 'block' : 'none';
+}
+
 async function fetchCategories() {
     const url = document.getElementById('portalUrl').value.trim();
     const mac = document.getElementById('mac').value.trim();
     const model = document.getElementById('model').value.trim();
     const proxyMode = document.getElementById('proxyMode').value;
+    const sn_cut = document.getElementById('sn_cut').value.trim();
+    const device_id = document.getElementById('device_id').value.trim();
+    const device_id2 = document.getElementById('device_id2').value.trim();
+    const signature = document.getElementById('signature').value.trim();
     
     if (!url || !mac) {
         alert('Please enter Portal URL and MAC address');
         return;
     }
     
-    const loadingDiv = document.getElementById('loading');
-    loadingDiv.style.display = 'block';
+    const loading = document.getElementById('loading');
+    loading.style.display = 'block';
     
     let params = new URLSearchParams();
     params.set('action', 'categories');
@@ -372,6 +419,10 @@ async function fetchCategories() {
     params.set('mac', mac);
     if (model) params.set('model', model);
     params.set('proxy', proxyMode);
+    if (sn_cut) params.set('sn_cut', sn_cut);
+    if (device_id) params.set('device_id', device_id);
+    if (device_id2) params.set('device_id2', device_id2);
+    if (signature) params.set('signature', signature);
     
     try {
         const res = await fetch('?' + params.toString());
@@ -383,7 +434,7 @@ async function fetchCategories() {
     } catch (err) {
         alert('Error fetching categories: ' + err.message);
     } finally {
-        loadingDiv.style.display = 'none';
+        loading.style.display = 'none';
     }
 }
 
@@ -436,6 +487,10 @@ function generatePlaylist() {
     const mac = document.getElementById('mac').value.trim();
     const model = document.getElementById('model').value.trim();
     const proxyMode = document.getElementById('proxyMode').value;
+    const sn_cut = document.getElementById('sn_cut').value.trim();
+    const device_id = document.getElementById('device_id').value.trim();
+    const device_id2 = document.getElementById('device_id2').value.trim();
+    const signature = document.getElementById('signature').value.trim();
     
     if (!url || !mac) {
         alert('Please enter Portal URL and MAC address');
@@ -448,6 +503,10 @@ function generatePlaylist() {
     params.set('mac', mac);
     if (model) params.set('model', model);
     params.set('proxy', proxyMode);
+    if (sn_cut) params.set('sn_cut', sn_cut);
+    if (device_id) params.set('device_id', device_id);
+    if (device_id2) params.set('device_id2', device_id2);
+    if (signature) params.set('signature', signature);
     
     const selected = Array.from(selectedCategories);
     if (selected.length > 0) {
