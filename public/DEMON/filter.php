@@ -23,7 +23,7 @@
             border-radius: 24px;
             padding: 30px;
             width: 100%;
-            max-width: 600px;
+            max-width: 700px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.3);
             border: 1px solid rgba(255,255,255,0.2);
         }
@@ -58,6 +58,45 @@
             border-radius: 12px;
             padding: 15px;
             margin-bottom: 15px;
+        }
+        .category-section {
+            background: rgba(15,52,96,0.3);
+            border-radius: 12px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .search-input {
+            flex: 1;
+            padding: 8px 12px;
+            border-radius: 8px;
+            background: #0f3460;
+            color: white;
+            border: none;
+        }
+        .checkbox-container {
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 10px;
+            background: rgba(0,0,0,0.2);
+            border-radius: 8px;
+        }
+        .category-item {
+            display: flex;
+            align-items: center;
+            padding: 6px 0;
+            gap: 10px;
+        }
+        .category-item label {
+            cursor: pointer;
+            color: #ddd;
         }
         .playlist-box {
             background: #0f3460;
@@ -128,16 +167,36 @@
             color: #00d8ff;
             margin-left: 8px;
         }
+        .select-all-btn {
+            background: #0f3460;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
     </style>
 </head>
 <body>
 <div class="container">
     <h2><i class="fas fa-tv"></i> Demonji · Stalker Portal</h2>
-    <select id="serverSelect" class="server-select">
+    <select id="serverSelect" class="server-select" onchange="loadCategories()">
         <?php foreach ($stalkerServers as $s): ?>
             <option value="<?= htmlspecialchars($s['id']) ?>"><?= htmlspecialchars($s['name']) ?></option>
         <?php endforeach; ?>
     </select>
+
+    <!-- Category Selection Section -->
+    <div class="category-section" id="categorySection" style="display: none;">
+        <div class="category-header">
+            <input type="text" id="categorySearch" class="search-input" placeholder="Search categories..." oninput="filterCategories()">
+            <button class="select-all-btn" onclick="toggleSelectAll()">Select All</button>
+        </div>
+        <div class="checkbox-container" id="categoryList">
+            <div style="color:#ccc; text-align:center;">Loading categories...</div>
+        </div>
+    </div>
 
     <!-- Advanced Options Toggle -->
     <button class="advanced-toggle" onclick="toggleAdvanced()">
@@ -188,7 +247,7 @@
     <div class="loading" id="loading">Generating playlist, please wait...</div>
     <div class="note">
         <i class="fas fa-shield-alt"></i> No login, no storage – all settings are in the URL.<br>
-        Leave MAG model empty to auto‑detect the correct model for your portal.
+        Select categories to filter your playlist. Leave all unchecked = include all channels.
     </div>
 </div>
 
@@ -197,10 +256,73 @@
     const playlistInput = document.getElementById('playlistUrl');
     const serverSelect = document.getElementById('serverSelect');
     const loadingDiv = document.getElementById('loading');
+    let categories = [];
+    let selectedCategories = new Set();
 
-    function toggleAdvanced() {
-        const sec = document.getElementById('advancedSection');
-        sec.style.display = sec.style.display === 'none' ? 'block' : 'none';
+    async function loadCategories() {
+        const serverId = serverSelect.value;
+        const section = document.getElementById('categorySection');
+        const listDiv = document.getElementById('categoryList');
+        listDiv.innerHTML = '<div style="color:#ccc; text-align:center;">Loading categories...</div>';
+        section.style.display = 'block';
+
+        try {
+            const url = `${baseUrl}?action=categories&server=${encodeURIComponent(serverId)}`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('Failed to fetch categories');
+            categories = await res.json();
+            if (!Array.isArray(categories)) categories = [];
+            displayCategories(categories);
+        } catch (err) {
+            listDiv.innerHTML = '<div style="color:#ff6b6b; text-align:center;">Failed to load categories. Check server credentials.</div>';
+        }
+        updatePlaylistUrl();
+    }
+
+    function displayCategories(cats) {
+        const container = document.getElementById('categoryList');
+        container.innerHTML = '';
+        if (cats.length === 0) {
+            container.innerHTML = '<div style="color:#ccc; text-align:center;">No categories found. All channels will be included.</div>';
+            return;
+        }
+        cats.forEach(cat => {
+            const div = document.createElement('div');
+            div.className = 'category-item';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.value = cat.id;
+            cb.id = `cat_${cat.id}`;
+            cb.checked = selectedCategories.has(cat.id);
+            cb.addEventListener('change', () => {
+                if (cb.checked) selectedCategories.add(cat.id);
+                else selectedCategories.delete(cat.id);
+                updatePlaylistUrl();
+            });
+            const label = document.createElement('label');
+            label.htmlFor = `cat_${cat.id}`;
+            label.textContent = cat.name;
+            div.appendChild(cb);
+            div.appendChild(label);
+            container.appendChild(div);
+        });
+    }
+
+    function filterCategories() {
+        const search = document.getElementById('categorySearch').value.toLowerCase();
+        const filtered = categories.filter(cat => cat.name.toLowerCase().includes(search));
+        displayCategories(filtered);
+    }
+
+    function toggleSelectAll() {
+        const visibleCheckboxes = document.querySelectorAll('#categoryList input[type="checkbox"]');
+        const allChecked = Array.from(visibleCheckboxes).every(cb => cb.checked);
+        visibleCheckboxes.forEach(cb => {
+            cb.checked = !allChecked;
+            if (cb.checked) selectedCategories.add(cb.value);
+            else selectedCategories.delete(cb.value);
+        });
+        updatePlaylistUrl();
     }
 
     function updatePlaylistUrl() {
@@ -220,25 +342,25 @@
         if (device_id2) params.set('device_id2', device_id2);
         if (signature) params.set('signature', signature);
         params.set('proxy', proxy_mode);
+        
+        const selected = Array.from(selectedCategories);
+        if (selected.length > 0) {
+            params.set('categories', selected.join(','));
+        }
 
         const url = baseUrl + '?' + params.toString();
         playlistInput.value = url;
-
-        loadingDiv.style.display = 'block';
-        // HEAD request to verify
-        fetch(url, { method: 'HEAD' })
-            .then(res => {
-                if (res.ok) alert('Playlist generated successfully!');
-                else alert('Error: Server might be unreachable or invalid.');
-            })
-            .catch(() => alert('Could not reach the playlist generator.'))
-            .finally(() => loadingDiv.style.display = 'none');
     }
 
     function copyToClipboard() {
         playlistInput.select();
         document.execCommand('copy');
         alert('Playlist URL copied!');
+    }
+
+    function toggleAdvanced() {
+        const sec = document.getElementById('advancedSection');
+        sec.style.display = sec.style.display === 'none' ? 'block' : 'none';
     }
 
     // Load/save advanced settings from localStorage
@@ -273,8 +395,12 @@
     document.getElementById('proxy_mode').addEventListener('change', saveAdvanced);
     loadSaved();
 
-    // Generate on page load
-    updatePlaylistUrl();
+    // Initial load
+    loadCategories();
+    serverSelect.addEventListener('change', () => {
+        selectedCategories.clear();
+        loadCategories();
+    });
 </script>
 </body>
 </html>
