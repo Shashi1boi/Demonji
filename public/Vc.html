@@ -123,6 +123,17 @@
       text-align: center;
       font-weight: 400;
     }
+    .timer {
+      font-size: 18px;
+      font-weight: 600;
+      color: #a78bfa;
+      background: rgba(167,139,250,0.12);
+      padding: 4px 16px;
+      border-radius: 40px;
+      display: inline-block;
+      margin-bottom: 10px;
+      letter-spacing: 0.5px;
+    }
 
     .call-input-row {
       display: flex;
@@ -410,6 +421,7 @@
     <div class="avatar" id="avatarIcon">🎙️</div>
     <div class="status-text" id="statusText">Ready</div>
     <div class="sub-status" id="subStatus">Choose a mode</div>
+    <div class="timer" id="timerDisplay" style="display:none;">00:00</div>
 
     <div id="singleUI" class="call-input-row">
       <input type="text" id="peerInput" placeholder="Peer ID (4 letters)" maxlength="4" autocomplete="off">
@@ -462,6 +474,7 @@
     const avatarIcon = document.getElementById('avatarIcon');
     const statusText = document.getElementById('statusText');
     const subStatus = document.getElementById('subStatus');
+    const timerDisplay = document.getElementById('timerDisplay');
     const singleUI = document.getElementById('singleUI');
     const groupUI = document.getElementById('groupUI');
     const peerInput = document.getElementById('peerInput');
@@ -493,7 +506,12 @@
     let isSpeakerOn = false;
     let localStream = null;
     let remoteAudioElements = [];
-    let audioContext = null; // for processing remote
+    let audioContext = null;
+
+    // Timer
+    let callStartTime = null;
+    let timerInterval = null;
+    let timerRunning = false;
 
     // Single call
     let singleCall = null;
@@ -506,6 +524,35 @@
     let groupHostId = null;
     let participantNames = {};
 
+    // ---- Timer functions ----
+    function startTimer() {
+      if (timerRunning) return;
+      callStartTime = Date.now();
+      timerRunning = true;
+      timerDisplay.style.display = 'inline-block';
+      updateTimerDisplay();
+      timerInterval = setInterval(updateTimerDisplay, 1000);
+    }
+
+    function stopTimer() {
+      timerRunning = false;
+      if (timerInterval) {
+        clearInterval(timerInterval);
+        timerInterval = null;
+      }
+      timerDisplay.style.display = 'none';
+      timerDisplay.textContent = '00:00';
+      callStartTime = null;
+    }
+
+    function updateTimerDisplay() {
+      if (!callStartTime) return;
+      const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
+      const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
+      const secs = String(elapsed % 60).padStart(2, '0');
+      timerDisplay.textContent = `${mins}:${secs}`;
+    }
+
     // ---- Volume control ----
     function updateCallVolume(val) {
       const volume = parseFloat(val) / 100;
@@ -517,28 +564,10 @@
       updateCallVolume(this.value);
     });
 
-    // ---- Remote audio handling with AudioContext for reliability ----
+    // ---- Remote audio ----
     function playRemoteStream(stream) {
-      // Use an AudioContext to create a MediaStreamAudioSourceNode and connect to destination
-      // This is more reliable than creating an <audio> element.
       if (!audioContext) {
         audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      }
-      const source = audioContext.createMediaStreamSource(stream);
-      const gain = audioContext.createGain();
-      gain.gain.value = parseFloat(callVolumeSlider.value) / 100;
-      source.connect(gain);
-      gain.connect(audioContext.destination);
-      // Store the gain node so we can adjust volume later if needed.
-      // We'll store the gain node alongside the audio element reference.
-      // Actually we already have remoteAudioElements for volume control, but using a gain node is better.
-      // We'll store both: we keep the gain node in an array.
-      // For simplicity, we'll still use an <audio> element but also connect through AudioContext?
-      // Let's just use <audio> element which is simpler and works on mobile.
-      // The earlier issue might have been due to autoplay. Let's just use the <audio> element with autoplay and manual play().
-      // But to ensure it works, we'll also resume AudioContext if needed.
-      if (audioContext && audioContext.state === 'suspended') {
-        audioContext.resume();
       }
       const audioEl = new Audio();
       audioEl.srcObject = stream;
@@ -565,7 +594,6 @@
         avatarIcon.textContent = '🎙️';
         avatarIcon.classList.remove('active');
         console.log('Peer open:', id);
-        // Resume audio context on user gesture if needed
         document.addEventListener('click', function resumeAudio() {
           if (audioContext && audioContext.state === 'suspended') {
             audioContext.resume();
@@ -644,6 +672,7 @@
         avatarIcon.textContent = name.charAt(0).toUpperCase();
         avatarIcon.classList.add('active');
         updateCallVolume(callVolumeSlider.value);
+        // Start timer when stream arrives will be triggered by 'stream' event
       } catch (e) {
         alert('Could not accept call: ' + e.message);
         incomingOverlay.classList.remove('show');
@@ -653,10 +682,17 @@
 
     function rejectSingleCall() {
       const incoming = window._incomingSingle;
-      if (incoming) { incoming.close(); window._incomingSingle = null; }
+      if (incoming) {
+        incoming.close();
+        window._incomingSingle = null;
+        // Show rejected on this side
+        statusText.textContent = 'Call rejected';
+        subStatus.textContent = 'You rejected the call';
+        avatarIcon.textContent = '❌';
+        avatarIcon.classList.remove('active');
+      }
       incomingOverlay.classList.remove('show');
-      statusText.textContent = 'Call rejected';
-      subStatus.textContent = 'Enter a 4‑letter ID to call';
+      // Also if we are the caller and the other side rejected, we'll handle in caller's error event.
     }
 
     async function startSingleCall(targetId) {
@@ -674,6 +710,7 @@
         avatarIcon.textContent = '📞';
         avatarIcon.classList.add('active');
         updateCallVolume(callVolumeSlider.value);
+        // Timer will start on stream
       } catch (e) {
         alert('Could not start call: ' + e.message);
       }
@@ -687,8 +724,11 @@
         subStatus.textContent = `ID: ${c.peer}`;
         avatarIcon.textContent = name.charAt(0).toUpperCase();
         avatarIcon.classList.add('active');
+        // Start timer
+        startTimer();
       });
       c.on('close', () => {
+        stopTimer();
         cleanupSingle();
         statusText.textContent = 'Call ended';
         subStatus.textContent = 'Enter a 4‑letter ID to call';
@@ -699,9 +739,20 @@
       });
       c.on('error', (err) => {
         console.warn('Single call error:', err);
+        stopTimer();
         cleanupSingle();
-        statusText.textContent = 'Call error';
-        subStatus.textContent = err.message || 'Try again';
+        // If error is due to rejection (peer closed before answer)
+        if (err.type === 'peerClosed' || err.message?.includes('closed')) {
+          statusText.textContent = 'Call rejected';
+          subStatus.textContent = 'The other side declined';
+          avatarIcon.textContent = '❌';
+          avatarIcon.classList.remove('active');
+        } else {
+          statusText.textContent = 'Call error';
+          subStatus.textContent = err.message || 'Try again';
+          avatarIcon.textContent = '⚠️';
+          avatarIcon.classList.remove('active');
+        }
         callControls.classList.remove('show');
         singleUI.style.display = 'flex';
       });
@@ -722,6 +773,7 @@
       avatarIcon.textContent = '🎙️';
       remoteAudioElements.forEach(el => { el.srcObject = null; el.remove(); });
       remoteAudioElements = [];
+      stopTimer();
     }
 
     // ---- GROUP CALL ----
@@ -748,6 +800,7 @@
         getAudioStream().then(s => { localStream = s; }).catch(console.warn);
       }
       updateCallVolume(callVolumeSlider.value);
+      // Timer will start when first stream arrives
     }
 
     async function joinGroup(hostId) {
@@ -813,6 +866,7 @@
         subStatus.textContent = `Connected to ${members.length} participant(s)`;
         avatarIcon.textContent = '🎤';
         avatarIcon.classList.add('active');
+        // Start timer if we have at least one stream (will be triggered by stream event)
       } else if (data.type === 'new-member') {
         const newMember = data.id;
         const newName = data.name || newMember;
@@ -912,6 +966,8 @@
         if (isGroupHost) {
           broadcastToMembers({ type: 'new-member', id: peerId, name: participantNames[peerId] });
         }
+        // Start timer if not already running
+        if (!timerRunning) startTimer();
       });
       call.on('close', () => {
         delete groupCalls[peerId];
@@ -921,8 +977,17 @@
         if (isGroupHost) {
           broadcastToMembers({ type: 'member-left', id: peerId });
         }
-        if (groupMembers.length === 0 && !isGroupHost) {
-          leaveGroup();
+        // If no calls left, stop timer and leave group if not host
+        if (Object.keys(groupCalls).length === 0) {
+          stopTimer();
+          if (!isGroupHost) {
+            leaveGroup();
+          } else {
+            // Host can still stay, but timer stopped
+            statusText.textContent = 'Group Host (no members)';
+            subStatus.textContent = 'Waiting for participants';
+            avatarIcon.textContent = '👑';
+          }
         }
       });
       call.on('error', (err) => {
@@ -931,6 +996,12 @@
         groupMembers = groupMembers.filter(id => id !== peerId);
         delete participantNames[peerId];
         updateParticipantsList();
+        if (Object.keys(groupCalls).length === 0) {
+          stopTimer();
+          if (!isGroupHost) {
+            leaveGroup();
+          }
+        }
       });
     }
 
@@ -1029,6 +1100,7 @@
       updateParticipantsList();
       remoteAudioElements.forEach(el => { el.srcObject = null; el.remove(); });
       remoteAudioElements = [];
+      stopTimer();
     }
 
     // ---- SPEAKER TOGGLE ----
