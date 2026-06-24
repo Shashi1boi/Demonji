@@ -592,6 +592,25 @@
       return () => pc.removeEventListener('connectionstatechange', handler);
     }
 
+    // ---- Set low bandwidth audio ----
+    function setLowBandwidthAudio(callObj) {
+      if (!callObj || !callObj.peerConnection) return;
+      const pc = callObj.peerConnection;
+      const senders = pc.getSenders();
+      const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+      if (audioSender) {
+        const params = audioSender.getParameters();
+        if (!params.encodings) params.encodings = [{}];
+        // Low bitrate (16 kbps) and enable FEC (Forward Error Correction)
+        params.encodings[0].maxBitrate = 16000;
+        params.encodings[0].priority = 'low';
+        // Enable RTX and FEC (if supported)
+        // Not directly in parameters, but we can try to set via codec preferences? Not needed.
+        // Just set bitrate.
+        audioSender.setParameters(params).catch(e => console.warn('setParameters error', e));
+      }
+    }
+
     // ---- PEER INIT ----
     function initPeer(retryCount = 0) {
       myId = genId();
@@ -644,7 +663,6 @@
         } else {
           // GROUP MODE: accept ANY incoming call if we are in a group
           if (isInCall && mode === 'group') {
-            // Accept automatically
             acceptIncomingGroupCall(incoming);
           } else {
             incoming.close();
@@ -697,6 +715,8 @@
         avatarIcon.classList.add('active');
         updateCallVolume(callVolumeSlider.value);
         if (waitingTimeout) { clearTimeout(waitingTimeout); waitingTimeout = null; }
+        // Low bandwidth
+        setLowBandwidthAudio(singleCall);
       } catch (e) {
         alert('Could not accept call: ' + e.message);
         incomingOverlay.classList.remove('show');
@@ -739,6 +759,7 @@
         avatarIcon.textContent = '📞';
         avatarIcon.classList.add('active');
         updateCallVolume(callVolumeSlider.value);
+        setLowBandwidthAudio(singleCall);
 
         if (waitingTimeout) clearTimeout(waitingTimeout);
         waitingTimeout = setTimeout(() => {
@@ -784,6 +805,8 @@
         avatarIcon.textContent = name.charAt(0).toUpperCase();
         avatarIcon.classList.add('active');
         startTimer();
+        // Apply low bandwidth after stream is established
+        setLowBandwidthAudio(c);
       });
       c.on('close', () => {
         stopTimer();
@@ -1016,40 +1039,38 @@
         const call = peer.call(targetId, localStream, callOptions);
         groupCalls[targetId] = call;
         setupGroupCallEvents(call, targetId);
+        setLowBandwidthAudio(call);
       }
     }
 
     function acceptIncomingGroupCall(incoming) {
       const caller = incoming.peer;
-      // Accept only if we are in a group call
       if (!isInCall || mode !== 'group') {
         incoming.close();
         return;
       }
-      // If we already have a call with this peer, close the new one
       if (groupCalls[caller]) {
         incoming.close();
         return;
       }
-      // Ensure we have a local stream
       if (!localStream) {
         getAudioStream().then(s => {
           localStream = s;
           incoming.answer(localStream);
+          setLowBandwidthAudio(incoming);
         }).catch(() => { incoming.close(); });
       } else {
         incoming.answer(localStream);
+        setLowBandwidthAudio(incoming);
       }
       groupCalls[caller] = incoming;
       setupGroupCallEvents(incoming, caller);
-      // Add to members if not already
       if (!participantNames[caller]) {
         participantNames[caller] = incoming.metadata?.name || caller;
       }
       if (!groupMembers.includes(caller)) {
         groupMembers.push(caller);
         updateParticipantsList();
-        // If we are host, broadcast new member to others
         if (isGroupHost) {
           broadcastToMembers({ type: 'new-member', id: caller, name: participantNames[caller] });
         }
@@ -1090,13 +1111,11 @@
           participantNames[peerId] = call.metadata?.name || peerId;
         }
         updateParticipantsList();
-        // If we are host, broadcast new member (but only if not already done)
-        // We do this in acceptIncomingGroupCall or via data from host.
         if (isGroupHost && !groupMembers.includes(peerId)) {
-          // But we already added, so broadcast to others
           broadcastToMembers({ type: 'new-member', id: peerId, name: participantNames[peerId] });
         }
         if (!timerRunning) startTimer();
+        setLowBandwidthAudio(call);
       });
       call.on('close', () => {
         delete groupCalls[peerId];
@@ -1147,11 +1166,9 @@
             conn.send({ type: 'members', list: memberList });
             broadcastToMembers({ type: 'new-member', id: newMember, name: newName }, [newMember]);
             updateParticipantsList();
-            // Host initiates call to new member
             initiateGroupCall(newMember);
           }
         } else if (data.type === 'chat') {
-          // relay chat
           const msg = {
             type: 'chat',
             senderId: peerId,
