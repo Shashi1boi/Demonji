@@ -8,403 +8,378 @@
     * { margin:0; padding:0; box-sizing:border-box; }
     body {
       background: #0b0e14;
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      color: #e0e4ec;
+      height: 100vh;
       display: flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
-      color: #e0e4ec;
-      padding: 16px;
-      background: radial-gradient(ellipse at center bottom, #141c2b, #070a10);
+      padding: 12px;
     }
     .app {
-      max-width: 460px;
+      max-width: 400px;
       width: 100%;
-      background: rgba(26,33,43,0.85);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-radius: 48px;
-      padding: 24px 20px 20px;
-      box-shadow: 0 30px 60px rgba(0,0,0,0.8), inset 0 1px 0 rgba(255,255,255,0.03);
+      background: #141c2b;
+      border-radius: 32px;
+      padding: 20px 16px 16px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+      display: flex;
+      flex-direction: column;
+      height: 640px;
+      max-height: 90vh;
       position: relative;
-      border: 1px solid rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.04);
     }
     .header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 18px;
+      margin-bottom: 14px;
+      flex-shrink: 0;
     }
     .header h1 {
-      font-size: 22px;
+      font-size: 20px;
       font-weight: 600;
       background: linear-gradient(135deg, #5b8def, #a78bfa);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      letter-spacing: -0.5px;
     }
     .header .id-badge {
-      background: #2b3547;
-      padding: 6px 14px;
-      border-radius: 40px;
-      font-size: 13px;
-      font-weight: 500;
-      letter-spacing: 0.5px;
-      color: #9bb1d0;
-      border: 1px solid rgba(255,255,255,0.03);
+      background: #1f2a3e;
+      padding: 4px 12px;
+      border-radius: 30px;
+      font-size: 12px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
+      color: #9bb1d0;
     }
-    .id-badge span { color: #fff; font-weight: 600; }
+    .id-badge span { color: #fff; font-weight: 600; letter-spacing: 1px; }
     .id-badge .refresh-btn {
-      background: #3c4a62;
+      background: none;
       border: none;
-      border-radius: 30px;
-      color: #fff;
-      padding: 2px 8px;
-      font-size: 12px;
+      color: #5b8def;
       cursor: pointer;
-      transition: 0.2s;
+      font-size: 14px;
     }
-    .id-badge .refresh-btn:hover { background: #5a6b8a; }
 
     .mode-toggle {
       display: flex;
-      gap: 6px;
-      background: #131b26;
+      gap: 4px;
+      background: #1f2a3e;
       border-radius: 40px;
-      padding: 4px;
-      margin-bottom: 20px;
-      border: 1px solid rgba(255,255,255,0.03);
+      padding: 3px;
+      flex-shrink: 0;
+      margin-bottom: 12px;
     }
     .mode-toggle button {
       flex: 1;
       background: transparent;
       border: none;
-      padding: 10px 0;
+      padding: 8px 0;
       border-radius: 30px;
-      font-weight: 600;
+      font-weight: 500;
       color: #8599b9;
       cursor: pointer;
-      transition: all 0.2s;
-      font-size: 14px;
+      transition: 0.2s;
+      font-size: 13px;
     }
     .mode-toggle button.active {
       background: #2b7ae9;
       color: #fff;
-      box-shadow: 0 4px 16px rgba(43,122,233,0.3);
+      box-shadow: 0 2px 8px rgba(43,122,233,0.3);
     }
-    .mode-toggle button:hover:not(.active) { background: #1f2a3e; }
 
     .call-area {
+      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 6px 0 0;
+      justify-content: center;
+      min-height: 0;
     }
     .avatar {
-      width: 110px;
-      height: 110px;
+      width: 80px;
+      height: 80px;
       border-radius: 50%;
-      background: linear-gradient(145deg, #2d3a50, #1c2638);
+      background: #1f2a3e;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 48px;
+      font-size: 34px;
       font-weight: 500;
       color: #7f9bd0;
-      box-shadow: 0 12px 28px rgba(0,0,0,0.6);
-      margin-bottom: 12px;
-      transition: all 0.3s;
-      border: 2px solid rgba(255,255,255,0.04);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.4);
+      margin-bottom: 8px;
+      transition: 0.3s;
     }
-    .avatar.active { 
-      background: linear-gradient(145deg, #2b7ae9, #6c5ce7);
-      color: #fff;
-      box-shadow: 0 12px 32px rgba(43,122,233,0.4);
-    }
+    .avatar.active { background: #2b7ae9; color: #fff; }
     .status-text {
-      font-size: 20px;
-      font-weight: 600;
-      margin: 4px 0 2px;
-      letter-spacing: -0.3px;
-    }
-    .sub-status {
-      font-size: 14px;
-      color: #8599b9;
-      margin-bottom: 18px;
-      text-align: center;
-      font-weight: 400;
-    }
-    .timer {
       font-size: 18px;
       font-weight: 600;
-      color: #a78bfa;
-      background: rgba(167,139,250,0.12);
-      padding: 4px 16px;
-      border-radius: 40px;
-      display: inline-block;
-      margin-bottom: 10px;
-      letter-spacing: 0.5px;
+      margin: 4px 0 2px;
     }
+    .sub-status {
+      font-size: 13px;
+      color: #8599b9;
+      margin-bottom: 12px;
+    }
+    .timer { font-size: 16px; color: #a78bfa; margin-bottom: 10px; }
 
-    .call-input-row {
+    .input-row {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       width: 100%;
-      background: #131b26;
-      padding: 4px 4px 4px 18px;
-      border-radius: 60px;
-      align-items: center;
-      margin-bottom: 14px;
-      border: 1px solid rgba(255,255,255,0.04);
+      background: #1f2a3e;
+      border-radius: 40px;
+      padding: 3px 3px 3px 14px;
+      margin-bottom: 10px;
     }
-    .call-input-row input {
+    .input-row input {
       flex: 1;
       background: transparent;
       border: none;
       color: #fff;
-      font-size: 15px;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
+      font-size: 14px;
       outline: none;
-      padding: 10px 0;
-      min-width: 60px;
+      padding: 8px 0;
+      min-width: 0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
-    .call-input-row input::placeholder {
-      color: #5c6f8a;
-      text-transform: none;
-      letter-spacing: 0;
-    }
-    .call-input-row button {
+    .input-row input::placeholder { text-transform: none; color: #5c6f8a; letter-spacing: 0; }
+    .input-row button {
       background: #2b7ae9;
       border: none;
-      border-radius: 40px;
-      padding: 10px 22px;
+      border-radius: 30px;
+      padding: 8px 16px;
       color: #fff;
       font-weight: 600;
       cursor: pointer;
-      transition: 0.2s;
+      font-size: 13px;
       white-space: nowrap;
-      font-size: 15px;
     }
-    .call-input-row button:hover { background: #1e62c0; transform: scale(0.97); }
+    .input-row button:hover { background: #1e62c0; }
 
-    .group-controls {
+    .group-ui {
       display: none;
       width: 100%;
       flex-direction: column;
-      gap: 10px;
+      gap: 6px;
     }
-    .group-controls.show { display: flex; }
+    .group-ui.show { display: flex; }
     .group-row {
       display: flex;
-      gap: 8px;
-      background: #131b26;
-      padding: 4px 4px 4px 18px;
-      border-radius: 60px;
-      align-items: center;
-      border: 1px solid rgba(255,255,255,0.04);
+      gap: 6px;
+      background: #1f2a3e;
+      border-radius: 40px;
+      padding: 3px 3px 3px 14px;
     }
     .group-row input {
       flex: 1;
       background: transparent;
       border: none;
       color: #fff;
-      font-size: 15px;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
+      font-size: 14px;
       outline: none;
-      padding: 10px 0;
+      padding: 8px 0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
-    .group-row input::placeholder {
-      color: #5c6f8a;
-      text-transform: none;
-    }
+    .group-row input::placeholder { text-transform: none; color: #5c6f8a; }
     .group-row button {
       background: #2b7ae9;
       border: none;
-      border-radius: 40px;
-      padding: 10px 20px;
+      border-radius: 30px;
+      padding: 8px 16px;
       color: #fff;
       font-weight: 600;
       cursor: pointer;
-      transition: 0.2s;
-      font-size: 14px;
+      font-size: 13px;
     }
-    .group-row button:hover { background: #1e62c0; transform: scale(0.97); }
     .group-row .host-btn { background: #6c5ce7; }
-    .group-row .host-btn:hover { background: #5a4bd1; }
+    .group-row button:hover { filter: brightness(1.1); }
 
     .participants {
-      background: #131b26;
-      border-radius: 24px;
-      padding: 12px 16px;
-      margin-top: 10px;
-      width: 100%;
-      max-height: 130px;
+      background: #1f2a3e;
+      border-radius: 20px;
+      padding: 10px 12px;
+      max-height: 80px;
       overflow-y: auto;
-      border: 1px solid rgba(255,255,255,0.03);
+      font-size: 13px;
     }
-    .participants .title {
-      font-size: 12px;
-      color: #6a7b96;
-      margin-bottom: 6px;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-    }
+    .participants .title { color: #6a7b96; font-size: 11px; letter-spacing: 0.5px; margin-bottom: 4px; }
     .participant {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 5px 0;
-      font-size: 14px;
-      font-weight: 500;
+      gap: 8px;
+      padding: 3px 0;
     }
     .participant .dot {
-      width: 8px;
-      height: 8px;
+      width: 6px;
+      height: 6px;
       border-radius: 50%;
       background: #4caf50;
-      box-shadow: 0 0 6px rgba(76,175,80,0.4);
       flex-shrink: 0;
     }
-    .participant .dot.muted { background: #f44336; box-shadow: 0 0 6px rgba(244,67,54,0.4); }
+    .participant .dot.muted { background: #f44336; }
+
+    /* Chat area */
+    .chat-area {
+      display: none;
+      flex-direction: column;
+      background: #0e1625;
+      border-radius: 20px;
+      margin-top: 6px;
+      max-height: 120px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.03);
+    }
+    .chat-area.show { display: flex; }
+    .chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 10px;
+      font-size: 13px;
+      max-height: 80px;
+    }
+    .chat-messages .msg {
+      padding: 2px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      display: flex;
+      gap: 6px;
+    }
+    .chat-messages .msg .sender { font-weight: 600; color: #a78bfa; }
+    .chat-messages .msg .text { color: #e0e4ec; word-break: break-word; }
+    .chat-input {
+      display: flex;
+      gap: 6px;
+      padding: 4px 8px 4px 12px;
+      background: #1f2a3e;
+      border-radius: 40px;
+      margin: 4px;
+    }
+    .chat-input input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: #fff;
+      outline: none;
+      padding: 6px 0;
+      font-size: 13px;
+    }
+    .chat-input button {
+      background: #2b7ae9;
+      border: none;
+      border-radius: 30px;
+      padding: 4px 14px;
+      color: #fff;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .chat-input button:hover { background: #1e62c0; }
 
     .controls {
       display: none;
-      gap: 12px;
+      gap: 8px;
       justify-content: center;
       flex-wrap: wrap;
-      margin: 12px 0 4px;
+      margin: 8px 0 4px;
       width: 100%;
+      flex-shrink: 0;
     }
     .controls.show { display: flex; }
     .ctrl-btn {
-      background: #2b3547;
+      background: #1f2a3e;
       border: none;
-      border-radius: 60px;
-      padding: 12px 18px;
+      border-radius: 40px;
+      padding: 8px 14px;
       color: #e0e4ec;
-      font-size: 14px;
-      font-weight: 500;
+      font-size: 13px;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
       cursor: pointer;
-      transition: all 0.15s;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-      border: 1px solid rgba(255,255,255,0.02);
+      transition: 0.15s;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
-    .ctrl-btn:hover { background: #3c4a62; transform: translateY(-2px); }
-    .ctrl-btn:active { transform: scale(0.95); }
+    .ctrl-btn:hover { background: #2b3547; }
     .ctrl-btn.danger { background: #d93f4c; }
     .ctrl-btn.danger:hover { background: #b32e3a; }
     .ctrl-btn.muted { background: #4a3a3a; color: #ff8a8a; }
-    .ctrl-btn.active { background: #2b7ae9; box-shadow: 0 4px 16px rgba(43,122,233,0.3); }
+    .ctrl-btn.active { background: #2b7ae9; }
 
     .volume-slider {
       display: flex;
       align-items: center;
-      gap: 12px;
-      background: #131b26;
-      padding: 6px 16px;
-      border-radius: 60px;
+      gap: 8px;
       width: 100%;
-      border: 1px solid rgba(255,255,255,0.03);
+      background: #1f2a3e;
+      border-radius: 40px;
+      padding: 4px 12px;
+      margin-top: 4px;
     }
-    .volume-slider label {
-      font-size: 13px;
-      color: #8599b9;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      white-space: nowrap;
-    }
+    .volume-slider label { font-size: 12px; color: #8599b9; }
     .volume-slider input[type="range"] {
       flex: 1;
       -webkit-appearance: none;
-      height: 4px;
-      border-radius: 4px;
+      height: 3px;
+      border-radius: 3px;
       background: #2b3547;
       outline: none;
     }
     .volume-slider input[type="range"]::-webkit-slider-thumb {
       -webkit-appearance: none;
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
       border-radius: 50%;
-      background: #2b7ae9;
-      cursor: pointer;
-      box-shadow: 0 0 8px rgba(43,122,233,0.3);
-    }
-    .volume-slider input[type="range"]::-moz-range-thumb {
-      width: 16px;
-      height: 16px;
-      border-radius: 50%;
-      border: none;
       background: #2b7ae9;
       cursor: pointer;
     }
 
-    .footer {
-      margin-top: 18px;
-      font-size: 12px;
-      color: #4a5a74;
-      text-align: center;
-      letter-spacing: 0.3px;
-    }
+    .footer { margin-top: 10px; font-size: 10px; color: #4a5a74; text-align: center; flex-shrink: 0; }
 
+    /* Incoming overlay */
     .incoming-overlay {
       display: none;
       position: absolute;
       inset: 0;
-      background: rgba(11,14,20,0.95);
-      border-radius: 48px;
+      background: rgba(11,14,20,0.94);
+      border-radius: 32px;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
       z-index: 10;
-      padding: 30px;
-      border: 1px solid rgba(255,255,255,0.03);
+      padding: 20px;
     }
     .incoming-overlay.show { display: flex; }
-    .incoming-overlay .avatar {
-      width: 100px;
-      height: 100px;
-      font-size: 40px;
-      margin-bottom: 12px;
-    }
-    .incoming-overlay .name { font-size: 26px; font-weight: 600; margin: 4px 0; }
-    .incoming-overlay .sub { color: #8599b9; font-size: 16px; }
+    .incoming-overlay .avatar { width: 80px; height: 80px; font-size: 34px; margin-bottom: 8px; }
+    .incoming-overlay .name { font-size: 22px; font-weight: 600; }
+    .incoming-overlay .sub { color: #8599b9; margin-bottom: 20px; }
     .incoming-overlay .actions {
       display: flex;
       gap: 30px;
-      margin-top: 28px;
     }
     .incoming-overlay .actions button {
-      background: #2b3547;
+      background: #1f2a3e;
       border: none;
-      border-radius: 60px;
-      padding: 14px 34px;
-      font-size: 18px;
+      border-radius: 40px;
+      padding: 12px 28px;
+      font-size: 16px;
       font-weight: 600;
       color: #fff;
       cursor: pointer;
-      transition: 0.2s;
-      border: 1px solid rgba(255,255,255,0.03);
     }
     .incoming-overlay .actions .accept { background: #2b7ae9; }
-    .incoming-overlay .actions .accept:hover { background: #1e62c0; transform: scale(1.02); }
+    .incoming-overlay .actions .accept:hover { background: #1e62c0; }
     .incoming-overlay .actions .reject { background: #d93f4c; }
-    .incoming-overlay .actions .reject:hover { background: #b32e3a; transform: scale(1.02); }
+    .incoming-overlay .actions .reject:hover { background: #b32e3a; }
 
-    .participants::-webkit-scrollbar { width: 4px; }
-    .participants::-webkit-scrollbar-track { background: #131b26; }
-    .participants::-webkit-scrollbar-thumb { background: #2b3547; border-radius: 10px; }
+    /* scrollbar */
+    .participants::-webkit-scrollbar, .chat-messages::-webkit-scrollbar { width: 3px; }
+    .participants::-webkit-scrollbar-track, .chat-messages::-webkit-scrollbar-track { background: transparent; }
+    .participants::-webkit-scrollbar-thumb, .chat-messages::-webkit-scrollbar-thumb { background: #2b3547; border-radius: 10px; }
   </style>
 </head>
 <body>
@@ -434,38 +409,49 @@
     <button data-mode="group">Group</button>
   </div>
 
-  <div class="call-area">
+  <div class="call-area" id="callArea">
     <div class="avatar" id="avatarIcon">🎙️</div>
-    <div class="status-text" id="statusText">Initializing...</div>
-    <div class="sub-status" id="subStatus">Connecting to peer network</div>
+    <div class="status-text" id="statusText">Ready</div>
+    <div class="sub-status" id="subStatus">Enter a 4‑letter ID</div>
     <div class="timer" id="timerDisplay" style="display:none;">00:00</div>
 
-    <div id="singleUI" class="call-input-row">
-      <input type="text" id="peerInput" placeholder="Peer ID (4 letters)" maxlength="4" autocomplete="off">
+    <!-- Single UI -->
+    <div id="singleUI" class="input-row">
+      <input type="text" id="peerInput" placeholder="Peer ID" maxlength="4" autocomplete="off">
       <button id="callBtn">Call</button>
     </div>
 
-    <div id="groupUI" class="group-controls">
+    <!-- Group UI -->
+    <div id="groupUI" class="group-ui">
       <div class="group-row">
-        <input type="text" id="groupCodeInput" placeholder="Group code (host ID)" maxlength="4" autocomplete="off">
+        <input type="text" id="groupCodeInput" placeholder="Group code (host ID)" maxlength="4">
         <button id="joinGroupBtn">Join</button>
       </div>
       <div class="group-row">
         <button id="createGroupBtn" class="host-btn">✨ Create Group</button>
-        <span style="font-size:13px; color:#6a7b96; margin-left:4px;">(you become host)</span>
+        <span style="font-size:11px; color:#6a7b96; margin-left:4px;">(you host)</span>
       </div>
       <div class="participants" id="participantsList">
         <div class="title">Participants</div>
-        <div id="participantsContainer"><span style="color:#6a7b96; font-size:13px;">No one yet</span></div>
+        <div id="participantsContainer"><span style="color:#6a7b96; font-size:12px;">None</span></div>
+      </div>
+      <!-- Chat (group only) -->
+      <div class="chat-area" id="chatArea">
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="chat-input">
+          <input type="text" id="chatInput" placeholder="Type a message..." maxlength="200">
+          <button id="sendChatBtn">Send</button>
+        </div>
       </div>
     </div>
 
+    <!-- Controls (mute, speaker, end) -->
     <div class="controls" id="callControls">
       <button class="ctrl-btn" id="muteBtn"><span>🎤</span> Mute</button>
       <button class="ctrl-btn" id="speakerBtn"><span>🔊</span> Speaker</button>
       <button class="ctrl-btn danger" id="endCallBtn"><span>📵</span> End</button>
       <div class="volume-slider">
-        <label>🔊 Call Volume</label>
+        <label>🔊</label>
         <input type="range" id="callVolume" min="0" max="100" value="80">
       </div>
     </div>
@@ -477,42 +463,45 @@
 <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
 <script>
   (function(){
-    // ---- UTILITY ----
+    // ---- UTILITIES ----
     function genId() {
       let id = '';
-      for (let i=0; i<4; i++) {
-        id += String.fromCharCode(97 + Math.floor(Math.random()*26));
-      }
+      for (let i=0; i<4; i++) id += String.fromCharCode(97 + Math.floor(Math.random()*26));
       return id;
     }
 
     // ---- DOM refs ----
-    const myIdSpan = document.getElementById('myIdDisplay');
-    const refreshIdBtn = document.getElementById('refreshIdBtn');
-    const avatarIcon = document.getElementById('avatarIcon');
-    const statusText = document.getElementById('statusText');
-    const subStatus = document.getElementById('subStatus');
-    const timerDisplay = document.getElementById('timerDisplay');
-    const singleUI = document.getElementById('singleUI');
-    const groupUI = document.getElementById('groupUI');
-    const peerInput = document.getElementById('peerInput');
-    const callBtn = document.getElementById('callBtn');
-    const groupCodeInput = document.getElementById('groupCodeInput');
-    const joinGroupBtn = document.getElementById('joinGroupBtn');
-    const createGroupBtn = document.getElementById('createGroupBtn');
-    const participantsContainer = document.getElementById('participantsContainer');
-    const callControls = document.getElementById('callControls');
-    const muteBtn = document.getElementById('muteBtn');
-    const speakerBtn = document.getElementById('speakerBtn');
-    const endCallBtn = document.getElementById('endCallBtn');
-    const callVolumeSlider = document.getElementById('callVolume');
-    const incomingOverlay = document.getElementById('incomingOverlay');
-    const incomingAvatar = document.getElementById('incomingAvatar');
-    const incomingName = document.getElementById('incomingName');
-    const incomingSub = document.getElementById('incomingSub');
-    const acceptCall = document.getElementById('acceptCall');
-    const rejectCall = document.getElementById('rejectCall');
-    const modeToggle = document.getElementById('modeToggle');
+    const $ = id => document.getElementById(id);
+    const myIdSpan = $('myIdDisplay');
+    const refreshIdBtn = $('refreshIdBtn');
+    const avatarIcon = $('avatarIcon');
+    const statusText = $('statusText');
+    const subStatus = $('subStatus');
+    const timerDisplay = $('timerDisplay');
+    const singleUI = $('singleUI');
+    const groupUI = $('groupUI');
+    const peerInput = $('peerInput');
+    const callBtn = $('callBtn');
+    const groupCodeInput = $('groupCodeInput');
+    const joinGroupBtn = $('joinGroupBtn');
+    const createGroupBtn = $('createGroupBtn');
+    const participantsContainer = $('participantsContainer');
+    const chatArea = $('chatArea');
+    const chatMessages = $('chatMessages');
+    const chatInput = $('chatInput');
+    const sendChatBtn = $('sendChatBtn');
+    const callControls = $('callControls');
+    const muteBtn = $('muteBtn');
+    const speakerBtn = $('speakerBtn');
+    const endCallBtn = $('endCallBtn');
+    const callVolumeSlider = $('callVolume');
+    const incomingOverlay = $('incomingOverlay');
+    const incomingAvatar = $('incomingAvatar');
+    const incomingName = $('incomingName');
+    const incomingSub = $('incomingSub');
+    const acceptCall = $('acceptCall');
+    const rejectCall = $('rejectCall');
+    const modeToggle = $('modeToggle');
 
     // ---- STATE ----
     let peer = null;
@@ -527,30 +516,28 @@
     let audioContext = null;
 
     // Timer
-    let callStartTime = null;
-    let timerInterval = null;
-    let timerRunning = false;
+    let callStartTime = null, timerInterval = null, timerRunning = false;
 
     // Single call
-    let singleCall = null;
-    let singleCallAnswered = false;
-    let calleeRejected = false;
-    let waitingTimeout = null; // for caller waiting
+    let singleCall = null, singleCallAnswered = false, calleeRejected = false, waitingTimeout = null;
 
     // Group call
     let isGroupHost = false;
     let groupMembers = [];
-    let groupCalls = {};
-    let groupDataConns = {};
+    let groupCalls = {};          // peerId -> MediaConnection
+    let groupDataConns = {};      // peerId -> DataConnection (only host keeps)
     let groupHostId = null;
     let participantNames = {};
 
-    // ---- Helper to update ID display ----
+    // Chat
+    let chatMessagesList = [];
+
+    // ---- Helper: update ID display ----
     function updateIdDisplay(id) {
       myIdSpan.textContent = id.toUpperCase();
     }
 
-    // ---- Timer functions ----
+    // ---- Timer ----
     function startTimer() {
       if (timerRunning) return;
       callStartTime = Date.now();
@@ -559,42 +546,31 @@
       updateTimerDisplay();
       timerInterval = setInterval(updateTimerDisplay, 1000);
     }
-
     function stopTimer() {
       timerRunning = false;
-      if (timerInterval) {
-        clearInterval(timerInterval);
-        timerInterval = null;
-      }
+      if (timerInterval) { clearInterval(timerInterval); timerInterval = null; }
       timerDisplay.style.display = 'none';
       timerDisplay.textContent = '00:00';
       callStartTime = null;
     }
-
     function updateTimerDisplay() {
       if (!callStartTime) return;
       const elapsed = Math.floor((Date.now() - callStartTime) / 1000);
-      const mins = String(Math.floor(elapsed / 60)).padStart(2, '0');
-      const secs = String(elapsed % 60).padStart(2, '0');
+      const mins = String(Math.floor(elapsed / 60)).padStart(2,'0');
+      const secs = String(elapsed % 60).padStart(2,'0');
       timerDisplay.textContent = `${mins}:${secs}`;
     }
 
-    // ---- Volume control ----
+    // ---- Volume ----
     function updateCallVolume(val) {
-      const volume = parseFloat(val) / 100;
-      remoteAudioElements.forEach(el => {
-        if (el) el.volume = volume;
-      });
+      const v = parseFloat(val) / 100;
+      remoteAudioElements.forEach(el => { if (el) el.volume = v; });
     }
-    callVolumeSlider.addEventListener('input', function() {
-      updateCallVolume(this.value);
-    });
+    callVolumeSlider.addEventListener('input', function() { updateCallVolume(this.value); });
 
     // ---- Remote audio ----
     function playRemoteStream(stream) {
-      if (!audioContext) {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      }
+      if (!audioContext) audioContext = new (window.AudioContext || window.webkitAudioContext)();
       const audioEl = new Audio();
       audioEl.srcObject = stream;
       audioEl.volume = parseFloat(callVolumeSlider.value) / 100;
@@ -605,7 +581,7 @@
       return audioEl;
     }
 
-    // ---- Connection state monitor for single call ----
+    // ---- Monitor connection ----
     function monitorCallConnection(callObj, onEnd) {
       if (!callObj || !callObj.peerConnection) return;
       const pc = callObj.peerConnection;
@@ -616,22 +592,17 @@
         }
       };
       pc.addEventListener('connectionstatechange', handler);
-      return () => {
-        pc.removeEventListener('connectionstatechange', handler);
-      };
+      return () => pc.removeEventListener('connectionstatechange', handler);
     }
 
-    // ---- PEER INIT (with retry) ----
+    // ---- PEER INIT ----
     function initPeer(retryCount = 0) {
       myId = genId();
       updateIdDisplay(myId);
       statusText.textContent = 'Connecting...';
-      subStatus.textContent = 'Registering with PeerJS cloud';
+      subStatus.textContent = 'Registering...';
 
-      if (peer) {
-        peer.destroy();
-        peer = null;
-      }
+      if (peer) { peer.destroy(); peer = null; }
 
       peer = new Peer(myId, {
         debug: 0,
@@ -639,19 +610,14 @@
       });
 
       peer.on('open', (id) => {
-        if (id !== myId) {
-          myId = id;
-          updateIdDisplay(myId);
-        }
+        if (id !== myId) { myId = id; updateIdDisplay(myId); }
         statusText.textContent = 'Ready';
         subStatus.textContent = mode === 'single' ? 'Enter a 4‑letter ID to call' : 'Create or join a group';
         avatarIcon.textContent = '🎙️';
         avatarIcon.classList.remove('active');
         console.log('Peer open:', id);
         document.addEventListener('click', function resumeAudio() {
-          if (audioContext && audioContext.state === 'suspended') {
-            audioContext.resume();
-          }
+          if (audioContext && audioContext.state === 'suspended') audioContext.resume();
           document.removeEventListener('click', resumeAudio);
         }, { once: true });
       });
@@ -659,23 +625,18 @@
       peer.on('error', (err) => {
         console.warn('Peer error:', err);
         if (err.type === 'unavailable-id') {
-          console.log('ID taken, retrying...');
           peer.destroy();
           initPeer(retryCount + 1);
         } else {
-          statusText.textContent = '⚠️ Connection error';
-          subStatus.textContent = err.message || 'Please check your internet or refresh';
+          statusText.textContent = '⚠️ Error';
+          subStatus.textContent = err.message || 'Check internet or refresh';
           avatarIcon.textContent = '⚠️';
-          avatarIcon.classList.remove('active');
         }
       });
 
       peer.on('call', (incoming) => {
         if (mode === 'single') {
-          if (singleCall) {
-            incoming.close();
-            return;
-          }
+          if (singleCall) { incoming.close(); return; }
           const callerName = incoming.metadata?.name || incoming.peer;
           incomingName.textContent = callerName;
           incomingAvatar.textContent = callerName.charAt(0).toUpperCase();
@@ -684,6 +645,7 @@
           incoming._callerName = callerName;
           window._incomingSingle = incoming;
         } else {
+          // group mode: auto‑accept if we are in a group and caller is known
           if (isInCall && mode === 'group') {
             const caller = incoming.peer;
             const isKnown = groupMembers.includes(caller) || (groupHostId && caller === groupHostId);
@@ -711,8 +673,7 @@
     function refreshId() {
       if (isInCall) {
         if (!confirm('This will end your current call. Continue?')) return;
-        if (mode === 'single') cleanupSingle();
-        else leaveGroup();
+        if (mode === 'single') cleanupSingle(); else leaveGroup();
       }
       if (peer) peer.destroy();
       initPeer();
@@ -736,17 +697,14 @@
         callControls.classList.add('show');
         singleUI.style.display = 'none';
         groupUI.classList.remove('show');
+        chatArea.classList.remove('show');
         const name = incoming._callerName || incoming.peer;
         statusText.textContent = `Call with ${name}`;
         subStatus.textContent = `ID: ${incoming.peer}`;
         avatarIcon.textContent = name.charAt(0).toUpperCase();
         avatarIcon.classList.add('active');
         updateCallVolume(callVolumeSlider.value);
-        // Clear waiting timeout if any (on caller side)
-        if (waitingTimeout) {
-          clearTimeout(waitingTimeout);
-          waitingTimeout = null;
-        }
+        if (waitingTimeout) { clearTimeout(waitingTimeout); waitingTimeout = null; }
       } catch (e) {
         alert('Could not accept call: ' + e.message);
         incomingOverlay.classList.remove('show');
@@ -782,22 +740,21 @@
         isInCall = true;
         callControls.classList.add('show');
         singleUI.style.display = 'none';
+        groupUI.classList.remove('show');
+        chatArea.classList.remove('show');
         statusText.textContent = `Calling ${targetId.toUpperCase()}...`;
         subStatus.textContent = `ID: ${targetId.toUpperCase()}`;
         avatarIcon.textContent = '📞';
         avatarIcon.classList.add('active');
         updateCallVolume(callVolumeSlider.value);
 
-        // Start waiting timeout (10s) to detect rejection
         if (waitingTimeout) clearTimeout(waitingTimeout);
         waitingTimeout = setTimeout(() => {
-          // If still not answered and call still exists, treat as rejected/failed
           if (singleCall && !singleCallAnswered && isInCall) {
-            console.log('Waiting timeout – call not answered, treating as rejected');
             stopTimer();
             cleanupSingle();
             statusText.textContent = 'Call rejected';
-            subStatus.textContent = 'The other side did not answer';
+            subStatus.textContent = 'No answer';
             avatarIcon.textContent = '❌';
             avatarIcon.classList.remove('active');
             callControls.classList.remove('show');
@@ -813,8 +770,7 @@
     function setupSingleCallEvents(c) {
       const stateMonitor = monitorCallConnection(c, () => {
         if (isInCall && singleCall === c) {
-          stopTimer();
-          cleanupSingle();
+          stopTimer(); cleanupSingle();
           statusText.textContent = 'Call ended';
           subStatus.textContent = 'Connection lost';
           avatarIcon.textContent = '📵';
@@ -849,16 +805,16 @@
           avatarIcon.textContent = '📵';
         } else if (wasRejectedByUs) {
           statusText.textContent = 'Call rejected';
-          subStatus.textContent = 'You declined the call';
+          subStatus.textContent = 'You declined';
           avatarIcon.textContent = '❌';
         } else {
           if (window._isCaller) {
             statusText.textContent = 'Call rejected';
-            subStatus.textContent = 'The other side declined';
+            subStatus.textContent = 'Other side declined';
             avatarIcon.textContent = '❌';
           } else {
             statusText.textContent = 'Call ended';
-            subStatus.textContent = 'The caller ended the call';
+            subStatus.textContent = 'Caller ended';
             avatarIcon.textContent = '📵';
           }
         }
@@ -882,17 +838,17 @@
           avatarIcon.textContent = '📵';
         } else if (wasRejectedByUs) {
           statusText.textContent = 'Call rejected';
-          subStatus.textContent = 'You declined the call';
+          subStatus.textContent = 'You declined';
           avatarIcon.textContent = '❌';
         } else {
           if (err.type === 'peerClosed' || err.message?.includes('closed')) {
             if (window._isCaller) {
               statusText.textContent = 'Call rejected';
-              subStatus.textContent = 'The other side declined';
+              subStatus.textContent = 'Other side declined';
               avatarIcon.textContent = '❌';
             } else {
               statusText.textContent = 'Call ended';
-              subStatus.textContent = 'The caller ended the call';
+              subStatus.textContent = 'Caller ended';
               avatarIcon.textContent = '📵';
             }
           } else {
@@ -912,8 +868,7 @@
 
     function cleanupSingle() {
       if (singleCall) { singleCall.close(); singleCall = null; }
-      singleCallAnswered = false;
-      calleeRejected = false;
+      singleCallAnswered = false; calleeRejected = false;
       isInCall = false;
       if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
       isMuted = false; isSpeakerOn = false;
@@ -923,6 +878,7 @@
       callControls.classList.remove('show');
       singleUI.style.display = 'flex';
       groupUI.classList.remove('show');
+      chatArea.classList.remove('show');
       remoteAudioElements.forEach(el => { el.srcObject = null; el.remove(); });
       remoteAudioElements = [];
       stopTimer();
@@ -943,12 +899,14 @@
       isInCall = true;
       singleUI.style.display = 'none';
       groupUI.classList.add('show');
+      chatArea.classList.add('show');
       callControls.classList.add('show');
       statusText.textContent = 'Group Host';
-      subStatus.textContent = `Group code: ${myId.toUpperCase()} – share this with others`;
+      subStatus.textContent = `Code: ${myId.toUpperCase()}`;
       avatarIcon.textContent = '👑';
       avatarIcon.classList.add('active');
       updateParticipantsList();
+      clearChat();
       if (!localStream) {
         getAudioStream().then(s => { localStream = s; }).catch(console.warn);
       }
@@ -960,10 +918,7 @@
         if (!confirm('You are already in a call. End it and join group?')) return;
         leaveGroup();
       }
-      if (hostId === myId) {
-        alert('You cannot join your own group. Create one instead.');
-        return;
-      }
+      if (hostId === myId) { alert('You cannot join your own group. Create one instead.'); return; }
       try {
         const dataConn = peer.connect(hostId, { reliable: true });
         dataConn.on('open', () => {
@@ -986,15 +941,17 @@
         isInCall = true;
         singleUI.style.display = 'none';
         groupUI.classList.add('show');
+        chatArea.classList.add('show');
         callControls.classList.add('show');
         statusText.textContent = 'Joining group...';
-        subStatus.textContent = `Connecting to host ${hostId.toUpperCase()}`;
+        subStatus.textContent = `Connecting to ${hostId.toUpperCase()}`;
         avatarIcon.textContent = '📞';
         avatarIcon.classList.add('active');
         if (!localStream) {
           localStream = await getAudioStream();
         }
         updateCallVolume(callVolumeSlider.value);
+        clearChat();
       } catch (e) {
         alert('Could not join group: ' + e.message);
         leaveGroup();
@@ -1004,9 +961,7 @@
     function handleGroupData(data, conn) {
       if (data.type === 'members') {
         const members = data.list || [];
-        members.forEach(m => {
-          participantNames[m.id] = m.name;
-        });
+        members.forEach(m => { participantNames[m.id] = m.name; });
         groupMembers = members.map(m => m.id).filter(id => id !== myId);
         members.forEach(m => {
           if (m.id !== myId && !groupCalls[m.id]) {
@@ -1015,9 +970,10 @@
         });
         updateParticipantsList();
         statusText.textContent = 'In Group';
-        subStatus.textContent = `Connected to ${members.length} participant(s)`;
+        subStatus.textContent = `${members.length} participant(s)`;
         avatarIcon.textContent = '🎤';
         avatarIcon.classList.add('active');
+        // show chat messages if any
       } else if (data.type === 'new-member') {
         const newMember = data.id;
         const newName = data.name || newMember;
@@ -1041,6 +997,11 @@
           updateParticipantsList();
           subStatus.textContent = `${participantNames[leftId] || leftId} left`;
         }
+      } else if (data.type === 'chat') {
+        // relay chat message to UI
+        const senderName = data.senderName || data.senderId;
+        const text = data.text;
+        addChatMessage(senderName, text);
       }
     }
 
@@ -1064,22 +1025,15 @@
         const call = peer.call(targetId, localStream, callOptions);
         groupCalls[targetId] = call;
         setupGroupCallEvents(call, targetId);
-        console.log('Initiated call to', targetId);
       }
     }
 
     function acceptIncomingGroupCall(incoming) {
       const caller = incoming.peer;
-      if (!isInCall || mode !== 'group') {
-        incoming.close();
-        return;
-      }
+      if (!isInCall || mode !== 'group') { incoming.close(); return; }
       const isKnown = groupMembers.includes(caller) || (groupHostId && caller === groupHostId);
       if (isKnown) {
-        if (groupCalls[caller]) {
-          incoming.close();
-          return;
-        }
+        if (groupCalls[caller]) { incoming.close(); return; }
         if (!localStream) {
           getAudioStream().then(s => {
             localStream = s;
@@ -1151,9 +1105,8 @@
         }
         if (Object.keys(groupCalls).length === 0) {
           stopTimer();
-          if (!isGroupHost) {
-            leaveGroup();
-          } else {
+          if (!isGroupHost) leaveGroup();
+          else {
             statusText.textContent = 'Group Host (no members)';
             subStatus.textContent = 'Waiting for participants';
             avatarIcon.textContent = '👑';
@@ -1176,10 +1129,7 @@
     }
 
     function handleDataConnection(conn) {
-      if (!isGroupHost || !isInCall) {
-        conn.close();
-        return;
-      }
+      if (!isGroupHost || !isInCall) { conn.close(); return; }
       const peerId = conn.peer;
       groupDataConns[peerId] = conn;
       conn.on('data', (data) => {
@@ -1196,6 +1146,18 @@
             updateParticipantsList();
             initiateGroupCall(newMember);
           }
+        } else if (data.type === 'chat') {
+          // relay chat message to all members except sender
+          const msg = {
+            type: 'chat',
+            senderId: peerId,
+            senderName: participantNames[peerId] || peerId,
+            text: data.text
+          };
+          // add to own chat
+          addChatMessage(msg.senderName, msg.text);
+          // broadcast to all others
+          broadcastToMembers(msg, [peerId]);
         }
       });
       conn.on('close', () => {
@@ -1214,19 +1176,17 @@
     }
 
     function broadcastToMembers(message, exclude = []) {
-      Object.keys(groupDataConns).forEach(peerId => {
-        if (!exclude.includes(peerId)) {
-          try {
-            groupDataConns[peerId].send(message);
-          } catch(e) {}
+      Object.keys(groupDataConns).forEach(pid => {
+        if (!exclude.includes(pid)) {
+          try { groupDataConns[pid].send(message); } catch(e) {}
         }
       });
     }
 
     function updateParticipantsList() {
-      const container = document.getElementById('participantsContainer');
+      const container = participantsContainer;
       if (groupMembers.length === 0 && !isGroupHost) {
-        container.innerHTML = '<span style="color:#6a7b96; font-size:13px;">No participants yet</span>';
+        container.innerHTML = '<span style="color:#6a7b96; font-size:12px;">None</span>';
         return;
       }
       let html = '';
@@ -1242,13 +1202,9 @@
     }
 
     function leaveGroup() {
-      Object.keys(groupCalls).forEach(id => {
-        try { groupCalls[id].close(); } catch(e) {}
-      });
+      Object.keys(groupCalls).forEach(id => { try { groupCalls[id].close(); } catch(e) {} });
       groupCalls = {};
-      Object.keys(groupDataConns).forEach(id => {
-        try { groupDataConns[id].close(); } catch(e) {}
-      });
+      Object.keys(groupDataConns).forEach(id => { try { groupDataConns[id].close(); } catch(e) {} });
       groupDataConns = {};
       groupMembers = [];
       participantNames = {};
@@ -1262,6 +1218,7 @@
       speakerBtn.classList.remove('active');
       callControls.classList.remove('show');
       groupUI.classList.remove('show');
+      chatArea.classList.remove('show');
       singleUI.style.display = 'flex';
       avatarIcon.classList.remove('active');
       avatarIcon.textContent = '🎙️';
@@ -1271,9 +1228,53 @@
       remoteAudioElements.forEach(el => { el.srcObject = null; el.remove(); });
       remoteAudioElements = [];
       stopTimer();
+      clearChat();
     }
 
-    // ---- SPEAKER TOGGLE ----
+    // ---- CHAT ----
+    function addChatMessage(sender, text) {
+      if (!text) return;
+      const div = document.createElement('div');
+      div.className = 'msg';
+      const senderSpan = document.createElement('span');
+      senderSpan.className = 'sender';
+      senderSpan.textContent = sender + ':';
+      const textSpan = document.createElement('span');
+      textSpan.className = 'text';
+      textSpan.textContent = text;
+      div.appendChild(senderSpan);
+      div.appendChild(textSpan);
+      chatMessages.appendChild(div);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function clearChat() {
+      chatMessages.innerHTML = '';
+    }
+
+    function sendChatMessage() {
+      const text = chatInput.value.trim();
+      if (!text) return;
+      chatInput.value = '';
+      const senderName = myName;
+      // add to own UI
+      addChatMessage(senderName, text);
+      // If host, broadcast to all members via data connections
+      if (isGroupHost) {
+        const msg = { type: 'chat', senderId: myId, senderName: senderName, text: text };
+        broadcastToMembers(msg);
+      } else {
+        // send to host (who will relay)
+        const hostId = groupHostId;
+        if (groupDataConns[hostId]) {
+          try {
+            groupDataConns[hostId].send({ type: 'chat', text: text });
+          } catch(e) {}
+        }
+      }
+    }
+
+    // ---- SPEAKER ----
     function setSpeaker(audioEl, on) {
       if (typeof audioEl.setSinkId === 'function') {
         const sinkId = on ? 'speaker' : 'default';
@@ -1285,12 +1286,10 @@
       isSpeakerOn = !isSpeakerOn;
       speakerBtn.innerHTML = isSpeakerOn ? '<span>🔈</span> Earpiece' : '<span>🔊</span> Speaker';
       speakerBtn.classList.toggle('active', isSpeakerOn);
-      remoteAudioElements.forEach(el => {
-        setSpeaker(el, isSpeakerOn);
-      });
+      remoteAudioElements.forEach(el => setSpeaker(el, isSpeakerOn));
     }
 
-    // ---- AUDIO HELPERS ----
+    // ---- AUDIO ----
     async function getAudioStream() {
       try {
         return await navigator.mediaDevices.getUserMedia({
@@ -1315,8 +1314,7 @@
       if (newMode === mode) return;
       if (isInCall) {
         if (!confirm('Switch mode? This will end your current call.')) return;
-        if (mode === 'single') cleanupSingle();
-        else leaveGroup();
+        if (mode === 'single') cleanupSingle(); else leaveGroup();
       }
       mode = newMode;
       document.querySelectorAll('.mode-toggle button').forEach(b => b.classList.remove('active'));
@@ -1324,10 +1322,12 @@
       if (mode === 'single') {
         singleUI.style.display = 'flex';
         groupUI.classList.remove('show');
+        chatArea.classList.remove('show');
         subStatus.textContent = 'Enter a 4‑letter ID to call';
       } else {
         singleUI.style.display = 'none';
         groupUI.classList.add('show');
+        // chat area will be shown when in group call
         subStatus.textContent = 'Create or join a group';
       }
       statusText.textContent = 'Ready';
@@ -1337,18 +1337,9 @@
 
     callBtn.addEventListener('click', async () => {
       const target = peerInput.value.trim().toLowerCase();
-      if (!target || target.length !== 4) {
-        alert('Please enter exactly 4 letters.');
-        return;
-      }
-      if (target === myId) {
-        alert('You cannot call yourself.');
-        return;
-      }
-      if (singleCall) {
-        singleCall.close();
-        cleanupSingle();
-      }
+      if (!target || target.length !== 4) { alert('Enter exactly 4 letters.'); return; }
+      if (target === myId) { alert('You cannot call yourself.'); return; }
+      if (singleCall) { singleCall.close(); cleanupSingle(); }
       window._isCaller = true;
       await startSingleCall(target);
     });
@@ -1358,14 +1349,8 @@
     createGroupBtn.addEventListener('click', createGroup);
     joinGroupBtn.addEventListener('click', () => {
       const code = groupCodeInput.value.trim().toLowerCase();
-      if (!code || code.length !== 4) {
-        alert('Enter a 4‑letter group code (host ID).');
-        return;
-      }
-      if (code === myId) {
-        alert('That\'s your own ID. Create a group instead.');
-        return;
-      }
+      if (!code || code.length !== 4) { alert('Enter a 4‑letter group code.'); return; }
+      if (code === myId) { alert('That\'s your own ID. Create a group instead.'); return; }
       joinGroup(code);
     });
     groupCodeInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') joinGroupBtn.click(); });
@@ -1373,10 +1358,7 @@
 
     endCallBtn.addEventListener('click', () => {
       if (mode === 'single') {
-        if (singleCall) {
-          singleCall.close();
-          cleanupSingle();
-        }
+        if (singleCall) { singleCall.close(); cleanupSingle(); }
       } else {
         leaveGroup();
       }
@@ -1385,9 +1367,7 @@
     muteBtn.addEventListener('click', () => {
       if (!localStream) return;
       isMuted = !isMuted;
-      localStream.getAudioTracks().forEach(track => {
-        track.enabled = !isMuted;
-      });
+      localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
       muteBtn.innerHTML = isMuted ? '<span>🔇</span> Unmute' : '<span>🎤</span> Mute';
       muteBtn.classList.toggle('muted', isMuted);
       updateParticipantsList();
@@ -1408,6 +1388,11 @@
       }
     });
 
+    // Chat events
+    sendChatBtn.addEventListener('click', sendChatMessage);
+    chatInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') sendChatMessage(); });
+
+    // ---- INIT ----
     const name = prompt('Enter your nickname:', 'User');
     if (name) myName = name.trim() || 'User';
 
