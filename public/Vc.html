@@ -516,6 +516,7 @@
     // Single call
     let singleCall = null;
     let singleCallAnswered = false; // track if stream received
+    let calleeRejected = false;      // set when callee clicks Reject
 
     // Group call
     let isGroupHost = false;
@@ -580,78 +581,6 @@
       return audioEl;
     }
 
-    // ---- INIT PEER ----
-    function initPeer() {
-      myId = genId();
-      peer = new Peer(myId, {
-        debug: 0,
-        config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
-      });
-
-      peer.on('open', (id) => {
-        myIdSpan.textContent = id.toUpperCase();
-        statusText.textContent = 'Ready';
-        subStatus.textContent = mode === 'single' ? 'Enter a 4‑letter ID to call' : 'Create or join a group';
-        avatarIcon.textContent = '🎙️';
-        avatarIcon.classList.remove('active');
-        console.log('Peer open:', id);
-        document.addEventListener('click', function resumeAudio() {
-          if (audioContext && audioContext.state === 'suspended') {
-            audioContext.resume();
-          }
-          document.removeEventListener('click', resumeAudio);
-        }, { once: true });
-      });
-
-      peer.on('error', (err) => {
-        console.warn('Peer error:', err);
-        if (err.type === 'unavailable-id') {
-          console.log('ID taken, generating new...');
-          peer.destroy();
-          initPeer();
-        } else {
-          statusText.textContent = '⚠️ Error';
-          subStatus.textContent = err.message || 'Check console';
-        }
-      });
-
-      peer.on('call', (incoming) => {
-        if (mode === 'single') {
-          if (singleCall) {
-            incoming.close();
-            return;
-          }
-          const callerName = incoming.metadata?.name || incoming.peer;
-          incomingName.textContent = callerName;
-          incomingAvatar.textContent = callerName.charAt(0).toUpperCase();
-          incomingSub.textContent = 'is calling you';
-          incomingOverlay.classList.add('show');
-          incoming._callerName = callerName;
-          window._incomingSingle = incoming;
-        } else {
-          if (isInCall && mode === 'group') {
-            const caller = incoming.peer;
-            const isKnown = groupMembers.includes(caller) || (groupHostId && caller === groupHostId);
-            if (isKnown) {
-              acceptIncomingGroupCall(incoming);
-            } else {
-              incoming.close();
-            }
-          } else {
-            incoming.close();
-          }
-        }
-      });
-
-      peer.on('connection', (conn) => {
-        if (mode === 'group' && isGroupHost && isInCall) {
-          handleDataConnection(conn);
-        } else {
-          conn.close();
-        }
-      });
-    }
-
     // ---- Connection state monitor for single call ----
     function monitorCallConnection(callObj, onEnd) {
       if (!callObj || !callObj.peerConnection) return;
@@ -663,7 +592,6 @@
         }
       };
       pc.addEventListener('connectionstatechange', handler);
-      // Return a cleanup function
       return () => {
         pc.removeEventListener('connectionstatechange', handler);
       };
@@ -678,6 +606,7 @@
         incoming.answer(localStream);
         singleCall = incoming;
         singleCallAnswered = false;
+        calleeRejected = false;
         setupSingleCallEvents(singleCall);
         incomingOverlay.classList.remove('show');
         window._incomingSingle = null;
@@ -701,8 +630,10 @@
     function rejectSingleCall() {
       const incoming = window._incomingSingle;
       if (incoming) {
+        calleeRejected = true;  // mark that we rejected
         incoming.close();
         window._incomingSingle = null;
+        // The close event will handle UI, but we also set it manually here to be safe
         statusText.textContent = 'Call rejected';
         subStatus.textContent = 'You declined the call';
         avatarIcon.textContent = '❌';
@@ -720,6 +651,7 @@
         const out = peer.call(targetId, localStream, callOptions);
         singleCall = out;
         singleCallAnswered = false;
+        calleeRejected = false;
         setupSingleCallEvents(singleCall);
         isInCall = true;
         callControls.classList.add('show');
@@ -752,6 +684,7 @@
 
       c.on('stream', (remote) => {
         singleCallAnswered = true;
+        calleeRejected = false; // reset
         playRemoteStream(remote);
         const name = c.metadata?.name || c.peer;
         statusText.textContent = `Call with ${name}`;
@@ -763,45 +696,86 @@
       c.on('close', () => {
         stopTimer();
         const wasAnswered = singleCallAnswered;
+        const wasRejectedByUs = calleeRejected;
         cleanupSingle();
         if (wasAnswered) {
           statusText.textContent = 'Call ended';
           subStatus.textContent = 'The call has ended';
           avatarIcon.textContent = '📵';
-        } else {
+        } else if (wasRejectedByUs) {
+          // We are the callee and we rejected
           statusText.textContent = 'Call rejected';
-          subStatus.textContent = 'The other side declined';
+          subStatus.textContent = 'You declined the call';
           avatarIcon.textContent = '❌';
+        } else {
+          // We are the caller and the other side rejected, or we are callee but the caller hung up before answer
+          // For caller: other side declined. For callee: caller hung up -> call ended.
+          // We can distinguish: if we are the caller (we initiated), show "The other side declined".
+          // If we are the callee and we didn't reject, it means the caller hung up before we answered -> call ended.
+          // We can use a flag to know if we initiated the call. We'll track isCaller.
+          if (window._isCaller) {
+            statusText.textContent = 'Call rejected';
+            subStatus.textContent = 'The other side declined';
+            avatarIcon.textContent = '❌';
+          } else {
+            statusText.textContent = 'Call ended';
+            subStatus.textContent = 'The caller ended the call';
+            avatarIcon.textContent = '📵';
+          }
         }
         avatarIcon.classList.remove('active');
         callControls.classList.remove('show');
         singleUI.style.display = 'flex';
-        // Remove state monitor
         if (stateMonitor) stateMonitor();
+        // Reset flags
+        calleeRejected = false;
+        window._isCaller = false;
       });
       c.on('error', (err) => {
         console.warn('Single call error:', err);
         stopTimer();
+        const wasAnswered = singleCallAnswered;
+        const wasRejectedByUs = calleeRejected;
         cleanupSingle();
-        if (err.type === 'peerClosed' || err.message?.includes('closed')) {
+        if (wasAnswered) {
+          statusText.textContent = 'Call ended';
+          subStatus.textContent = 'The call has ended';
+          avatarIcon.textContent = '📵';
+        } else if (wasRejectedByUs) {
           statusText.textContent = 'Call rejected';
-          subStatus.textContent = 'The other side declined';
+          subStatus.textContent = 'You declined the call';
           avatarIcon.textContent = '❌';
         } else {
-          statusText.textContent = 'Call error';
-          subStatus.textContent = err.message || 'Try again';
-          avatarIcon.textContent = '⚠️';
+          // Check if error type is peerClosed or similar
+          if (err.type === 'peerClosed' || err.message?.includes('closed')) {
+            if (window._isCaller) {
+              statusText.textContent = 'Call rejected';
+              subStatus.textContent = 'The other side declined';
+              avatarIcon.textContent = '❌';
+            } else {
+              statusText.textContent = 'Call ended';
+              subStatus.textContent = 'The caller ended the call';
+              avatarIcon.textContent = '📵';
+            }
+          } else {
+            statusText.textContent = 'Call error';
+            subStatus.textContent = err.message || 'Try again';
+            avatarIcon.textContent = '⚠️';
+          }
         }
         avatarIcon.classList.remove('active');
         callControls.classList.remove('show');
         singleUI.style.display = 'flex';
         if (stateMonitor) stateMonitor();
+        calleeRejected = false;
+        window._isCaller = false;
       });
     }
 
     function cleanupSingle() {
       if (singleCall) { singleCall.close(); singleCall = null; }
       singleCallAnswered = false;
+      calleeRejected = false;
       isInCall = false;
       if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
       isMuted = false; isSpeakerOn = false;
@@ -993,7 +967,6 @@
     function setupGroupCallEvents(call, peerId) {
       // Monitor connection state
       const stateMonitor = monitorCallConnection(call, () => {
-        // If connection drops, treat as ended
         if (groupCalls[peerId]) {
           delete groupCalls[peerId];
           groupMembers = groupMembers.filter(id => id !== peerId);
@@ -1238,6 +1211,7 @@
         singleCall.close();
         cleanupSingle();
       }
+      window._isCaller = true; // we initiated
       await startSingleCall(target);
     });
     peerInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') callBtn.click(); });
@@ -1286,11 +1260,13 @@
 
     acceptCall.addEventListener('click', () => {
       if (mode === 'single') {
+        window._isCaller = false; // we are callee
         acceptSingleCall();
       }
     });
     rejectCall.addEventListener('click', () => {
       if (mode === 'single') {
+        window._isCaller = false;
         rejectSingleCall();
       }
     });
