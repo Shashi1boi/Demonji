@@ -52,8 +52,22 @@
       letter-spacing: 0.5px;
       color: #9bb1d0;
       border: 1px solid rgba(255,255,255,0.03);
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
     .id-badge span { color: #fff; font-weight: 600; }
+    .id-badge .refresh-btn {
+      background: #3c4a62;
+      border: none;
+      border-radius: 30px;
+      color: #fff;
+      padding: 2px 8px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    .id-badge .refresh-btn:hover { background: #5a6b8a; }
 
     .mode-toggle {
       display: flex;
@@ -409,7 +423,10 @@
 
   <div class="header">
     <h1>📞 VOICY</h1>
-    <div class="id-badge">ID <span id="myIdDisplay">----</span></div>
+    <div class="id-badge">
+      ID <span id="myIdDisplay">----</span>
+      <button class="refresh-btn" id="refreshIdBtn">⟳</button>
+    </div>
   </div>
 
   <div class="mode-toggle" id="modeToggle">
@@ -419,8 +436,8 @@
 
   <div class="call-area">
     <div class="avatar" id="avatarIcon">🎙️</div>
-    <div class="status-text" id="statusText">Ready</div>
-    <div class="sub-status" id="subStatus">Choose a mode</div>
+    <div class="status-text" id="statusText">Initializing...</div>
+    <div class="sub-status" id="subStatus">Connecting to peer network</div>
     <div class="timer" id="timerDisplay" style="display:none;">00:00</div>
 
     <div id="singleUI" class="call-input-row">
@@ -471,6 +488,7 @@
 
     // ---- DOM refs ----
     const myIdSpan = document.getElementById('myIdDisplay');
+    const refreshIdBtn = document.getElementById('refreshIdBtn');
     const avatarIcon = document.getElementById('avatarIcon');
     const statusText = document.getElementById('statusText');
     const subStatus = document.getElementById('subStatus');
@@ -515,8 +533,8 @@
 
     // Single call
     let singleCall = null;
-    let singleCallAnswered = false; // track if stream received
-    let calleeRejected = false;      // set when callee clicks Reject
+    let singleCallAnswered = false;
+    let calleeRejected = false;
 
     // Group call
     let isGroupHost = false;
@@ -525,6 +543,11 @@
     let groupDataConns = {};
     let groupHostId = null;
     let participantNames = {};
+
+    // ---- Helper to update ID display ----
+    function updateIdDisplay(id) {
+      myIdSpan.textContent = id.toUpperCase();
+    }
 
     // ---- Timer functions ----
     function startTimer() {
@@ -597,6 +620,112 @@
       };
     }
 
+    // ---- PEER INIT (with retry) ----
+    function initPeer(retryCount = 0) {
+      // Generate a new ID immediately
+      myId = genId();
+      updateIdDisplay(myId);
+      statusText.textContent = 'Connecting...';
+      subStatus.textContent = 'Registering with PeerJS cloud';
+
+      // Clean up old peer if any
+      if (peer) {
+        peer.destroy();
+        peer = null;
+      }
+
+      peer = new Peer(myId, {
+        debug: 0,
+        config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+      });
+
+      peer.on('open', (id) => {
+        // Confirm ID (should match myId)
+        if (id !== myId) {
+          myId = id;
+          updateIdDisplay(myId);
+        }
+        statusText.textContent = 'Ready';
+        subStatus.textContent = mode === 'single' ? 'Enter a 4‑letter ID to call' : 'Create or join a group';
+        avatarIcon.textContent = '🎙️';
+        avatarIcon.classList.remove('active');
+        console.log('Peer open:', id);
+        // Resume audio context on user gesture
+        document.addEventListener('click', function resumeAudio() {
+          if (audioContext && audioContext.state === 'suspended') {
+            audioContext.resume();
+          }
+          document.removeEventListener('click', resumeAudio);
+        }, { once: true });
+      });
+
+      peer.on('error', (err) => {
+        console.warn('Peer error:', err);
+        if (err.type === 'unavailable-id') {
+          // ID taken, retry with new one
+          console.log('ID taken, retrying...');
+          peer.destroy();
+          initPeer(retryCount + 1);
+        } else {
+          // Other errors
+          statusText.textContent = '⚠️ Connection error';
+          subStatus.textContent = err.message || 'Please check your internet or refresh';
+          avatarIcon.textContent = '⚠️';
+          avatarIcon.classList.remove('active');
+          // Offer retry via refresh button
+        }
+      });
+
+      // Incoming call handling
+      peer.on('call', (incoming) => {
+        if (mode === 'single') {
+          if (singleCall) {
+            incoming.close();
+            return;
+          }
+          const callerName = incoming.metadata?.name || incoming.peer;
+          incomingName.textContent = callerName;
+          incomingAvatar.textContent = callerName.charAt(0).toUpperCase();
+          incomingSub.textContent = 'is calling you';
+          incomingOverlay.classList.add('show');
+          incoming._callerName = callerName;
+          window._incomingSingle = incoming;
+        } else {
+          if (isInCall && mode === 'group') {
+            const caller = incoming.peer;
+            const isKnown = groupMembers.includes(caller) || (groupHostId && caller === groupHostId);
+            if (isKnown) {
+              acceptIncomingGroupCall(incoming);
+            } else {
+              incoming.close();
+            }
+          } else {
+            incoming.close();
+          }
+        }
+      });
+
+      peer.on('connection', (conn) => {
+        if (mode === 'group' && isGroupHost && isInCall) {
+          handleDataConnection(conn);
+        } else {
+          conn.close();
+        }
+      });
+    }
+
+    // ---- Refresh ID ----
+    function refreshId() {
+      if (isInCall) {
+        if (!confirm('This will end your current call. Continue?')) return;
+        if (mode === 'single') cleanupSingle();
+        else leaveGroup();
+      }
+      if (peer) peer.destroy();
+      initPeer();
+    }
+    refreshIdBtn.addEventListener('click', refreshId);
+
     // ---- SINGLE CALL ----
     async function acceptSingleCall() {
       const incoming = window._incomingSingle;
@@ -630,10 +759,9 @@
     function rejectSingleCall() {
       const incoming = window._incomingSingle;
       if (incoming) {
-        calleeRejected = true;  // mark that we rejected
+        calleeRejected = true;
         incoming.close();
         window._incomingSingle = null;
-        // The close event will handle UI, but we also set it manually here to be safe
         statusText.textContent = 'Call rejected';
         subStatus.textContent = 'You declined the call';
         avatarIcon.textContent = '❌';
@@ -667,9 +795,7 @@
     }
 
     function setupSingleCallEvents(c) {
-      // Monitor connection state
       const stateMonitor = monitorCallConnection(c, () => {
-        // If connection drops unexpectedly, treat as ended
         if (isInCall && singleCall === c) {
           stopTimer();
           cleanupSingle();
@@ -684,7 +810,7 @@
 
       c.on('stream', (remote) => {
         singleCallAnswered = true;
-        calleeRejected = false; // reset
+        calleeRejected = false;
         playRemoteStream(remote);
         const name = c.metadata?.name || c.peer;
         statusText.textContent = `Call with ${name}`;
@@ -703,16 +829,10 @@
           subStatus.textContent = 'The call has ended';
           avatarIcon.textContent = '📵';
         } else if (wasRejectedByUs) {
-          // We are the callee and we rejected
           statusText.textContent = 'Call rejected';
           subStatus.textContent = 'You declined the call';
           avatarIcon.textContent = '❌';
         } else {
-          // We are the caller and the other side rejected, or we are callee but the caller hung up before answer
-          // For caller: other side declined. For callee: caller hung up -> call ended.
-          // We can distinguish: if we are the caller (we initiated), show "The other side declined".
-          // If we are the callee and we didn't reject, it means the caller hung up before we answered -> call ended.
-          // We can use a flag to know if we initiated the call. We'll track isCaller.
           if (window._isCaller) {
             statusText.textContent = 'Call rejected';
             subStatus.textContent = 'The other side declined';
@@ -727,7 +847,6 @@
         callControls.classList.remove('show');
         singleUI.style.display = 'flex';
         if (stateMonitor) stateMonitor();
-        // Reset flags
         calleeRejected = false;
         window._isCaller = false;
       });
@@ -746,7 +865,6 @@
           subStatus.textContent = 'You declined the call';
           avatarIcon.textContent = '❌';
         } else {
-          // Check if error type is peerClosed or similar
           if (err.type === 'peerClosed' || err.message?.includes('closed')) {
             if (window._isCaller) {
               statusText.textContent = 'Call rejected';
@@ -965,7 +1083,6 @@
     }
 
     function setupGroupCallEvents(call, peerId) {
-      // Monitor connection state
       const stateMonitor = monitorCallConnection(call, () => {
         if (groupCalls[peerId]) {
           delete groupCalls[peerId];
@@ -1211,7 +1328,7 @@
         singleCall.close();
         cleanupSingle();
       }
-      window._isCaller = true; // we initiated
+      window._isCaller = true;
       await startSingleCall(target);
     });
     peerInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') callBtn.click(); });
@@ -1238,7 +1355,6 @@
         if (singleCall) {
           singleCall.close();
           cleanupSingle();
-          // The close event will set status to "Call ended"
         }
       } else {
         leaveGroup();
@@ -1260,7 +1376,7 @@
 
     acceptCall.addEventListener('click', () => {
       if (mode === 'single') {
-        window._isCaller = false; // we are callee
+        window._isCaller = false;
         acceptSingleCall();
       }
     });
@@ -1271,9 +1387,11 @@
       }
     });
 
+    // ---- NAME PROMPT ----
     const name = prompt('Enter your nickname:', 'User');
     if (name) myName = name.trim() || 'User';
 
+    // ---- START ----
     initPeer();
 
     window.addEventListener('beforeunload', () => {
