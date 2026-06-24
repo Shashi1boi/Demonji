@@ -535,6 +535,7 @@
     let singleCall = null;
     let singleCallAnswered = false;
     let calleeRejected = false;
+    let waitingTimeout = null; // for caller waiting
 
     // Group call
     let isGroupHost = false;
@@ -622,13 +623,11 @@
 
     // ---- PEER INIT (with retry) ----
     function initPeer(retryCount = 0) {
-      // Generate a new ID immediately
       myId = genId();
       updateIdDisplay(myId);
       statusText.textContent = 'Connecting...';
       subStatus.textContent = 'Registering with PeerJS cloud';
 
-      // Clean up old peer if any
       if (peer) {
         peer.destroy();
         peer = null;
@@ -640,7 +639,6 @@
       });
 
       peer.on('open', (id) => {
-        // Confirm ID (should match myId)
         if (id !== myId) {
           myId = id;
           updateIdDisplay(myId);
@@ -650,7 +648,6 @@
         avatarIcon.textContent = '🎙️';
         avatarIcon.classList.remove('active');
         console.log('Peer open:', id);
-        // Resume audio context on user gesture
         document.addEventListener('click', function resumeAudio() {
           if (audioContext && audioContext.state === 'suspended') {
             audioContext.resume();
@@ -662,21 +659,17 @@
       peer.on('error', (err) => {
         console.warn('Peer error:', err);
         if (err.type === 'unavailable-id') {
-          // ID taken, retry with new one
           console.log('ID taken, retrying...');
           peer.destroy();
           initPeer(retryCount + 1);
         } else {
-          // Other errors
           statusText.textContent = '⚠️ Connection error';
           subStatus.textContent = err.message || 'Please check your internet or refresh';
           avatarIcon.textContent = '⚠️';
           avatarIcon.classList.remove('active');
-          // Offer retry via refresh button
         }
       });
 
-      // Incoming call handling
       peer.on('call', (incoming) => {
         if (mode === 'single') {
           if (singleCall) {
@@ -749,6 +742,11 @@
         avatarIcon.textContent = name.charAt(0).toUpperCase();
         avatarIcon.classList.add('active');
         updateCallVolume(callVolumeSlider.value);
+        // Clear waiting timeout if any (on caller side)
+        if (waitingTimeout) {
+          clearTimeout(waitingTimeout);
+          waitingTimeout = null;
+        }
       } catch (e) {
         alert('Could not accept call: ' + e.message);
         incomingOverlay.classList.remove('show');
@@ -789,6 +787,24 @@
         avatarIcon.textContent = '📞';
         avatarIcon.classList.add('active');
         updateCallVolume(callVolumeSlider.value);
+
+        // Start waiting timeout (10s) to detect rejection
+        if (waitingTimeout) clearTimeout(waitingTimeout);
+        waitingTimeout = setTimeout(() => {
+          // If still not answered and call still exists, treat as rejected/failed
+          if (singleCall && !singleCallAnswered && isInCall) {
+            console.log('Waiting timeout – call not answered, treating as rejected');
+            stopTimer();
+            cleanupSingle();
+            statusText.textContent = 'Call rejected';
+            subStatus.textContent = 'The other side did not answer';
+            avatarIcon.textContent = '❌';
+            avatarIcon.classList.remove('active');
+            callControls.classList.remove('show');
+            singleUI.style.display = 'flex';
+            waitingTimeout = null;
+          }
+        }, 10000);
       } catch (e) {
         alert('Could not start call: ' + e.message);
       }
@@ -805,12 +821,14 @@
           avatarIcon.classList.remove('active');
           callControls.classList.remove('show');
           singleUI.style.display = 'flex';
+          if (waitingTimeout) { clearTimeout(waitingTimeout); waitingTimeout = null; }
         }
       });
 
       c.on('stream', (remote) => {
         singleCallAnswered = true;
         calleeRejected = false;
+        if (waitingTimeout) { clearTimeout(waitingTimeout); waitingTimeout = null; }
         playRemoteStream(remote);
         const name = c.metadata?.name || c.peer;
         statusText.textContent = `Call with ${name}`;
@@ -824,6 +842,7 @@
         const wasAnswered = singleCallAnswered;
         const wasRejectedByUs = calleeRejected;
         cleanupSingle();
+        if (waitingTimeout) { clearTimeout(waitingTimeout); waitingTimeout = null; }
         if (wasAnswered) {
           statusText.textContent = 'Call ended';
           subStatus.textContent = 'The call has ended';
@@ -856,6 +875,7 @@
         const wasAnswered = singleCallAnswered;
         const wasRejectedByUs = calleeRejected;
         cleanupSingle();
+        if (waitingTimeout) { clearTimeout(waitingTimeout); waitingTimeout = null; }
         if (wasAnswered) {
           statusText.textContent = 'Call ended';
           subStatus.textContent = 'The call has ended';
@@ -906,6 +926,7 @@
       remoteAudioElements.forEach(el => { el.srcObject = null; el.remove(); });
       remoteAudioElements = [];
       stopTimer();
+      if (waitingTimeout) { clearTimeout(waitingTimeout); waitingTimeout = null; }
     }
 
     // ---- GROUP CALL ----
@@ -1387,11 +1408,9 @@
       }
     });
 
-    // ---- NAME PROMPT ----
     const name = prompt('Enter your nickname:', 'User');
     if (name) myName = name.trim() || 'User';
 
-    // ---- START ----
     initPeer();
 
     window.addEventListener('beforeunload', () => {
