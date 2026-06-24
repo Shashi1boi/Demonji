@@ -454,7 +454,7 @@
     </div>
   </div>
 
-  <div class="footer">Direct P2P · ultra‑low latency</div>
+  <div class="footer">By DEMONJI · ultra‑low latency</div>
 </div>
 
 <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
@@ -515,6 +515,7 @@
 
     // Single call
     let singleCall = null;
+    let singleCallAnswered = false; // track if stream received
 
     // Group call
     let isGroupHost = false;
@@ -659,6 +660,7 @@
         if (!localStream) localStream = await getAudioStream();
         incoming.answer(localStream);
         singleCall = incoming;
+        singleCallAnswered = false; // will be set true on stream
         setupSingleCallEvents(singleCall);
         incomingOverlay.classList.remove('show');
         window._incomingSingle = null;
@@ -672,7 +674,7 @@
         avatarIcon.textContent = name.charAt(0).toUpperCase();
         avatarIcon.classList.add('active');
         updateCallVolume(callVolumeSlider.value);
-        // Start timer when stream arrives will be triggered by 'stream' event
+        // Timer will start on stream
       } catch (e) {
         alert('Could not accept call: ' + e.message);
         incomingOverlay.classList.remove('show');
@@ -685,14 +687,16 @@
       if (incoming) {
         incoming.close();
         window._incomingSingle = null;
-        // Show rejected on this side
+        // Show rejection on this side
         statusText.textContent = 'Call rejected';
-        subStatus.textContent = 'You rejected the call';
+        subStatus.textContent = 'You declined the call';
         avatarIcon.textContent = '❌';
         avatarIcon.classList.remove('active');
       }
       incomingOverlay.classList.remove('show');
-      // Also if we are the caller and the other side rejected, we'll handle in caller's error event.
+      // Also close any pending call UI
+      callControls.classList.remove('show');
+      singleUI.style.display = 'flex';
     }
 
     async function startSingleCall(targetId) {
@@ -701,6 +705,7 @@
         const callOptions = { metadata: { name: myName } };
         const out = peer.call(targetId, localStream, callOptions);
         singleCall = out;
+        singleCallAnswered = false;
         setupSingleCallEvents(singleCall);
         isInCall = true;
         callControls.classList.add('show');
@@ -718,6 +723,7 @@
 
     function setupSingleCallEvents(c) {
       c.on('stream', (remote) => {
+        singleCallAnswered = true;
         playRemoteStream(remote);
         const name = c.metadata?.name || c.peer;
         statusText.textContent = `Call with ${name}`;
@@ -729,11 +735,20 @@
       });
       c.on('close', () => {
         stopTimer();
+        const wasAnswered = singleCallAnswered;
         cleanupSingle();
-        statusText.textContent = 'Call ended';
-        subStatus.textContent = 'Enter a 4‑letter ID to call';
+        if (wasAnswered) {
+          // Normal end
+          statusText.textContent = 'Call ended';
+          subStatus.textContent = 'The call has ended';
+          avatarIcon.textContent = '📵';
+        } else {
+          // Never got stream – it was rejected
+          statusText.textContent = 'Call rejected';
+          subStatus.textContent = 'The other side declined';
+          avatarIcon.textContent = '❌';
+        }
         avatarIcon.classList.remove('active');
-        avatarIcon.textContent = '🎙️';
         callControls.classList.remove('show');
         singleUI.style.display = 'flex';
       });
@@ -746,13 +761,12 @@
           statusText.textContent = 'Call rejected';
           subStatus.textContent = 'The other side declined';
           avatarIcon.textContent = '❌';
-          avatarIcon.classList.remove('active');
         } else {
           statusText.textContent = 'Call error';
           subStatus.textContent = err.message || 'Try again';
           avatarIcon.textContent = '⚠️';
-          avatarIcon.classList.remove('active');
         }
+        avatarIcon.classList.remove('active');
         callControls.classList.remove('show');
         singleUI.style.display = 'flex';
       });
@@ -760,6 +774,7 @@
 
     function cleanupSingle() {
       if (singleCall) { singleCall.close(); singleCall = null; }
+      singleCallAnswered = false;
       isInCall = false;
       if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
       isMuted = false; isSpeakerOn = false;
@@ -769,11 +784,10 @@
       callControls.classList.remove('show');
       singleUI.style.display = 'flex';
       groupUI.classList.remove('show');
-      avatarIcon.classList.remove('active');
-      avatarIcon.textContent = '🎙️';
       remoteAudioElements.forEach(el => { el.srcObject = null; el.remove(); });
       remoteAudioElements = [];
       stopTimer();
+      // Don't reset avatar icon here, it's set by caller
     }
 
     // ---- GROUP CALL ----
@@ -800,7 +814,7 @@
         getAudioStream().then(s => { localStream = s; }).catch(console.warn);
       }
       updateCallVolume(callVolumeSlider.value);
-      // Timer will start when first stream arrives
+      // Timer starts when first stream arrives
     }
 
     async function joinGroup(hostId) {
@@ -866,7 +880,7 @@
         subStatus.textContent = `Connected to ${members.length} participant(s)`;
         avatarIcon.textContent = '🎤';
         avatarIcon.classList.add('active');
-        // Start timer if we have at least one stream (will be triggered by stream event)
+        // Timer will start on first stream
       } else if (data.type === 'new-member') {
         const newMember = data.id;
         const newName = data.name || newMember;
@@ -1202,7 +1216,11 @@
 
     endCallBtn.addEventListener('click', () => {
       if (mode === 'single') {
-        if (singleCall) { singleCall.close(); cleanupSingle(); }
+        if (singleCall) {
+          singleCall.close();
+          cleanupSingle();
+          // We'll show "Call ended" on our side via close event.
+        }
       } else {
         leaveGroup();
       }
