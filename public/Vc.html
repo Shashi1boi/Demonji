@@ -224,7 +224,6 @@
     }
     .participant .dot.muted { background: #f44336; }
 
-    /* Chat area */
     .chat-area {
       display: none;
       flex-direction: column;
@@ -340,7 +339,6 @@
 
     .footer { margin-top: 10px; font-size: 10px; color: #4a5a74; text-align: center; flex-shrink: 0; }
 
-    /* Incoming overlay */
     .incoming-overlay {
       display: none;
       position: absolute;
@@ -376,7 +374,6 @@
     .incoming-overlay .actions .reject { background: #d93f4c; }
     .incoming-overlay .actions .reject:hover { background: #b32e3a; }
 
-    /* scrollbar */
     .participants::-webkit-scrollbar, .chat-messages::-webkit-scrollbar { width: 3px; }
     .participants::-webkit-scrollbar-track, .chat-messages::-webkit-scrollbar-track { background: transparent; }
     .participants::-webkit-scrollbar-thumb, .chat-messages::-webkit-scrollbar-thumb { background: #2b3547; border-radius: 10px; }
@@ -445,7 +442,7 @@
       </div>
     </div>
 
-    <!-- Controls (mute, speaker, end) -->
+    <!-- Controls -->
     <div class="controls" id="callControls">
       <button class="ctrl-btn" id="muteBtn"><span>🎤</span> Mute</button>
       <button class="ctrl-btn" id="speakerBtn"><span>🔊</span> Speaker</button>
@@ -645,15 +642,10 @@
           incoming._callerName = callerName;
           window._incomingSingle = incoming;
         } else {
-          // group mode: auto‑accept if we are in a group and caller is known
+          // GROUP MODE: accept ANY incoming call if we are in a group
           if (isInCall && mode === 'group') {
-            const caller = incoming.peer;
-            const isKnown = groupMembers.includes(caller) || (groupHostId && caller === groupHostId);
-            if (isKnown) {
-              acceptIncomingGroupCall(incoming);
-            } else {
-              incoming.close();
-            }
+            // Accept automatically
+            acceptIncomingGroupCall(incoming);
           } else {
             incoming.close();
           }
@@ -963,6 +955,7 @@
         const members = data.list || [];
         members.forEach(m => { participantNames[m.id] = m.name; });
         groupMembers = members.map(m => m.id).filter(id => id !== myId);
+        // Call any member we are not already connected to
         members.forEach(m => {
           if (m.id !== myId && !groupCalls[m.id]) {
             initiateGroupCall(m.id);
@@ -973,7 +966,6 @@
         subStatus.textContent = `${members.length} participant(s)`;
         avatarIcon.textContent = '🎤';
         avatarIcon.classList.add('active');
-        // show chat messages if any
       } else if (data.type === 'new-member') {
         const newMember = data.id;
         const newName = data.name || newMember;
@@ -998,7 +990,6 @@
           subStatus.textContent = `${participantNames[leftId] || leftId} left`;
         }
       } else if (data.type === 'chat') {
-        // relay chat message to UI
         const senderName = data.senderName || data.senderId;
         const text = data.text;
         addChatMessage(senderName, text);
@@ -1030,31 +1021,40 @@
 
     function acceptIncomingGroupCall(incoming) {
       const caller = incoming.peer;
-      if (!isInCall || mode !== 'group') { incoming.close(); return; }
-      const isKnown = groupMembers.includes(caller) || (groupHostId && caller === groupHostId);
-      if (isKnown) {
-        if (groupCalls[caller]) { incoming.close(); return; }
-        if (!localStream) {
-          getAudioStream().then(s => {
-            localStream = s;
-            incoming.answer(localStream);
-          }).catch(()=>{incoming.close();});
-        } else {
-          incoming.answer(localStream);
-        }
-        groupCalls[caller] = incoming;
-        setupGroupCallEvents(incoming, caller);
-        if (!participantNames[caller]) {
-          participantNames[caller] = incoming.metadata?.name || caller;
-        }
-        if (!groupMembers.includes(caller)) {
-          groupMembers.push(caller);
-          updateParticipantsList();
-        }
-        console.log('Accepted group call from', caller);
-      } else {
+      // Accept only if we are in a group call
+      if (!isInCall || mode !== 'group') {
         incoming.close();
+        return;
       }
+      // If we already have a call with this peer, close the new one
+      if (groupCalls[caller]) {
+        incoming.close();
+        return;
+      }
+      // Ensure we have a local stream
+      if (!localStream) {
+        getAudioStream().then(s => {
+          localStream = s;
+          incoming.answer(localStream);
+        }).catch(() => { incoming.close(); });
+      } else {
+        incoming.answer(localStream);
+      }
+      groupCalls[caller] = incoming;
+      setupGroupCallEvents(incoming, caller);
+      // Add to members if not already
+      if (!participantNames[caller]) {
+        participantNames[caller] = incoming.metadata?.name || caller;
+      }
+      if (!groupMembers.includes(caller)) {
+        groupMembers.push(caller);
+        updateParticipantsList();
+        // If we are host, broadcast new member to others
+        if (isGroupHost) {
+          broadcastToMembers({ type: 'new-member', id: caller, name: participantNames[caller] });
+        }
+      }
+      console.log('Accepted group call from', caller);
     }
 
     function setupGroupCallEvents(call, peerId) {
@@ -1090,7 +1090,10 @@
           participantNames[peerId] = call.metadata?.name || peerId;
         }
         updateParticipantsList();
-        if (isGroupHost) {
+        // If we are host, broadcast new member (but only if not already done)
+        // We do this in acceptIncomingGroupCall or via data from host.
+        if (isGroupHost && !groupMembers.includes(peerId)) {
+          // But we already added, so broadcast to others
           broadcastToMembers({ type: 'new-member', id: peerId, name: participantNames[peerId] });
         }
         if (!timerRunning) startTimer();
@@ -1144,19 +1147,18 @@
             conn.send({ type: 'members', list: memberList });
             broadcastToMembers({ type: 'new-member', id: newMember, name: newName }, [newMember]);
             updateParticipantsList();
+            // Host initiates call to new member
             initiateGroupCall(newMember);
           }
         } else if (data.type === 'chat') {
-          // relay chat message to all members except sender
+          // relay chat
           const msg = {
             type: 'chat',
             senderId: peerId,
             senderName: participantNames[peerId] || peerId,
             text: data.text
           };
-          // add to own chat
           addChatMessage(msg.senderName, msg.text);
-          // broadcast to all others
           broadcastToMembers(msg, [peerId]);
         }
       });
@@ -1257,14 +1259,11 @@
       if (!text) return;
       chatInput.value = '';
       const senderName = myName;
-      // add to own UI
       addChatMessage(senderName, text);
-      // If host, broadcast to all members via data connections
       if (isGroupHost) {
         const msg = { type: 'chat', senderId: myId, senderName: senderName, text: text };
         broadcastToMembers(msg);
       } else {
-        // send to host (who will relay)
         const hostId = groupHostId;
         if (groupDataConns[hostId]) {
           try {
@@ -1327,7 +1326,6 @@
       } else {
         singleUI.style.display = 'none';
         groupUI.classList.add('show');
-        // chat area will be shown when in group call
         subStatus.textContent = 'Create or join a group';
       }
       statusText.textContent = 'Ready';
