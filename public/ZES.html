@@ -3,9 +3,11 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>ISEKAI · ULTRA</title>
+    <title>ISEKAI · ZEE5 Player</title>
+    <!-- HLS.js & DASH.js -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <script src="https://cdn.jsdelivr.net/npm/dashjs@4.5.0/dist/dash.all.min.js"></script>
-    <script type="module" src="https://cdn.jsdelivr.net/npm/hls-video-element/+esm"></script>
+    <!-- YouTube-style UI -->
     <script type="module" src="https://cdn.jsdelivr.net/npm/player.style/yt/+esm"></script>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
@@ -39,7 +41,6 @@
             color:#e0e7ff;
             font-weight:700;
             font-size:16px;
-            letter-spacing:-0.3px;
         }
         .brand i {
             font-style:normal;
@@ -66,9 +67,8 @@
             cursor:pointer;
             outline:none;
             min-height:28px;
-            font-family:inherit;
             background:#1a1f2e;
-            border-color:rgba(255,255,255,0.1);
+            font-family:inherit;
         }
         .top-controls button:hover { background:#2a2f42; }
         .top-controls .proxy-btn.active {
@@ -112,18 +112,14 @@
             --media-text-color:#fff;
             --media-background-color:#000;
         }
-        .video-container video,
-        .video-container hls-video {
+        .video-container video {
             width:100%;
             height:100%;
             object-fit:contain;
             background:#0a0c14;
             display:block;
         }
-        video::-webkit-media-controls,
-        hls-video::-webkit-media-controls {
-            display:none !important;
-        }
+        video::-webkit-media-controls { display:none !important; }
         .fit-controls {
             display:flex;
             justify-content:center;
@@ -142,7 +138,6 @@
             font-size:12px;
             font-weight:600;
             cursor:pointer;
-            transition:0.15s;
             font-family:inherit;
         }
         .fit-controls button:hover { background:#2a2f42; }
@@ -388,8 +383,9 @@
     </style>
 </head>
 <body>
+    <!-- Top Bar -->
     <div class="top-bar">
-        <div class="brand"><span>⚡ISEKAI</span><i>v1.5</i></div>
+        <div class="brand"><span>⚡ISEKAI</span><i>ZEE5</i></div>
         <div class="top-controls">
             <button class="proxy-btn" id="proxyToggle">🔀Proxy</button>
             <span class="proxy-status" id="proxyStatus">off</span>
@@ -401,8 +397,7 @@
         <div class="player-wrapper">
             <div class="video-container" id="videoContainer">
                 <media-theme-yt>
-                    <hls-video id="hlsPlayer" slot="media" class="media" playsinline crossorigin="anonymous" autoplay muted></hls-video>
-                    <video id="dashPlayer" slot="media" class="media" playsinline crossorigin="anonymous" autoplay muted style="display:none;"></video>
+                    <video id="videoPlayer" slot="media" playsinline crossorigin="anonymous" autoplay muted></video>
                 </media-theme-yt>
                 <div class="loading-overlay" id="loadingOverlay"><div class="spinner"></div></div>
                 <div class="status-msg" id="statusMsg">Ready</div>
@@ -439,6 +434,7 @@
         (function() {
             'use strict';
 
+            // ─── CONFIG ───────────────────────────────────────────
             const PLAYLIST_URL = 'https://servertvhub.site/zee5/playlist.php';
             const PROXY_LIST = [
                 'https://demonji.onrender.com/cors-proxy.php?url=',
@@ -446,15 +442,17 @@
                 'https://api.codetabs.com/v1/proxy/?quest='
             ];
 
+            // ─── STATE ────────────────────────────────────────────
             let allChannels = [];
             let filteredChannels = [];
             let currentChannel = null;
             let proxyEnabled = false;
             let loading = false;
+            let hls = null;
             let dashInstance = null;
-            let hlsPlayer = document.getElementById('hlsPlayer');
-            let dashPlayer = document.getElementById('dashPlayer');
 
+            // ─── DOM REFS ────────────────────────────────────────
+            const video = document.getElementById('videoPlayer');
             const channelListEl = document.getElementById('channelList');
             const channelToggle = document.getElementById('channelToggle');
             const closeSidebar = document.getElementById('closeSidebar');
@@ -471,9 +469,11 @@
             const rightSidebar = document.getElementById('rightSidebar');
             const manualUrl = document.getElementById('manualUrl');
             const manualPlayBtn = document.getElementById('manualPlayBtn');
+            const aspectSelect = document.getElementById('aspectSelect');
 
             let statusTimeout = null;
 
+            // ─── HELPERS ──────────────────────────────────────────
             function setStatus(text, duration = 3000) {
                 statusMsg.textContent = text;
                 statusMsg.classList.add('show');
@@ -495,41 +495,39 @@
                 return base + encodeURIComponent(rawUrl);
             }
 
-            // ─── fetch with proxy fallback ────────────────────────
+            // ─── FETCH WITH PROXY FALLBACK ──────────────────────
             async function fetchWithFallback(url) {
-                // Try direct
+                // Direct
                 try {
                     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
                     if (res.ok) {
                         const text = await res.text();
                         return { text, proxyUsed: 'direct' };
                     }
-                } catch (e) { /* ignore */ }
+                } catch (e) {}
 
-                // Try proxies
-                for (let i = 0; i < PROXY_LIST.length; i++) {
-                    if (!proxyEnabled) break;
-                    try {
-                        const pUrl = PROXY_LIST[i] + encodeURIComponent(url);
-                        const res = await fetch(pUrl, { signal: AbortSignal.timeout(8000) });
-                        if (res.ok) {
-                            const text = await res.text();
-                            return { text, proxyUsed: 'proxy' + (i + 1) };
-                        }
-                    } catch (e) { /* ignore */ }
+                // Proxies (only if proxy is enabled)
+                if (proxyEnabled) {
+                    for (let i = 0; i < PROXY_LIST.length; i++) {
+                        try {
+                            const pUrl = PROXY_LIST[i] + encodeURIComponent(url);
+                            const res = await fetch(pUrl, { signal: AbortSignal.timeout(8000) });
+                            if (res.ok) {
+                                const text = await res.text();
+                                return { text, proxyUsed: 'proxy' + (i + 1) };
+                            }
+                        } catch (e) {}
+                    }
                 }
                 throw new Error('All fetch attempts failed');
             }
 
-            // ─── parse playlist ───────────────────────────────────
+            // ─── PARSE PLAYLIST ──────────────────────────────────
             function parsePlaylist(text) {
-                // Try JSON
                 try {
                     const data = JSON.parse(text);
-                    
-                    // Case 1: Direct array with title/image_url/video_token
                     if (Array.isArray(data) && data.length) {
-                        // Check if first item has the expected fields
+                        // Look for the exact fields: title, image_url, video_token
                         if (data[0].title !== undefined && data[0].video_token !== undefined) {
                             return data.map(item => ({
                                 name: item.title || 'Unknown',
@@ -538,7 +536,7 @@
                                 category: 'ZEE5'
                             })).filter(ch => ch.url);
                         }
-                        // Fallback: generic mapping
+                        // Generic fallback
                         return data.map(item => ({
                             name: item.title || item.name || 'Unknown',
                             url: item.video_token || item.url || '',
@@ -546,55 +544,18 @@
                             category: item.category || 'Uncategorized'
                         })).filter(ch => ch.url);
                     }
-                    
-                    // Case 2: Object with channels array
-                    if (data && typeof data === 'object' && data.channels) {
-                        return data.channels.map(item => ({
-                            name: item.title || item.name || 'Unknown',
-                            url: item.video_token || item.url || '',
-                            logo: item.image_url || item.logo || '',
-                            category: item.category || 'Uncategorized'
-                        })).filter(ch => ch.url);
-                    }
-                } catch (e) { /* not JSON */ }
-
-                // Try M3U
-                if (text.includes('#EXTM3U')) {
-                    const lines = text.split(/\r?\n/);
-                    const result = [];
-                    let current = null;
-                    for (const line of lines) {
-                        if (line.startsWith('#EXTINF:')) {
-                            const info = line.slice(8);
-                            const parts = info.split(',');
-                            const attrs = parts[0] || '';
-                            const name = parts.slice(1).join(',') || 'Unknown';
-                            let category = 'Uncategorized';
-                            let logo = '';
-                            const mg = attrs.match(/group-title="([^"]*)"/);
-                            if (mg) category = mg[1] || 'Uncategorized';
-                            const ml = attrs.match(/tvg-logo="([^"]*)"/);
-                            if (ml) logo = ml[1] || '';
-                            current = { name: name.trim(), category, logo, url: '' };
-                        } else if (line.trim() && !line.startsWith('#') && current) {
-                            current.url = line.trim();
-                            result.push(current);
-                            current = null;
-                        }
-                    }
-                    return result;
-                }
+                } catch (e) {}
                 return null;
             }
 
-            // ─── load playlist ────────────────────────────────────
+            // ─── LOAD PLAYLIST ───────────────────────────────────
             async function loadPlaylist() {
                 try {
                     setStatus('Loading playlist…', 0);
                     const { text, proxyUsed } = await fetchWithFallback(PLAYLIST_URL);
                     const parsed = parsePlaylist(text);
                     if (!parsed || parsed.length === 0) {
-                        setStatus('No channels found in playlist.', 5000);
+                        setStatus('No channels found.', 5000);
                         return;
                     }
                     allChannels = parsed;
@@ -611,6 +572,7 @@
                 }
             }
 
+            // ─── RENDER CHANNELS ────────────────────────────────
             function renderChannels(channels) {
                 const groups = {};
                 for (const ch of channels) {
@@ -639,159 +601,238 @@
                         if (!url) return setStatus('No stream URL', 3000);
                         document.querySelectorAll('.channel-item').forEach(c => c.classList.remove('active'));
                         this.classList.add('active');
-                        playStream(url, name);
+                        playChannel(url, name);
                         if (window.innerWidth < 700) rightSidebar.classList.remove('open');
                     });
                 });
             }
 
-            // ─── Playback ────────────────────────────────────────
-            function playStream(url, name) {
-                if (dashInstance) {
-                    dashInstance.destroy();
-                    dashInstance = null;
-                }
-                hlsPlayer.removeAttribute('src');
-                dashPlayer.removeAttribute('src');
-                hlsPlayer.style.display = 'block';
-                dashPlayer.style.display = 'none';
-                hlsPlayer.muted = true;
-
-                currentChannel = { url, name };
-                setLoading(true);
-                setStatus(`Loading ${name}…`, 0);
-
-                // The video_token is a URL that returns the actual stream
-                // We need to fetch it to get the real stream URL
-                const fetchStream = async () => {
-                    try {
-                        // If proxy is enabled, use it for the token request too
-                        let streamUrl = url;
-                        if (proxyEnabled) {
-                            streamUrl = getProxiedUrl(url, 0);
-                        }
-                        
-                        // First, try to fetch the token URL to get the actual stream
-                        const resp = await fetch(streamUrl);
-                        if (resp.ok) {
-                            const data = await resp.text();
-                            // Check if it's a JSON with a stream URL
-                            try {
-                                const json = JSON.parse(data);
-                                if (json.url || json.stream_url || json.video_url) {
-                                    streamUrl = json.url || json.stream_url || json.video_url;
-                                }
-                            } catch (e) {
-                                // If it's not JSON, it might be a direct m3u8 or mpd
-                                if (data.trim().startsWith('#EXTM3U') || data.trim().startsWith('<MPD')) {
-                                    // It's a manifest, use the original URL
-                                    streamUrl = url;
-                                } else {
-                                    // Try to find a URL in the response
-                                    const urlMatch = data.match(/https?:\/\/[^\s"']+\.(m3u8|mpd|mp4|ts)/i);
-                                    if (urlMatch) {
-                                        streamUrl = urlMatch[0];
-                                    }
-                                }
-                            }
-                        }
-                        
-                        // Now play the stream
-                        const lower = streamUrl.toLowerCase();
-                        const isMpd = lower.includes('.mpd') || lower.includes('mpd');
-                        
-                        if (isMpd) {
-                            hlsPlayer.style.display = 'none';
-                            dashPlayer.style.display = 'block';
-                            if (typeof dashjs === 'undefined' || typeof dashjs.MediaPlayer === 'undefined') {
-                                setStatus('DASH.js not loaded.', 5000);
-                                setLoading(false);
-                                return;
-                            }
-                            dashInstance = dashjs.MediaPlayer().create();
-                            dashInstance.initialize(dashPlayer, streamUrl, true);
-                            dashInstance.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
-                                setLoading(false);
-                                setStatus(`Playing ${name} (DASH)`, 2500);
-                            });
-                            dashInstance.on(dashjs.MediaPlayer.events.ERROR, (e) => {
-                                console.error('DASH error:', e);
-                                setStatus('DASH error: ' + (e.error?.message || 'unknown'), 5000);
-                                setLoading(false);
-                            });
-                        } else {
-                            hlsPlayer.style.display = 'block';
-                            dashPlayer.style.display = 'none';
-                            hlsPlayer.src = streamUrl;
-                            hlsPlayer.load();
-                            setLoading(false);
-                            setStatus(`Playing ${name} (HLS)`, 2500);
-                        }
-                    } catch (e) {
-                        // If fetch fails, try playing the token URL directly
-                        console.warn('Token fetch failed, playing URL directly:', e);
-                        const lower = url.toLowerCase();
-                        const isMpd = lower.includes('.mpd') || lower.includes('mpd');
-                        let streamUrl = proxyEnabled ? getProxiedUrl(url, 0) : url;
-                        
-                        if (isMpd) {
-                            hlsPlayer.style.display = 'none';
-                            dashPlayer.style.display = 'block';
-                            if (typeof dashjs === 'undefined' || typeof dashjs.MediaPlayer === 'undefined') {
-                                setStatus('DASH.js not loaded.', 5000);
-                                setLoading(false);
-                                return;
-                            }
-                            dashInstance = dashjs.MediaPlayer().create();
-                            dashInstance.initialize(dashPlayer, streamUrl, true);
-                            dashInstance.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
-                                setLoading(false);
-                                setStatus(`Playing ${name} (DASH)`, 2500);
-                            });
-                            dashInstance.on(dashjs.MediaPlayer.events.ERROR, (e) => {
-                                console.error('DASH error:', e);
-                                setStatus('DASH error: ' + (e.error?.message || 'unknown'), 5000);
-                                setLoading(false);
-                            });
-                        } else {
-                            hlsPlayer.style.display = 'block';
-                            dashPlayer.style.display = 'none';
-                            hlsPlayer.src = streamUrl;
-                            hlsPlayer.load();
-                            setLoading(false);
-                            setStatus(`Playing ${name} (HLS)`, 2500);
-                        }
+            // ─── RESOLVE STREAM URL FROM TOKEN ──────────────────
+            async function resolveStreamUrl(tokenUrl) {
+                try {
+                    let fetchUrl = tokenUrl;
+                    if (proxyEnabled) {
+                        fetchUrl = getProxiedUrl(tokenUrl, 0);
                     }
-                };
-                
-                fetchStream();
+                    const resp = await fetch(fetchUrl);
+                    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                    const data = await resp.text();
+
+                    // Look for a stream URL in the response
+                    // Common patterns: .m3u8, .mpd, .mp4, .ts
+                    const urlMatch = data.match(/https?:\/\/[^\s"']+\.(m3u8|mpd|mp4|ts|m3u)/i);
+                    if (urlMatch) {
+                        return urlMatch[0];
+                    }
+
+                    // If the response itself looks like a manifest, treat the token URL as the stream
+                    if (data.trim().startsWith('#EXTM3U') || data.trim().startsWith('<MPD')) {
+                        return tokenUrl;
+                    }
+
+                    // Try to parse as JSON (some tokens return JSON with stream URL)
+                    try {
+                        const json = JSON.parse(data);
+                        if (json.url) return json.url;
+                        if (json.stream_url) return json.stream_url;
+                        if (json.video_url) return json.video_url;
+                    } catch (e) {}
+
+                    // Fallback: return the token URL itself (may work if it's a direct manifest)
+                    return tokenUrl;
+                } catch (e) {
+                    console.warn('Token fetch failed, using token as URL:', e);
+                    return tokenUrl;
+                }
             }
 
-            // ─── Manual play ──────────────────────────────────────
+            // ─── PLAY CHANNEL ────────────────────────────────────
+            async function playChannel(tokenUrl, name) {
+                // Clean up previous players
+                if (hls) { hls.destroy(); hls = null; }
+                if (dashInstance) { dashInstance.destroy(); dashInstance = null; }
+                video.pause();
+                video.removeAttribute('src');
+                video.load();
+
+                currentChannel = { url: tokenUrl, name };
+                setLoading(true);
+                setStatus(`Resolving ${name}…`, 0);
+
+                try {
+                    // Resolve the actual stream URL from the token
+                    const streamUrl = await resolveStreamUrl(tokenUrl);
+                    console.log('Resolved stream URL:', streamUrl);
+
+                    // Determine format
+                    const lower = streamUrl.toLowerCase();
+                    const isMpd = lower.includes('.mpd') || lower.includes('mpd');
+
+                    if (isMpd) {
+                        // DASH
+                        if (typeof dashjs === 'undefined') {
+                            setStatus('DASH.js not loaded.', 5000);
+                            setLoading(false);
+                            return;
+                        }
+                        dashInstance = dashjs.MediaPlayer().create();
+                        dashInstance.initialize(video, streamUrl, true);
+                        dashInstance.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
+                            setLoading(false);
+                            setStatus(`Playing ${name} (DASH)`, 2500);
+                        });
+                        dashInstance.on(dashjs.MediaPlayer.events.ERROR, (e) => {
+                            console.error('DASH error:', e);
+                            setStatus('DASH error: ' + (e.error?.message || 'unknown'), 5000);
+                            setLoading(false);
+                        });
+                    } else {
+                        // HLS (m3u8, ts, mp4)
+                        if (Hls.isSupported()) {
+                            hls = new Hls({
+                                enableWorker: true,
+                                lowLatencyMode: false,
+                                backbufferLength: 2,
+                                maxBufferLength: 4,
+                                abrBandWidthFactor: 0.9,
+                                startLevel: -1,
+                                xhrSetup: (xhr, xhrUrl) => {
+                                    if (proxyEnabled) {
+                                        if (!xhrUrl.includes('demonji.onrender.com') && !xhrUrl.includes('corsproxy.io')) {
+                                            const proxied = getProxiedUrl(xhrUrl, 0);
+                                            xhr.open('GET', proxied, true);
+                                        }
+                                    }
+                                }
+                            });
+                            hls.loadSource(streamUrl);
+                            hls.attachMedia(video);
+                            hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                                setLoading(false);
+                                setStatus(`Playing ${name} (HLS)`, 2500);
+                            });
+                            hls.on(Hls.Events.ERROR, (event, data) => {
+                                if (data.fatal) {
+                                    console.error('HLS fatal error:', data);
+                                    setStatus('HLS error: ' + (data.type || 'unknown'), 5000);
+                                    setLoading(false);
+                                }
+                            });
+                            video.play().catch(() => {});
+                        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                            video.src = streamUrl;
+                            video.play().then(() => {
+                                setLoading(false);
+                                setStatus(`Playing ${name} (native)`, 2500);
+                            }).catch((e) => {
+                                setStatus('Native play error: ' + e.message, 5000);
+                                setLoading(false);
+                            });
+                        } else {
+                            setStatus('HLS not supported.', 5000);
+                            setLoading(false);
+                        }
+                    }
+                } catch (e) {
+                    setStatus('Failed to resolve stream: ' + e.message, 5000);
+                    setLoading(false);
+                }
+            }
+
+            // ─── MANUAL PLAY ─────────────────────────────────────
             manualPlayBtn.addEventListener('click', function() {
                 const url = manualUrl.value.trim();
                 if (!url) return setStatus('Please enter a URL', 3000);
-                playStream(url, 'Manual Stream');
+                // Treat as direct stream URL, no token resolution
+                // We'll play it directly
+                if (hls) { hls.destroy(); hls = null; }
+                if (dashInstance) { dashInstance.destroy(); dashInstance = null; }
+                video.pause();
+                video.removeAttribute('src');
+                video.load();
+
+                const lower = url.toLowerCase();
+                const isMpd = lower.includes('.mpd') || lower.includes('mpd');
+                let streamUrl = proxyEnabled ? getProxiedUrl(url, 0) : url;
+
+                setLoading(true);
+                setStatus('Playing manual stream…', 0);
+
+                if (isMpd) {
+                    if (typeof dashjs === 'undefined') {
+                        setStatus('DASH.js not loaded.', 5000);
+                        setLoading(false);
+                        return;
+                    }
+                    dashInstance = dashjs.MediaPlayer().create();
+                    dashInstance.initialize(video, streamUrl, true);
+                    dashInstance.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
+                        setLoading(false);
+                        setStatus('Playing DASH stream', 2500);
+                    });
+                    dashInstance.on(dashjs.MediaPlayer.events.ERROR, (e) => {
+                        console.error('DASH error:', e);
+                        setStatus('DASH error: ' + (e.error?.message || 'unknown'), 5000);
+                        setLoading(false);
+                    });
+                } else {
+                    if (Hls.isSupported()) {
+                        hls = new Hls({
+                            enableWorker: true,
+                            lowLatencyMode: false,
+                            xhrSetup: (xhr, xhrUrl) => {
+                                if (proxyEnabled) {
+                                    if (!xhrUrl.includes('demonji.onrender.com') && !xhrUrl.includes('corsproxy.io')) {
+                                        const proxied = getProxiedUrl(xhrUrl, 0);
+                                        xhr.open('GET', proxied, true);
+                                    }
+                                }
+                            }
+                        });
+                        hls.loadSource(streamUrl);
+                        hls.attachMedia(video);
+                        hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                            setLoading(false);
+                            setStatus('Playing HLS stream', 2500);
+                        });
+                        hls.on(Hls.Events.ERROR, (event, data) => {
+                            if (data.fatal) {
+                                setStatus('HLS error: ' + (data.type || 'unknown'), 5000);
+                                setLoading(false);
+                            }
+                        });
+                        video.play().catch(() => {});
+                    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                        video.src = streamUrl;
+                        video.play().then(() => {
+                            setLoading(false);
+                            setStatus('Playing native stream', 2500);
+                        }).catch((e) => {
+                            setStatus('Native play error: ' + e.message, 5000);
+                            setLoading(false);
+                        });
+                    } else {
+                        setStatus('HLS not supported.', 5000);
+                        setLoading(false);
+                    }
+                }
             });
+
             manualUrl.addEventListener('keydown', function(e) {
                 if (e.key === 'Enter') manualPlayBtn.click();
             });
 
-            // ─── Fit buttons ────────────────────────────────────
+            // ─── FIT BUTTONS ────────────────────────────────────
             fitButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
                     const fit = this.dataset.fit;
-                    [hlsPlayer, dashPlayer].forEach(p => {
-                        if (fit === 'contain') p.style.objectFit = 'contain';
-                        else if (fit === 'cover') p.style.objectFit = 'cover';
-                        else if (fit === 'fill') p.style.objectFit = 'fill';
-                    });
+                    video.style.objectFit = fit;
                     fitButtons.forEach(b => b.classList.remove('active'));
                     this.classList.add('active');
                 });
             });
 
-            // ─── Search ──────────────────────────────────────────
+            // ─── SEARCH ──────────────────────────────────────────
             function filterChannels(query) {
                 const q = query.trim().toLowerCase();
                 if (!q) filteredChannels = [...allChannels];
@@ -800,17 +841,23 @@
             }
             searchInput.addEventListener('input', function() { filterChannels(this.value); });
 
-            // ─── Proxy ──────────────────────────────────────────
+            // ─── PROXY TOGGLE ───────────────────────────────────
             proxyToggle.addEventListener('click', function() {
                 proxyEnabled = !proxyEnabled;
                 this.classList.toggle('active', proxyEnabled);
                 proxyStatus.textContent = proxyEnabled ? 'ON' : 'off';
                 proxyStatus.style.color = proxyEnabled ? '#3b82f6' : '#8b95b5';
                 setStatus(proxyEnabled ? 'Proxy ON' : 'Proxy OFF', 1500);
-                if (currentChannel) playStream(currentChannel.url, currentChannel.name);
+                // Reload playlist if already loaded
+                if (allChannels.length > 0) {
+                    loadPlaylist();
+                }
             });
 
-            // ─── Sidebar toggle ──────────────────────────────────
+            // ─── ASPECT (not used, keep for UI) ────────────────
+            aspectSelect.addEventListener('change', function() {});
+
+            // ─── SIDEBAR TOGGLE ─────────────────────────────────
             channelToggle.addEventListener('click', () => rightSidebar.classList.toggle('open'));
             closeSidebar.addEventListener('click', () => rightSidebar.classList.remove('open'));
             document.addEventListener('click', (e) => {
@@ -821,7 +868,7 @@
                 }
             });
 
-            // ─── Init ────────────────────────────────────────────
+            // ─── INIT ────────────────────────────────────────────
             loadPlaylist();
 
         })();
