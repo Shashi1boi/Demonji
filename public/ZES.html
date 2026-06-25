@@ -382,9 +382,7 @@
     <div class="main-area">
         <div class="player-wrapper">
             <div class="video-container" id="videoContainer">
-                <!-- media-theme-yt provides full UI with settings (gear icon) -->
                 <media-theme-yt>
-                    <!-- hls-video for HLS and MP4, video for DASH (dash.js will attach) -->
                     <hls-video id="hlsPlayer" slot="media" class="media" playsinline crossorigin="anonymous" autoplay muted></hls-video>
                     <video id="dashPlayer" slot="media" class="media" playsinline crossorigin="anonymous" autoplay muted style="display: none;"></video>
                 </media-theme-yt>
@@ -392,7 +390,6 @@
                 <div class="status-msg" id="statusMsg">Ready</div>
                 <button class="toggle-channels" id="channelToggle">📺 Channels <span class="badge" id="channelCountMobile">0</span></button>
             </div>
-            <!-- Fit controls (outside media-theme-yt) -->
             <div class="fit-controls">
                 <button class="fit-button active" data-fit="contain">Fit</button>
                 <button class="fit-button" data-fit="cover">Fill</button>
@@ -400,7 +397,6 @@
             </div>
         </div>
 
-        <!-- Right Sidebar -->
         <div class="right-sidebar" id="rightSidebar">
             <div class="sidebar-header">
                 <span>📺 Channels <span class="badge" id="channelCount">0</span></span>
@@ -411,7 +407,6 @@
         </div>
     </div>
 
-    <!-- Status Bar -->
     <div class="status-bar">
         <span id="statusMsgBar">Ready</span>
         <span id="channelCountBar">0 channels</span>
@@ -421,8 +416,6 @@
         (function() {
             'use strict';
 
-            // ─── Config ───────────────────────────────────────────
-            // Only this playlist will be used
             const PLAYLIST_URL = 'https://servertvhub.site/zee5/playlist.php';
             const PROXY1 = 'https://demonji.onrender.com/cors-proxy.php?url=';
             const PROXY2 = 'https://demonji.onrender.com/cors-proxy.php/';
@@ -437,7 +430,6 @@
             let hlsPlayer = document.getElementById('hlsPlayer');
             let dashPlayer = document.getElementById('dashPlayer');
 
-            // DOM refs
             const videoContainer = document.getElementById('videoContainer');
             const rightSidebar = document.getElementById('rightSidebar');
             const channelListEl = document.getElementById('channelList');
@@ -479,32 +471,29 @@
                 return base + encodeURIComponent(rawUrl);
             }
 
-            // ─── fetch playlist (JSON format) ───────────────────
+            // ─── fetch playlist (JSON) ───────────────────────────
             async function fetchPlaylist() {
                 try {
                     setStatus('Loading playlist…', 0);
-                    // Try direct fetch first
                     let response = await fetch(PLAYLIST_URL);
                     if (!response.ok) {
-                        // If direct fails, try with proxy
                         const proxiedUrl = getProxiedUrl(PLAYLIST_URL);
                         response = await fetch(proxiedUrl);
                         if (!response.ok) throw new Error('HTTP ' + response.status);
                     }
                     const data = await response.json();
                     if (!Array.isArray(data) || data.length === 0) {
-                        setStatus('No channels found in playlist.', 5000);
+                        setStatus('No channels found.', 5000);
                         return;
                     }
-                    // Map the JSON to our channel format
                     allChannels = data.map(item => ({
                         name: item.title || 'Unknown',
                         url: item.video_token || '',
                         logo: item.image_url || '',
                         category: 'ZEE5'
-                    })).filter(ch => ch.url); // Only keep channels with a URL
+                    })).filter(ch => ch.url);
                     if (allChannels.length === 0) {
-                        setStatus('No valid channels found.', 5000);
+                        setStatus('No valid channels.', 5000);
                         return;
                     }
                     filteredChannels = [...allChannels];
@@ -515,12 +504,11 @@
                     channelCountBar.textContent = count + ' channels';
                     setStatus(`Loaded ${count} channels`, 3000);
                 } catch (e) {
-                    setStatus('Failed to load playlist: ' + e.message, 6000);
+                    setStatus('Failed to load: ' + e.message, 6000);
                 }
             }
 
             function renderChannels(channels) {
-                // Group by category (all are 'ZEE5' but we keep it)
                 const groups = {};
                 for (const ch of channels) {
                     const cat = ch.category || 'Uncategorized';
@@ -571,10 +559,8 @@
                 setStatus(`Loading ${name}…`, 0);
 
                 const lower = url.toLowerCase();
+                // Explicitly check for .mpd, otherwise treat as HLS (including .php, .m3u8, .ts, .mp4)
                 const isMpd = lower.includes('.mpd') || lower.includes('mpd');
-                const isPhp = lower.includes('.php');
-                const isTs = lower.includes('.ts');
-                const isMp4 = lower.includes('.mp4');
                 let streamUrl = proxyEnabled ? getProxiedUrl(url) : url;
 
                 const playWithHls = () => {
@@ -607,7 +593,7 @@
                     });
                 };
 
-                if (isMpd || isPhp) {
+                if (isMpd) {
                     playWithDash();
                 } else {
                     playWithHls();
@@ -649,9 +635,7 @@
             });
 
             // ─── Aspect (just for UI) ────────────────────────────
-            aspectSelect.addEventListener('change', function() {
-                // Not used with object-fit; we use fit buttons
-            });
+            aspectSelect.addEventListener('change', function() {});
 
             // ─── Sidebar toggle ──────────────────────────────────
             channelToggle.addEventListener('click', () => rightSidebar.classList.toggle('open'));
