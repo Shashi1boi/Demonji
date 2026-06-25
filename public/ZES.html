@@ -422,10 +422,8 @@
             'use strict';
 
             // ─── Config ───────────────────────────────────────────
-            const PLAYLIST_URLS = [
-                'https://servertvhub.site/zee5/playlist.php',
-                 // Added new playlist
-            ];
+            // Only this playlist will be used
+            const PLAYLIST_URL = 'https://servertvhub.site/zee5/playlist.php';
             const PROXY1 = 'https://demonji.onrender.com/cors-proxy.php?url=';
             const PROXY2 = 'https://demonji.onrender.com/cors-proxy.php/';
 
@@ -433,9 +431,9 @@
             let filteredChannels = [];
             let currentChannel = null;
             let proxyEnabled = false;
-            let proxyFailover = false; // for automatic fallback
+            let proxyFailover = false;
             let loading = false;
-            let dashInstance = null; // dash.js instance
+            let dashInstance = null;
             let hlsPlayer = document.getElementById('hlsPlayer');
             let dashPlayer = document.getElementById('dashPlayer');
 
@@ -481,86 +479,48 @@
                 return base + encodeURIComponent(rawUrl);
             }
 
-            // ─── fetch playlist ──────────────────────────────────
-            async function fetchWithProxyFallback(url) {
+            // ─── fetch playlist (JSON format) ───────────────────
+            async function fetchPlaylist() {
                 try {
-                    const p1 = PROXY1 + encodeURIComponent(url);
-                    const r1 = await fetch(p1, { signal: AbortSignal.timeout(8000) });
-                    if (!r1.ok) throw new Error('Proxy1 status ' + r1.status);
-                    const text = await r1.text();
-                    return { text, proxyUsed: 1 };
-                } catch (e) {
-                    try {
-                        const p2 = PROXY2 + encodeURIComponent(url);
-                        const r2 = await fetch(p2, { signal: AbortSignal.timeout(8000) });
-                        if (!r2.ok) throw new Error('Proxy2 status ' + r2.status);
-                        const text = await r2.text();
-                        return { text, proxyUsed: 2 };
-                    } catch (e2) {
-                        throw new Error('Both proxies failed: ' + e2.message);
+                    setStatus('Loading playlist…', 0);
+                    // Try direct fetch first
+                    let response = await fetch(PLAYLIST_URL);
+                    if (!response.ok) {
+                        // If direct fails, try with proxy
+                        const proxiedUrl = getProxiedUrl(PLAYLIST_URL);
+                        response = await fetch(proxiedUrl);
+                        if (!response.ok) throw new Error('HTTP ' + response.status);
                     }
-                }
-            }
-
-            function parseM3U(text) {
-                const lines = text.split(/\r?\n/);
-                const result = [];
-                let current = null;
-                for (let line of lines) {
-                    line = line.trim();
-                    if (!line) continue;
-                    if (line.startsWith('#EXTINF:')) {
-                        const info = line.slice(8);
-                        const parts = info.split(',');
-                        const attrs = parts[0] || '';
-                        const name = parts.slice(1).join(',') || 'Unknown';
-                        let category = 'Uncategorized';
-                        let logo = '';
-                        const matchGroup = attrs.match(/group-title="([^"]*)"/);
-                        if (matchGroup) category = matchGroup[1] || 'Uncategorized';
-                        const matchLogo = attrs.match(/tvg-logo="([^"]*)"/);
-                        if (matchLogo) logo = matchLogo[1] || '';
-                        current = { name: name.trim(), category: category.trim(), logo, url: '' };
-                    } else if (line.startsWith('#') === false && line.includes('://')) {
-                        if (current) { current.url = line; result.push(current); current = null; }
-                    }
-                }
-                return result;
-            }
-
-            async function loadAllPlaylists() {
-                try {
-                    setStatus('Loading playlists…', 0);
-                    let combined = [];
-                    let proxyUsed = 0;
-                    for (const url of PLAYLIST_URLS) {
-                        try {
-                            const { text, proxyUsed: p } = await fetchWithProxyFallback(url);
-                            const parsed = parseM3U(text);
-                            combined = combined.concat(parsed);
-                            if (p > proxyUsed) proxyUsed = p;
-                        } catch (e) {
-                            console.warn('Failed to load playlist:', url, e);
-                        }
-                    }
-                    if (combined.length === 0) {
-                        setStatus('No channels found.', 5000);
+                    const data = await response.json();
+                    if (!Array.isArray(data) || data.length === 0) {
+                        setStatus('No channels found in playlist.', 5000);
                         return;
                     }
-                    allChannels = combined;
+                    // Map the JSON to our channel format
+                    allChannels = data.map(item => ({
+                        name: item.title || 'Unknown',
+                        url: item.video_token || '',
+                        logo: item.image_url || '',
+                        category: 'ZEE5'
+                    })).filter(ch => ch.url); // Only keep channels with a URL
+                    if (allChannels.length === 0) {
+                        setStatus('No valid channels found.', 5000);
+                        return;
+                    }
                     filteredChannels = [...allChannels];
                     renderChannels(filteredChannels);
                     const count = allChannels.length;
                     channelCount.textContent = count;
                     channelCountMobile.textContent = count;
                     channelCountBar.textContent = count + ' channels';
-                    setStatus(`Loaded ${count} channels (proxy ${proxyUsed})`, 3000);
+                    setStatus(`Loaded ${count} channels`, 3000);
                 } catch (e) {
-                    setStatus('Failed to load: ' + e.message, 6000);
+                    setStatus('Failed to load playlist: ' + e.message, 6000);
                 }
             }
 
             function renderChannels(channels) {
+                // Group by category (all are 'ZEE5' but we keep it)
                 const groups = {};
                 for (const ch of channels) {
                     const cat = ch.category || 'Uncategorized';
@@ -594,19 +554,17 @@
                 });
             }
 
-            // ─── Playback engine (using hls-video and dash.js) ──
+            // ─── Playback engine ──────────────────────────────────
             function playStream(url, name) {
-                // Clean up previous instances
                 if (dashInstance) {
                     dashInstance.destroy();
                     dashInstance = null;
                 }
-                // Reset players
                 hlsPlayer.removeAttribute('src');
                 dashPlayer.removeAttribute('src');
                 hlsPlayer.style.display = 'block';
                 dashPlayer.style.display = 'none';
-                hlsPlayer.muted = true; // mute to allow autoplay
+                hlsPlayer.muted = true;
 
                 currentChannel = { url, name };
                 setLoading(true);
@@ -615,27 +573,22 @@
                 const lower = url.toLowerCase();
                 const isMpd = lower.includes('.mpd') || lower.includes('mpd');
                 const isPhp = lower.includes('.php');
-                // Support for .ts and .mp4 - they will be handled by hls-video-element
                 const isTs = lower.includes('.ts');
                 const isMp4 = lower.includes('.mp4');
                 let streamUrl = proxyEnabled ? getProxiedUrl(url) : url;
 
-                // Helper to attempt playback
                 const playWithHls = () => {
                     hlsPlayer.style.display = 'block';
                     dashPlayer.style.display = 'none';
                     hlsPlayer.src = streamUrl;
                     hlsPlayer.load();
-                    // Autoplay is handled by the media-theme-yt controls
                     setLoading(false);
-                    setStatus(`Playing ${name} (HLS/MP4/TS)`, 2500);
-                    // The media-theme-yt will show the controls and quality selector automatically
+                    setStatus(`Playing ${name} (HLS)`, 2500);
                 };
 
                 const playWithDash = () => {
                     hlsPlayer.style.display = 'none';
                     dashPlayer.style.display = 'block';
-                    // Ensure dash.js is loaded
                     if (typeof dashjs === 'undefined' || typeof dashjs.MediaPlayer === 'undefined') {
                         setStatus('DASH.js not loaded.', 5000);
                         setLoading(false);
@@ -649,16 +602,14 @@
                     });
                     dashInstance.on(dashjs.MediaPlayer.events.ERROR, (e) => {
                         console.error('DASH error:', e);
-                        setStatus('DASH error: ' + (e.error.message || 'unknown'), 5000);
+                        setStatus('DASH error: ' + (e.error?.message || 'unknown'), 5000);
                         setLoading(false);
                     });
                 };
 
-                // If .mpd or .php, try DASH first, fallback to HLS
                 if (isMpd || isPhp) {
                     playWithDash();
                 } else {
-                    // For .ts, .mp4, .m3u8, etc. use HLS player
                     playWithHls();
                 }
             }
@@ -667,9 +618,7 @@
             fitButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
                     const fit = this.dataset.fit;
-                    // Apply to both players
-                    const players = [hlsPlayer, dashPlayer];
-                    players.forEach(p => {
+                    [hlsPlayer, dashPlayer].forEach(p => {
                         if (fit === 'contain') p.style.objectFit = 'contain';
                         else if (fit === 'cover') p.style.objectFit = 'cover';
                         else if (fit === 'fill') p.style.objectFit = 'fill';
@@ -699,7 +648,7 @@
                 if (currentChannel) playStream(currentChannel.url, currentChannel.name);
             });
 
-            // ─── Aspect (just for UI, not used) ────────────────
+            // ─── Aspect (just for UI) ────────────────────────────
             aspectSelect.addEventListener('change', function() {
                 // Not used with object-fit; we use fit buttons
             });
@@ -716,7 +665,7 @@
             });
 
             // ─── Init ────────────────────────────────────────────
-            loadAllPlaylists();
+            fetchPlaylist();
 
         })();
     </script>
