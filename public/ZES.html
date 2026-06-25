@@ -18,7 +18,6 @@
             flex-direction:column;
             color:#e0e7ff;
             user-select:none;
-            -webkit-tap-highlight-color:transparent;
         }
         .top-bar {
             padding:6px 14px;
@@ -329,6 +328,39 @@
             justify-content:space-between;
             flex-shrink:0;
         }
+        .manual-input {
+            padding:6px 12px;
+            background:rgba(0,0,0,0.3);
+            border-top:1px solid rgba(255,255,255,0.05);
+            display:flex;
+            gap:8px;
+            flex-shrink:0;
+        }
+        .manual-input input {
+            flex:1;
+            background:rgba(255,255,255,0.08);
+            border:1px solid rgba(255,255,255,0.1);
+            border-radius:20px;
+            padding:4px 12px;
+            color:#e0e7ff;
+            font-size:12px;
+            outline:none;
+            font-family:inherit;
+        }
+        .manual-input input::placeholder { color:#6b7a9a; }
+        .manual-input input:focus { border-color:#6366f1; }
+        .manual-input button {
+            background:#2563eb;
+            border:none;
+            color:#fff;
+            padding:4px 16px;
+            border-radius:20px;
+            font-weight:600;
+            font-size:12px;
+            cursor:pointer;
+            font-family:inherit;
+        }
+        .manual-input button:hover { background:#3b82f6; }
         @media (max-width:700px) {
             .right-sidebar {
                 position:absolute;
@@ -351,6 +383,7 @@
             .top-bar { padding:4px 8px; }
             .brand i { font-size:10px; }
             .status-msg { bottom:70px; font-size:11px; }
+            .manual-input { flex-direction:column; }
         }
     </style>
 </head>
@@ -391,6 +424,12 @@
         </div>
     </div>
 
+    <!-- Manual input bar -->
+    <div class="manual-input" id="manualInput">
+        <input type="text" id="manualUrl" placeholder="Or paste any stream URL (m3u8, mpd, mp4, ts)…">
+        <button id="manualPlayBtn">▶ Play</button>
+    </div>
+
     <div class="status-bar">
         <span id="statusMsgBar">Ready</span>
         <span id="channelCountBar">0 channels</span>
@@ -401,20 +440,21 @@
             'use strict';
 
             const PLAYLIST_URL = 'https://servertvhub.site/zee5/playlist.php';
-            const PROXY1 = 'https://demonji.onrender.com/cors-proxy.php?url=';
-            const PROXY2 = 'https://corsproxy.io/?url=';  // alternative proxy
+            const PROXY_LIST = [
+                'https://demonji.onrender.com/cors-proxy.php?url=',
+                'https://corsproxy.io/?url=',
+                'https://api.codetabs.com/v1/proxy/?quest='
+            ];
 
             let allChannels = [];
             let filteredChannels = [];
             let currentChannel = null;
             let proxyEnabled = false;
-            let proxyFailover = false;
             let loading = false;
             let dashInstance = null;
             let hlsPlayer = document.getElementById('hlsPlayer');
             let dashPlayer = document.getElementById('dashPlayer');
 
-            // DOM refs
             const channelListEl = document.getElementById('channelList');
             const channelToggle = document.getElementById('channelToggle');
             const closeSidebar = document.getElementById('closeSidebar');
@@ -429,6 +469,8 @@
             const searchInput = document.getElementById('searchInput');
             const fitButtons = document.querySelectorAll('.fit-button');
             const rightSidebar = document.getElementById('rightSidebar');
+            const manualUrl = document.getElementById('manualUrl');
+            const manualPlayBtn = document.getElementById('manualPlayBtn');
 
             let statusTimeout = null;
 
@@ -447,16 +489,15 @@
                 loadingOverlay.classList.toggle('show', show);
             }
 
-            function getProxiedUrl(rawUrl, proxyIndex) {
+            function getProxiedUrl(rawUrl, proxyIdx) {
                 if (!proxyEnabled) return rawUrl;
-                const base = proxyIndex === 0 ? PROXY1 : PROXY2;
-                if (rawUrl.startsWith('http')) return base + encodeURIComponent(rawUrl);
+                const base = PROXY_LIST[proxyIdx] || PROXY_LIST[0];
                 return base + encodeURIComponent(rawUrl);
             }
 
-            // ─── fetch with automatic proxy fallback ──────────────
+            // ─── fetch with proxy fallback ────────────────────────
             async function fetchWithFallback(url) {
-                // Try direct first
+                // Try direct
                 try {
                     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
                     if (res.ok) {
@@ -465,69 +506,84 @@
                     }
                 } catch (e) { /* ignore */ }
 
-                // Try proxy1
-                if (proxyEnabled) {
+                // Try proxies
+                for (let i = 0; i < PROXY_LIST.length; i++) {
+                    if (!proxyEnabled) break;
                     try {
-                        const p1 = PROXY1 + encodeURIComponent(url);
-                        const r1 = await fetch(p1, { signal: AbortSignal.timeout(8000) });
-                        if (r1.ok) {
-                            const text = await r1.text();
-                            return { text, proxyUsed: 'proxy1' };
-                        }
-                    } catch (e) { /* ignore */ }
-
-                    // Try proxy2
-                    try {
-                        const p2 = PROXY2 + encodeURIComponent(url);
-                        const r2 = await fetch(p2, { signal: AbortSignal.timeout(8000) });
-                        if (r2.ok) {
-                            const text = await r2.text();
-                            return { text, proxyUsed: 'proxy2' };
+                        const pUrl = PROXY_LIST[i] + encodeURIComponent(url);
+                        const res = await fetch(pUrl, { signal: AbortSignal.timeout(8000) });
+                        if (res.ok) {
+                            const text = await res.text();
+                            return { text, proxyUsed: 'proxy' + (i + 1) };
                         }
                     } catch (e) { /* ignore */ }
                 }
                 throw new Error('All fetch attempts failed');
             }
 
-            // ─── fetch playlist ───────────────────────────────────
-            async function fetchPlaylist() {
+            // ─── parse playlist ───────────────────────────────────
+            function parsePlaylist(text) {
+                // Try JSON
+                try {
+                    const data = JSON.parse(text);
+                    if (Array.isArray(data) && data.length) {
+                        return data.map(item => ({
+                            name: item.title || item.name || 'Unknown',
+                            url: item.video_token || item.url || '',
+                            logo: item.image_url || item.logo || '',
+                            category: item.category || 'Uncategorized'
+                        })).filter(ch => ch.url);
+                    }
+                    if (data && typeof data === 'object' && data.channels) {
+                        return data.channels.map(item => ({
+                            name: item.title || item.name || 'Unknown',
+                            url: item.video_token || item.url || '',
+                            logo: item.image_url || item.logo || '',
+                            category: item.category || 'Uncategorized'
+                        })).filter(ch => ch.url);
+                    }
+                } catch (e) { /* not JSON */ }
+
+                // Try M3U
+                if (text.includes('#EXTM3U')) {
+                    const lines = text.split(/\r?\n/);
+                    const result = [];
+                    let current = null;
+                    for (const line of lines) {
+                        if (line.startsWith('#EXTINF:')) {
+                            const info = line.slice(8);
+                            const parts = info.split(',');
+                            const attrs = parts[0] || '';
+                            const name = parts.slice(1).join(',') || 'Unknown';
+                            let category = 'Uncategorized';
+                            let logo = '';
+                            const mg = attrs.match(/group-title="([^"]*)"/);
+                            if (mg) category = mg[1] || 'Uncategorized';
+                            const ml = attrs.match(/tvg-logo="([^"]*)"/);
+                            if (ml) logo = ml[1] || '';
+                            current = { name: name.trim(), category, logo, url: '' };
+                        } else if (line.trim() && !line.startsWith('#') && current) {
+                            current.url = line.trim();
+                            result.push(current);
+                            current = null;
+                        }
+                    }
+                    return result;
+                }
+                return null;
+            }
+
+            // ─── load playlist ────────────────────────────────────
+            async function loadPlaylist() {
                 try {
                     setStatus('Loading playlist…', 0);
                     const { text, proxyUsed } = await fetchWithFallback(PLAYLIST_URL);
-                    let data;
-                    try {
-                        data = JSON.parse(text);
-                    } catch (e) {
-                        // Not JSON, maybe M3U? Try parsing as M3U
-                        if (text.includes('#EXTM3U')) {
-                            data = parseM3U(text);
-                        } else {
-                            throw new Error('Invalid response format');
-                        }
-                    }
-                    // If data is array of objects with title and video_token
-                    if (Array.isArray(data) && data.length > 0) {
-                        allChannels = data.map(item => ({
-                            name: item.title || item.name || 'Unknown',
-                            url: item.video_token || item.url || '',
-                            logo: item.image_url || item.logo || '',
-                            category: item.category || 'ZEE5'
-                        })).filter(ch => ch.url);
-                    } else if (data && typeof data === 'object' && data.channels) {
-                        // Some APIs wrap channels
-                        allChannels = data.channels.map(item => ({
-                            name: item.title || item.name || 'Unknown',
-                            url: item.video_token || item.url || '',
-                            logo: item.image_url || item.logo || '',
-                            category: item.category || 'ZEE5'
-                        })).filter(ch => ch.url);
-                    } else {
-                        throw new Error('No channels found in response');
-                    }
-                    if (allChannels.length === 0) {
-                        setStatus('No valid channels found.', 5000);
+                    const parsed = parsePlaylist(text);
+                    if (!parsed || parsed.length === 0) {
+                        setStatus('No channels found in playlist.', 5000);
                         return;
                     }
+                    allChannels = parsed;
                     filteredChannels = [...allChannels];
                     renderChannels(filteredChannels);
                     const count = allChannels.length;
@@ -536,35 +592,9 @@
                     channelCountBar.textContent = count + ' channels';
                     setStatus(`Loaded ${count} channels (${proxyUsed})`, 3000);
                 } catch (e) {
-                    setStatus('Failed to load playlist: ' + e.message, 6000);
+                    setStatus('Playlist load failed: ' + e.message, 6000);
                     console.error(e);
                 }
-            }
-
-            function parseM3U(text) {
-                const lines = text.split(/\r?\n/);
-                const result = [];
-                let current = null;
-                for (const line of lines) {
-                    if (line.startsWith('#EXTINF:')) {
-                        const info = line.slice(8);
-                        const parts = info.split(',');
-                        const attrs = parts[0] || '';
-                        const name = parts.slice(1).join(',') || 'Unknown';
-                        let category = 'Uncategorized';
-                        let logo = '';
-                        const matchGroup = attrs.match(/group-title="([^"]*)"/);
-                        if (matchGroup) category = matchGroup[1] || 'Uncategorized';
-                        const matchLogo = attrs.match(/tvg-logo="([^"]*)"/);
-                        if (matchLogo) logo = matchLogo[1] || '';
-                        current = { name: name.trim(), category, logo, url: '' };
-                    } else if (line.trim() && !line.startsWith('#') && current) {
-                        current.url = line.trim();
-                        result.push(current);
-                        current = null;
-                    }
-                }
-                return result;
             }
 
             function renderChannels(channels) {
@@ -658,6 +688,16 @@
                 }
             }
 
+            // ─── Manual play ──────────────────────────────────────
+            manualPlayBtn.addEventListener('click', function() {
+                const url = manualUrl.value.trim();
+                if (!url) return setStatus('Please enter a URL', 3000);
+                playStream(url, 'Manual Stream');
+            });
+            manualUrl.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') manualPlayBtn.click();
+            });
+
             // ─── Fit buttons ────────────────────────────────────
             fitButtons.forEach(btn => {
                 btn.addEventListener('click', function() {
@@ -684,7 +724,6 @@
             // ─── Proxy ──────────────────────────────────────────
             proxyToggle.addEventListener('click', function() {
                 proxyEnabled = !proxyEnabled;
-                proxyFailover = false;
                 this.classList.toggle('active', proxyEnabled);
                 proxyStatus.textContent = proxyEnabled ? 'ON' : 'off';
                 proxyStatus.style.color = proxyEnabled ? '#3b82f6' : '#8b95b5';
@@ -704,7 +743,7 @@
             });
 
             // ─── Init ────────────────────────────────────────────
-            fetchPlaylist();
+            loadPlaylist();
 
         })();
     </script>
