@@ -526,7 +526,19 @@
                 // Try JSON
                 try {
                     const data = JSON.parse(text);
+                    
+                    // Case 1: Direct array with title/image_url/video_token
                     if (Array.isArray(data) && data.length) {
+                        // Check if first item has the expected fields
+                        if (data[0].title !== undefined && data[0].video_token !== undefined) {
+                            return data.map(item => ({
+                                name: item.title || 'Unknown',
+                                url: item.video_token || '',
+                                logo: item.image_url || '',
+                                category: 'ZEE5'
+                            })).filter(ch => ch.url);
+                        }
+                        // Fallback: generic mapping
                         return data.map(item => ({
                             name: item.title || item.name || 'Unknown',
                             url: item.video_token || item.url || '',
@@ -534,6 +546,8 @@
                             category: item.category || 'Uncategorized'
                         })).filter(ch => ch.url);
                     }
+                    
+                    // Case 2: Object with channels array
                     if (data && typeof data === 'object' && data.channels) {
                         return data.channels.map(item => ({
                             name: item.title || item.name || 'Unknown',
@@ -647,45 +661,110 @@
                 setLoading(true);
                 setStatus(`Loading ${name}…`, 0);
 
-                const lower = url.toLowerCase();
-                const isMpd = lower.includes('.mpd') || lower.includes('mpd');
-                let streamUrl = proxyEnabled ? getProxiedUrl(url, 0) : url;
-
-                const playWithHls = () => {
-                    hlsPlayer.style.display = 'block';
-                    dashPlayer.style.display = 'none';
-                    hlsPlayer.src = streamUrl;
-                    hlsPlayer.load();
-                    setLoading(false);
-                    setStatus(`Playing ${name} (HLS)`, 2500);
-                };
-
-                const playWithDash = () => {
-                    hlsPlayer.style.display = 'none';
-                    dashPlayer.style.display = 'block';
-                    if (typeof dashjs === 'undefined' || typeof dashjs.MediaPlayer === 'undefined') {
-                        setStatus('DASH.js not loaded.', 5000);
-                        setLoading(false);
-                        return;
+                // The video_token is a URL that returns the actual stream
+                // We need to fetch it to get the real stream URL
+                const fetchStream = async () => {
+                    try {
+                        // If proxy is enabled, use it for the token request too
+                        let streamUrl = url;
+                        if (proxyEnabled) {
+                            streamUrl = getProxiedUrl(url, 0);
+                        }
+                        
+                        // First, try to fetch the token URL to get the actual stream
+                        const resp = await fetch(streamUrl);
+                        if (resp.ok) {
+                            const data = await resp.text();
+                            // Check if it's a JSON with a stream URL
+                            try {
+                                const json = JSON.parse(data);
+                                if (json.url || json.stream_url || json.video_url) {
+                                    streamUrl = json.url || json.stream_url || json.video_url;
+                                }
+                            } catch (e) {
+                                // If it's not JSON, it might be a direct m3u8 or mpd
+                                if (data.trim().startsWith('#EXTM3U') || data.trim().startsWith('<MPD')) {
+                                    // It's a manifest, use the original URL
+                                    streamUrl = url;
+                                } else {
+                                    // Try to find a URL in the response
+                                    const urlMatch = data.match(/https?:\/\/[^\s"']+\.(m3u8|mpd|mp4|ts)/i);
+                                    if (urlMatch) {
+                                        streamUrl = urlMatch[0];
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Now play the stream
+                        const lower = streamUrl.toLowerCase();
+                        const isMpd = lower.includes('.mpd') || lower.includes('mpd');
+                        
+                        if (isMpd) {
+                            hlsPlayer.style.display = 'none';
+                            dashPlayer.style.display = 'block';
+                            if (typeof dashjs === 'undefined' || typeof dashjs.MediaPlayer === 'undefined') {
+                                setStatus('DASH.js not loaded.', 5000);
+                                setLoading(false);
+                                return;
+                            }
+                            dashInstance = dashjs.MediaPlayer().create();
+                            dashInstance.initialize(dashPlayer, streamUrl, true);
+                            dashInstance.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
+                                setLoading(false);
+                                setStatus(`Playing ${name} (DASH)`, 2500);
+                            });
+                            dashInstance.on(dashjs.MediaPlayer.events.ERROR, (e) => {
+                                console.error('DASH error:', e);
+                                setStatus('DASH error: ' + (e.error?.message || 'unknown'), 5000);
+                                setLoading(false);
+                            });
+                        } else {
+                            hlsPlayer.style.display = 'block';
+                            dashPlayer.style.display = 'none';
+                            hlsPlayer.src = streamUrl;
+                            hlsPlayer.load();
+                            setLoading(false);
+                            setStatus(`Playing ${name} (HLS)`, 2500);
+                        }
+                    } catch (e) {
+                        // If fetch fails, try playing the token URL directly
+                        console.warn('Token fetch failed, playing URL directly:', e);
+                        const lower = url.toLowerCase();
+                        const isMpd = lower.includes('.mpd') || lower.includes('mpd');
+                        let streamUrl = proxyEnabled ? getProxiedUrl(url, 0) : url;
+                        
+                        if (isMpd) {
+                            hlsPlayer.style.display = 'none';
+                            dashPlayer.style.display = 'block';
+                            if (typeof dashjs === 'undefined' || typeof dashjs.MediaPlayer === 'undefined') {
+                                setStatus('DASH.js not loaded.', 5000);
+                                setLoading(false);
+                                return;
+                            }
+                            dashInstance = dashjs.MediaPlayer().create();
+                            dashInstance.initialize(dashPlayer, streamUrl, true);
+                            dashInstance.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
+                                setLoading(false);
+                                setStatus(`Playing ${name} (DASH)`, 2500);
+                            });
+                            dashInstance.on(dashjs.MediaPlayer.events.ERROR, (e) => {
+                                console.error('DASH error:', e);
+                                setStatus('DASH error: ' + (e.error?.message || 'unknown'), 5000);
+                                setLoading(false);
+                            });
+                        } else {
+                            hlsPlayer.style.display = 'block';
+                            dashPlayer.style.display = 'none';
+                            hlsPlayer.src = streamUrl;
+                            hlsPlayer.load();
+                            setLoading(false);
+                            setStatus(`Playing ${name} (HLS)`, 2500);
+                        }
                     }
-                    dashInstance = dashjs.MediaPlayer().create();
-                    dashInstance.initialize(dashPlayer, streamUrl, true);
-                    dashInstance.on(dashjs.MediaPlayer.events.STREAM_INITIALIZED, () => {
-                        setLoading(false);
-                        setStatus(`Playing ${name} (DASH)`, 2500);
-                    });
-                    dashInstance.on(dashjs.MediaPlayer.events.ERROR, (e) => {
-                        console.error('DASH error:', e);
-                        setStatus('DASH error: ' + (e.error?.message || 'unknown'), 5000);
-                        setLoading(false);
-                    });
                 };
-
-                if (isMpd) {
-                    playWithDash();
-                } else {
-                    playWithHls();
-                }
+                
+                fetchStream();
             }
 
             // ─── Manual play ──────────────────────────────────────
