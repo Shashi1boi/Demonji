@@ -4,9 +4,9 @@ $xtreamCredentials = [
     [
         'id' => 'server1',
         'name' => 'Server 1 (new)',
-        'host' => 'http://op.web24.live:8080',
-        'username' => 'recycle_n24',
-        'password' => 'network24_selfrestream'
+        'host' => 'http://best8k.top:80',
+        'username' => 'atif90',
+        'password' => '554433'
     ],
     [
         'id' => 'server2',
