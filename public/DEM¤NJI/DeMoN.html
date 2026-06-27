@@ -158,31 +158,46 @@
             color: #666;
         }
 
-        /* ── category filters ── */
-        .category-filters {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            padding: 22px 0 12px;
-            justify-content: center;
+        /* ── category filters (TV-style horizontal scroll) ── */
+        .cat-wrap {
+            padding: 16px 0 8px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: thin;
+            margin-bottom: 4px;
         }
-        .category-btn {
-            padding: 8px 20px;
+        .cat-wrap::-webkit-scrollbar {
+            height: 4px;
+        }
+        .cat-wrap::-webkit-scrollbar-thumb {
+            background: #444;
+            border-radius: 10px;
+        }
+        .cat-scroll {
+            display: flex;
+            gap: 10px;
+            padding: 4px 0 12px;
+            min-width: max-content;
+        }
+        .cat-btn {
+            padding: 10px 24px;
             font-size: 0.9rem;
             font-weight: 600;
             color: var(--text-secondary);
             background: var(--bg-secondary);
             border: 2px solid #2a2a2a;
-            border-radius: 30px;
+            border-radius: 40px;
             cursor: pointer;
-            transition: var(--transition);
+            transition: background var(--transition), color var(--transition), border-color var(--transition), box-shadow var(--transition);
+            flex-shrink: 0;
+            white-space: nowrap;
+            user-select: none;
         }
-        .category-btn:hover {
+        .cat-btn:hover {
             color: #fff;
             background: #2f2f2f;
-            transform: translateY(-2px);
         }
-        .category-btn.active {
+        .cat-btn.active {
             color: #fff;
             background: var(--accent);
             border-color: var(--accent-hover);
@@ -194,7 +209,7 @@
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
             gap: 28px;
-            margin-top: 18px;
+            margin-top: 8px;
         }
 
         .channel-card {
@@ -513,6 +528,13 @@
             .player-modal .modal-btn {
                 min-width: unset;
             }
+            .cat-wrap {
+                padding: 12px 0 4px;
+            }
+            .cat-btn {
+                padding: 8px 16px;
+                font-size: 0.8rem;
+            }
         }
         @media (max-width: 480px) {
             .channels-grid {
@@ -573,11 +595,15 @@
         </div>
     </header>
 
+    <!-- ─── CATEGORY FILTERS (TV-style horizontal scroll) ─── -->
+    <div class="container">
+        <div class="cat-wrap">
+            <div class="cat-scroll" id="categoryFilters" role="tablist" aria-label="Categories"></div>
+        </div>
+    </div>
+
     <!-- ─── MAIN ─── -->
     <div class="container">
-
-        <div id="categoryFilters" class="category-filters"></div>
-
         <main>
             <div id="channelGrid" class="channels-grid"></div>
 
@@ -788,11 +814,11 @@
                 }
             }
 
-            // ─── CATEGORY FILTERS ───
+            // ─── CATEGORY FILTERS (horizontal scroll) ───
             function buildCategoryFilter() {
                 const cats = ['All', ...new Set(allChannels.map(c => c.category).sort())];
                 catContainer.innerHTML = cats.map(c =>
-                    `<button class="category-btn ${c === 'All' ? 'active' : ''}" data-cat="${c}">${c}</button>`
+                    `<button class="cat-btn ${c === 'All' ? 'active' : ''}" data-cat="${c}" role="tab" aria-selected="${c === 'All' ? 'true' : 'false'}">${c}</button>`
                 ).join('');
             }
 
@@ -881,11 +907,15 @@
 
             // Category clicks
             catContainer.addEventListener('click', function(e) {
-                const btn = e.target.closest('.category-btn');
+                const btn = e.target.closest('.cat-btn');
                 if (!btn) return;
                 selectedCategory = btn.dataset.cat;
-                document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.cat-btn').forEach(b => {
+                    b.classList.remove('active');
+                    b.setAttribute('aria-selected', 'false');
+                });
                 btn.classList.add('active');
+                btn.setAttribute('aria-selected', 'true');
                 applyFilters();
             });
 
