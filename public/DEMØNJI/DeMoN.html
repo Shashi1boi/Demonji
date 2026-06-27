@@ -1,0 +1,941 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WEB BY DEMØNJI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <style>
+        /* ── reset & root ── */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        :root {
+            --bg-primary: #0b0b0b;
+            --bg-secondary: #1a1a1a;
+            --bg-card: #242424;
+            --text-primary: #f0f0f0;
+            --text-secondary: #b0b0b0;
+            --accent: #FF5722;
+            --accent-hover: #ff7043;
+            --accent-glow: rgba(255, 87, 34, 0.35);
+            --radius: 18px;
+            --shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
+            --transition: 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        a {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        /* ── container ── */
+        .container {
+            max-width: 1500px;
+            margin: 0 auto;
+            padding: 0 20px 30px;
+        }
+
+        /* ── header ── */
+        header {
+            position: sticky;
+            top: 0;
+            z-index: 20;
+            background: linear-gradient(180deg, #0b0b0b 60%, rgba(11, 11, 11, 0.92));
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 14px 20px;
+            border-bottom: 1px solid #2a2a2a;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .logo h1 {
+            font-size: 2rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #FF9800, #FF5722);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            letter-spacing: -0.5px;
+            white-space: nowrap;
+        }
+        .logo .badge {
+            font-size: 0.7rem;
+            font-weight: 700;
+            background: var(--accent);
+            color: #fff;
+            padding: 2px 10px;
+            border-radius: 30px;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        /* ── disclaimer button ── */
+        .disclaimer-btn {
+            background: transparent;
+            border: 1.5px solid #444;
+            color: var(--text-secondary);
+            padding: 8px 18px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+        .disclaimer-btn:hover {
+            border-color: var(--accent);
+            color: #fff;
+            background: rgba(255, 87, 34, 0.12);
+            box-shadow: 0 0 14px var(--accent-glow);
+        }
+        .disclaimer-btn svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        /* ── search ── */
+        .search-wrap {
+            flex: 1;
+            min-width: 180px;
+            max-width: 480px;
+            position: relative;
+        }
+        .search-wrap .search-icon {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-secondary);
+            pointer-events: none;
+        }
+        .search-wrap input {
+            width: 100%;
+            padding: 12px 20px 12px 48px;
+            border-radius: 40px;
+            border: 2px solid #2e2e2e;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-size: 1rem;
+            transition: var(--transition);
+            outline: none;
+        }
+        .search-wrap input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 12px var(--accent-glow);
+        }
+        .search-wrap input::placeholder {
+            color: #666;
+        }
+
+        /* ── category filters ── */
+        .category-filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            padding: 22px 0 12px;
+            justify-content: center;
+        }
+        .category-btn {
+            padding: 8px 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            background: var(--bg-secondary);
+            border: 2px solid #2a2a2a;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+        .category-btn:hover {
+            color: #fff;
+            background: #2f2f2f;
+            transform: translateY(-2px);
+        }
+        .category-btn.active {
+            color: #fff;
+            background: var(--accent);
+            border-color: var(--accent-hover);
+            box-shadow: 0 0 16px var(--accent-glow);
+        }
+
+        /* ── channel grid ── */
+        .channels-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+            gap: 28px;
+            margin-top: 18px;
+        }
+
+        .channel-card {
+            background: var(--bg-card);
+            border-radius: var(--radius);
+            overflow: hidden;
+            border: 2px solid transparent;
+            box-shadow: var(--shadow);
+            transition: transform var(--transition), box-shadow var(--transition), border-color var(--transition);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            animation: fadeUp 0.45s ease forwards;
+        }
+        .channel-card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7);
+            border-color: var(--accent);
+        }
+
+        .channel-image {
+            height: 110px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #181818;
+            padding: 14px;
+            flex-shrink: 0;
+        }
+        .channel-image img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            transition: transform 0.4s ease;
+        }
+        .channel-card:hover .channel-image img {
+            transform: scale(1.06);
+        }
+
+        .channel-info {
+            padding: 18px 16px 60px 16px;
+            text-align: center;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+        .channel-name {
+            font-size: 1.05rem;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+        .channel-category {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+        .channel-category svg {
+            width: 14px;
+            height: 14px;
+            flex-shrink: 0;
+        }
+
+        .play-btn {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%) scale(0.92);
+            width: calc(100% - 32px);
+            padding: 12px;
+            background: var(--accent);
+            color: #fff;
+            font-weight: 700;
+            border-radius: 14px;
+            text-align: center;
+            opacity: 0;
+            transition: opacity var(--transition), transform var(--transition), background var(--transition);
+            font-size: 0.95rem;
+            letter-spacing: 0.3px;
+        }
+        .channel-card:hover .play-btn {
+            opacity: 1;
+            transform: translateX(-50%) scale(1);
+        }
+        .play-btn:hover {
+            background: var(--accent-hover);
+        }
+
+        /* ── loading / messages ── */
+        .loading-wrap,
+        .load-more-wrap {
+            display: flex;
+            justify-content: center;
+            padding: 40px 0;
+        }
+        .spinner {
+            width: 56px;
+            height: 56px;
+            border: 6px solid rgba(255, 255, 255, 0.06);
+            border-radius: 50%;
+            border-top-color: var(--accent);
+            animation: spin 0.9s linear infinite;
+        }
+        .message {
+            text-align: center;
+            padding: 30px 10px;
+            color: var(--text-secondary);
+            font-size: 1.05rem;
+        }
+        .error-box {
+            background: rgba(239, 68, 68, 0.12);
+            border-left: 4px solid #ef4444;
+            padding: 14px 20px;
+            border-radius: 10px;
+            margin: 16px 0;
+            color: #f87171;
+            font-weight: 500;
+            display: none;
+        }
+        .load-more-btn {
+            padding: 14px 36px;
+            border-radius: 40px;
+            background: var(--accent);
+            color: #fff;
+            font-weight: 700;
+            border: none;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: var(--transition);
+            box-shadow: 0 4px 12px rgba(255, 87, 34, 0.3);
+        }
+        .load-more-btn:hover {
+            background: var(--accent-hover);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 22px rgba(255, 87, 34, 0.4);
+        }
+
+        /* ── modals ── */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-box {
+            background: var(--bg-secondary);
+            border-radius: var(--radius);
+            padding: 32px 28px;
+            max-width: 480px;
+            width: 100%;
+            box-shadow: 0 24px 56px rgba(0, 0, 0, 0.8);
+            animation: fadeUp 0.3s ease;
+            position: relative;
+            border: 1px solid #333;
+        }
+        .modal-close {
+            position: absolute;
+            top: 12px;
+            right: 18px;
+            font-size: 28px;
+            font-weight: 300;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: color 0.2s;
+            line-height: 1;
+        }
+        .modal-close:hover {
+            color: var(--accent);
+        }
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 14px;
+            color: #fff;
+        }
+        .modal-body {
+            color: var(--text-secondary);
+            font-size: 0.98rem;
+            line-height: 1.7;
+        }
+        .modal-body strong {
+            color: var(--text-primary);
+        }
+        .modal-body .highlight {
+            color: var(--accent);
+            font-weight: 700;
+        }
+        .modal-body .legal-punch {
+            display: block;
+            margin-top: 18px;
+            padding: 14px 18px;
+            background: rgba(255, 87, 34, 0.10);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 87, 34, 0.20);
+            font-weight: 700;
+            color: #fff;
+            font-size: 1.05rem;
+            text-align: center;
+        }
+        .modal-body .legal-punch span {
+            color: var(--accent);
+        }
+
+        .modal-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 22px;
+        }
+        .modal-btn {
+            padding: 14px;
+            border-radius: 14px;
+            font-weight: 700;
+            text-align: center;
+            background: #2e2e2e;
+            color: #fff;
+            transition: var(--transition);
+            font-size: 1rem;
+            border: none;
+            cursor: pointer;
+        }
+        .modal-btn:hover {
+            background: #3f3f3f;
+            transform: translateY(-2px);
+        }
+        .modal-btn.primary {
+            background: var(--accent);
+        }
+        .modal-btn.primary:hover {
+            background: var(--accent-hover);
+        }
+
+        /* ── player modal (channel click) ── */
+        .player-modal .modal-box {
+            max-width: 400px;
+        }
+        .player-modal .modal-buttons {
+            flex-direction: row;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        .player-modal .modal-btn {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        /* ── animations ── */
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        @keyframes fadeUp {
+            0% {
+                opacity: 0;
+                transform: translateY(18px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ── responsive ── */
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 12px 20px;
+            }
+            header {
+                flex-direction: column;
+                padding: 12px 14px;
+                gap: 12px;
+            }
+            .logo h1 {
+                font-size: 1.6rem;
+            }
+            .header-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .search-wrap {
+                max-width: 100%;
+                width: 100%;
+            }
+            .channels-grid {
+                grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+                gap: 18px;
+            }
+            .disclaimer-btn {
+                font-size: 0.75rem;
+                padding: 6px 14px;
+            }
+            .modal-box {
+                padding: 24px 18px;
+            }
+            .player-modal .modal-buttons {
+                flex-direction: column;
+            }
+            .player-modal .modal-btn {
+                min-width: unset;
+            }
+        }
+        @media (max-width: 480px) {
+            .channels-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 14px;
+            }
+            .channel-image {
+                height: 80px;
+            }
+            .channel-info {
+                padding: 12px 10px 52px 10px;
+            }
+            .channel-name {
+                font-size: 0.9rem;
+            }
+            .play-btn {
+                font-size: 0.8rem;
+                padding: 10px;
+                bottom: 12px;
+                width: calc(100% - 20px);
+            }
+            .logo h1 {
+                font-size: 1.3rem;
+            }
+            .logo .badge {
+                font-size: 0.55rem;
+                padding: 1px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ─── HEADER ─── -->
+    <header>
+        <div class="logo">
+            <h1>WEB BY DEMØNJI</h1>
+            <span class="badge">live</span>
+        </div>
+
+        <div class="header-actions">
+            <!-- DISCLAIMER BUTTON -->
+            <button class="disclaimer-btn" id="disclaimerToggle">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                    <path d="M12 8v4" />
+                    <path d="M12 16h.01" />
+                </svg>
+                Disclaimer
+            </button>
+
+            <div class="search-wrap">
+                <span class="search-icon">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                </span>
+                <input type="text" id="searchInput" placeholder="Search channels…" autocomplete="off" />
+            </div>
+        </div>
+    </header>
+
+    <!-- ─── MAIN ─── -->
+    <div class="container">
+
+        <div id="categoryFilters" class="category-filters"></div>
+
+        <main>
+            <div id="channelGrid" class="channels-grid"></div>
+
+            <div id="loadingSpinner" class="loading-wrap" style="display:none;">
+                <div class="spinner"></div>
+            </div>
+
+            <div id="messageContainer" class="message" style="display:none;"></div>
+            <div id="errorContainer" class="error-box"></div>
+
+            <div id="loadMoreContainer" class="load-more-wrap" style="display:none;">
+                <button id="loadMoreBtn" class="load-more-btn">Load More Channels</button>
+            </div>
+        </main>
+    </div>
+
+    <!-- ─── DISCLAIMER MODAL ─── -->
+    <div id="disclaimerModal" class="modal-overlay">
+        <div class="modal-box">
+            <span class="modal-close" id="disclaimerClose">&times;</span>
+            <h2 class="modal-title">⚖️ Disclaimer</h2>
+            <div class="modal-body">
+                <p>
+                    <strong>WEB BY DEMØNJI</strong> does <strong>not</strong> host, store, or broadcast
+                    any video streams or content. All channel links and media displayed on this platform
+                    are sourced from publicly available third-party services.
+                </p>
+                <p style="margin-top:14px;">
+                    We do <strong>not</strong> claim ownership of, nor do we endorse, any of the
+                    content accessible through this interface. We are simply a <strong>directory</strong>
+                    that organizes publicly available information.
+                </p>
+
+                <!-- 🔥 PUNCH LINE -->
+                <div class="legal-punch">
+                    ⚡ You <span>cannot</span> sue us.
+                    <br />
+                    <span style="font-weight:400;font-size:0.85rem;color:var(--text-secondary);">
+                        We are not liable for any content, copyrights, or damages arising from
+                        the use of third-party streams.
+                    </span>
+                </div>
+
+                <div class="modal-buttons" style="margin-top:18px;">
+                    <button class="modal-btn primary" id="disclaimerAcknowledge">I Understand</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── PLAYER MODAL (channel click) ─── -->
+    <div id="playerModal" class="modal-overlay player-modal">
+        <div class="modal-box">
+            <span class="modal-close" id="playerModalClose">&times;</span>
+            <h2 class="modal-title">▶️ Choose Player</h2>
+            <div class="modal-body" style="text-align:center;color:var(--text-secondary);margin-bottom:6px;">
+                Select how you'd like to watch this channel.
+            </div>
+            <div class="modal-buttons">
+                <a id="ogPlayerLink" href="#" target="_blank" class="modal-btn primary">Original Player</a>
+                <a id="simplePlayerLink" href="#" target="_blank" class="modal-btn">Simple Player</a>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ─── SCRIPT ─── -->
+    <script>
+        (function() {
+            'use strict';
+
+            // ─── CONFIG ───
+            const PLAYLIST_URL =
+                'https://demonji.onrender.com/multiple/playlist.php?server=server3&categories=181%2C176%2C547%2C1588%2C1452%2C209%2C4%2C352%2C154%2C1234%2C1047%2C480%2C7%2C324%2C138%2C1131%2C1112%2C1150%2C1153%2C1151%2C1152%2C1124%2C1182%2C1156%2C1159%2C415%2C1119%2C1120%2C1127%2C1128%2C1126%2C1125%2C1129%2C564%2C1162%2C172%2C684%2C1064%2C218%2C216%2C230%2C140%2C1273%2C215';
+            const CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
+            const PER_PAGE = 30;
+            const MAX_RETRIES = 3;
+
+            // ─── DOM refs ───
+            const grid = document.getElementById('channelGrid');
+            const loadingEl = document.getElementById('loadingSpinner');
+            const msgEl = document.getElementById('messageContainer');
+            const errEl = document.getElementById('errorContainer');
+            const loadMoreWrap = document.getElementById('loadMoreContainer');
+            const loadMoreBtn = document.getElementById('loadMoreBtn');
+            const searchInput = document.getElementById('searchInput');
+            const catContainer = document.getElementById('categoryFilters');
+
+            // Disclaimer
+            const disclaimerModal = document.getElementById('disclaimerModal');
+            const disclaimerToggle = document.getElementById('disclaimerToggle');
+            const disclaimerClose = document.getElementById('disclaimerClose');
+            const disclaimerAck = document.getElementById('disclaimerAcknowledge');
+
+            // Player modal
+            const playerModal = document.getElementById('playerModal');
+            const playerClose = document.getElementById('playerModalClose');
+            const ogLink = document.getElementById('ogPlayerLink');
+            const simpleLink = document.getElementById('simplePlayerLink');
+
+            // ─── STATE ───
+            let allChannels = [];
+            let visible = [];
+            let rendered = 0;
+            let selectedCategory = 'All';
+            let searchTerm = '';
+
+            // ─── HELPERS ───
+            function showLoading() { loadingEl.style.display = 'flex'; }
+
+            function hideLoading() { loadingEl.style.display = 'none'; }
+
+            function showMsg(txt) { msgEl.textContent = txt;
+                msgEl.style.display = 'block'; }
+
+            function hideMsg() { msgEl.style.display = 'none'; }
+
+            function showErr(txt) { errEl.textContent = txt;
+                errEl.style.display = 'block'; }
+
+            function hideErr() { errEl.style.display = 'none'; }
+
+            function showLoadMore() { loadMoreWrap.style.display = 'flex'; }
+
+            function hideLoadMore() { loadMoreWrap.style.display = 'none'; }
+
+            function openModal(el) { el.classList.add('show'); }
+
+            function closeModal(el) { el.classList.remove('show'); }
+
+            // ─── FETCH WITH RETRIES ───
+            async function fetchWithRetries(url, retries = MAX_RETRIES, delay = 1000) {
+                try {
+                    const resp = await fetch(url, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Referer': 'http://demonji.onrender.com/'
+                        }
+                    });
+                    return resp;
+                } catch (err) {
+                    if (retries > 0) {
+                        showMsg(`Retrying… (${MAX_RETRIES - retries + 1}/${MAX_RETRIES})`);
+                        await new Promise(r => setTimeout(r, delay));
+                        return fetchWithRetries(url, retries - 1, delay * 2);
+                    }
+                    throw new Error('Failed to fetch playlist after multiple attempts.');
+                }
+            }
+
+            // ─── PARSE M3U ───
+            function parseM3U(raw) {
+                const out = [];
+                const lines = raw.split('\n');
+                let cur = {};
+
+                for (const line of lines) {
+                    const t = line.trim();
+                    if (t.startsWith('#EXTINF')) {
+                        const m = /#EXTINF:-1\s+(.*),(.*)/.exec(t);
+                        if (m) {
+                            const attrs = m[1];
+                            const name = m[2].trim();
+                            const logo = /tvg-logo="([^"]*)"/.exec(attrs);
+                            const group = /group-title="([^"]*)"/.exec(attrs);
+                            cur = {
+                                name: name,
+                                icon: logo ? logo[1] : 'demonji.png',
+                                category: group ? group[1] : 'General',
+                            };
+                        }
+                    } else if (t.startsWith('http') && cur.name) {
+                        cur.url = t;
+                        out.push(cur);
+                        cur = {};
+                    }
+                }
+                return out;
+            }
+
+            // ─── FETCH & PREPARE ───
+            async function fetchAndPrepare() {
+                try {
+                    showLoading();
+                    hideErr();
+                    showMsg('Loading channels…');
+
+                    const url = CORS_PROXY + PLAYLIST_URL;
+                    const resp = await fetchWithRetries(url);
+
+                    if (!resp.ok) throw new Error(`Server ${resp.status}: ${resp.statusText}`);
+
+                    const text = await resp.text();
+                    allChannels = parseM3U(text);
+
+                    if (!allChannels.length) {
+                        showMsg('No channels found.');
+                    } else {
+                        hideMsg();
+                        buildCategoryFilter();
+                        applyFilters();
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showErr(`Error: ${err.message}. Please refresh later.`);
+                } finally {
+                    hideLoading();
+                }
+            }
+
+            // ─── CATEGORY FILTERS ───
+            function buildCategoryFilter() {
+                const cats = ['All', ...new Set(allChannels.map(c => c.category).sort())];
+                catContainer.innerHTML = cats.map(c =>
+                    `<button class="category-btn ${c === 'All' ? 'active' : ''}" data-cat="${c}">${c}</button>`
+                ).join('');
+            }
+
+            // ─── FILTER & RENDER ───
+            function applyFilters() {
+                hideMsg();
+                let filtered = allChannels;
+
+                if (selectedCategory !== 'All') {
+                    filtered = filtered.filter(c => c.category === selectedCategory);
+                }
+
+                if (searchTerm) {
+                    const q = searchTerm.toLowerCase();
+                    filtered = filtered.filter(c => c.name.toLowerCase().includes(q));
+                }
+
+                visible = filtered;
+                renderGrid(true);
+            }
+
+            function renderGrid(reset) {
+                if (reset) {
+                    grid.innerHTML = '';
+                    rendered = 0;
+                    if (!visible.length) {
+                        showMsg('No channels match your selection.');
+                        hideLoadMore();
+                        return;
+                    }
+                }
+
+                const start = rendered;
+                const end = Math.min(start + PER_PAGE, visible.length);
+
+                for (let i = start; i < end; i++) {
+                    const ch = visible[i];
+                    const card = document.createElement('a');
+                    card.className = 'channel-card';
+                    card.href = '#';
+                    card.dataset.stream = btoa(ch.url);
+                    card.dataset.name = ch.name;
+                    card.dataset.icon = ch.icon;
+
+                    card.innerHTML = `
+                        <div class="channel-image">
+                            <img src="${ch.icon}" alt="${ch.name}" loading="lazy" onerror="this.onerror=null;this.src='demonji.png';" />
+                        </div>
+                        <div class="channel-info">
+                            <div>
+                                <h3 class="channel-name" title="${ch.name}">${ch.name}</h3>
+                                <div class="channel-category">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
+                                    <span>${ch.category}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="play-btn">▶ Play Now</div>
+                    `;
+
+                    card.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        const stream = this.dataset.stream;
+                        const name = this.dataset.name;
+                        const icon = this.dataset.icon;
+                        const back = window.location.href;
+
+                        ogLink.href =
+                            `player.html?s=${encodeURIComponent(stream)}&name=${encodeURIComponent(name)}&icon=${encodeURIComponent(icon)}&back=${encodeURIComponent(back)}`;
+                        simpleLink.href =
+                            `simple-player.html?s=${encodeURIComponent(stream)}&name=${encodeURIComponent(name)}&back=${encodeURIComponent(back)}`;
+
+                        openModal(playerModal);
+                    });
+
+                    grid.appendChild(card);
+                }
+
+                rendered = end;
+
+                if (rendered < visible.length) showLoadMore();
+                else hideLoadMore();
+            }
+
+            // ─── EVENT LISTENERS ───
+
+            // Category clicks
+            catContainer.addEventListener('click', function(e) {
+                const btn = e.target.closest('.category-btn');
+                if (!btn) return;
+                selectedCategory = btn.dataset.cat;
+                document.querySelectorAll('.category-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                applyFilters();
+            });
+
+            // Search (debounced)
+            let searchTimer;
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchTimer);
+                searchTimer = setTimeout(() => {
+                    searchTerm = this.value.trim();
+                    applyFilters();
+                }, 280);
+            });
+
+            // Load more
+            loadMoreBtn.addEventListener('click', function() {
+                renderGrid(false);
+            });
+
+            // ─── DISCLAIMER MODAL ───
+            function openDisclaimer() { openModal(disclaimerModal); }
+
+            function closeDisclaimer() { closeModal(disclaimerModal); }
+
+            disclaimerToggle.addEventListener('click', openDisclaimer);
+            disclaimerClose.addEventListener('click', closeDisclaimer);
+            disclaimerAck.addEventListener('click', closeDisclaimer);
+            disclaimerModal.addEventListener('click', function(e) {
+                if (e.target === this) closeDisclaimer();
+            });
+
+            // ─── PLAYER MODAL ───
+            function closePlayer() { closeModal(playerModal); }
+            playerClose.addEventListener('click', closePlayer);
+            playerModal.addEventListener('click', function(e) {
+                if (e.target === this) closePlayer();
+            });
+
+            // ─── KEYBOARD (ESC) ───
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    if (disclaimerModal.classList.contains('show')) closeDisclaimer();
+                    if (playerModal.classList.contains('show')) closePlayer();
+                }
+            });
+
+            // ─── GO ───
+            fetchAndPrepare();
+
+        })();
+    </script>
+
+</body>
+</html>
