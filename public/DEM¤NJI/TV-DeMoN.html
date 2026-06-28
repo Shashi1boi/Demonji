@@ -20,8 +20,8 @@
             --text2: #999;
             --accent: #FF5722;
             --accent2: #ff7043;
-            --radius: 14px;
-            --shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+            --radius: 12px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
             --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
@@ -31,16 +31,17 @@
             background: var(--bg);
             color: var(--text);
             font-family: var(--font);
-            font-size: 17px;
+            font-size: 16px;
             line-height: 1.5;
             overflow-x: hidden;
         }
 
         :focus-visible {
             outline: 3px solid var(--accent);
-            outline-offset: 3px;
+            outline-offset: 2px;
         }
 
+        /* ─── SCROLLBAR ─── */
         ::-webkit-scrollbar {
             width: 5px;
             height: 5px;
@@ -59,7 +60,7 @@
             top: 0;
             z-index: 20;
             background: rgba(13, 13, 13, 0.94);
-            padding: 14px 20px 10px;
+            padding: 12px 20px 10px;
             border-bottom: 1px solid #282828;
             display: flex;
             flex-wrap: wrap;
@@ -75,7 +76,7 @@
             flex-shrink: 0;
         }
         .logo h1 {
-            font-size: 1.6rem;
+            font-size: 1.4rem;
             font-weight: 800;
             background: linear-gradient(135deg, #FF9800, #FF5722);
             -webkit-background-clip: text;
@@ -85,14 +86,13 @@
             white-space: nowrap;
         }
         .logo .badge {
-            font-size: 0.6rem;
+            font-size: 0.55rem;
             font-weight: 700;
             background: var(--accent);
             color: #fff;
             padding: 2px 10px;
             border-radius: 30px;
             text-transform: uppercase;
-            letter-spacing: 0.4px;
         }
 
         .header-actions {
@@ -110,13 +110,12 @@
         }
         .search-wrap input {
             width: 100%;
-            padding: 10px 14px 10px 38px;
+            padding: 8px 14px 8px 36px;
             border-radius: 40px;
             border: 2px solid #333;
             background: var(--bg2);
             color: var(--text);
-            font-size: 0.9rem;
-            transition: border-color 0.15s;
+            font-size: 0.85rem;
             outline: none;
         }
         .search-wrap input:focus {
@@ -124,17 +123,16 @@
         }
         .search-wrap input::placeholder {
             color: #666;
-            font-size: 0.85rem;
         }
         .search-wrap .icon {
             position: absolute;
-            left: 14px;
+            left: 12px;
             top: 50%;
             transform: translateY(-50%);
             color: #666;
             pointer-events: none;
-            width: 18px;
-            height: 18px;
+            width: 16px;
+            height: 16px;
         }
 
         .disclaimer-btn {
@@ -142,15 +140,14 @@
             background: transparent;
             border: 2px solid #444;
             color: var(--text2);
-            padding: 6px 14px;
+            padding: 4px 12px;
             border-radius: 40px;
-            font-size: 0.78rem;
+            font-size: 0.7rem;
             font-weight: 600;
             cursor: pointer;
-            transition: border-color 0.15s, color 0.15s;
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
             white-space: nowrap;
         }
         .disclaimer-btn:hover,
@@ -159,16 +156,14 @@
             color: #fff;
         }
         .disclaimer-btn svg {
-            width: 18px;
-            height: 18px;
-            flex-shrink: 0;
+            width: 16px;
+            height: 16px;
         }
 
         /* ─── CATEGORIES ─── */
         .cat-wrap {
-            padding: 12px 20px 6px;
+            padding: 10px 20px 4px;
             overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
         }
         .cat-scroll {
             display: flex;
@@ -177,15 +172,14 @@
             min-width: max-content;
         }
         .cat-btn {
-            padding: 8px 20px;
-            font-size: 0.82rem;
+            padding: 6px 16px;
+            font-size: 0.78rem;
             font-weight: 600;
             color: var(--text2);
             background: var(--bg2);
             border: 2px solid #2a2a2a;
             border-radius: 40px;
             cursor: pointer;
-            transition: background 0.15s, color 0.15s, border-color 0.15s;
             flex-shrink: 0;
             white-space: nowrap;
             user-select: none;
@@ -204,13 +198,13 @@
         .container {
             max-width: 1500px;
             margin: 0 auto;
-            padding: 10px 20px 24px;
+            padding: 8px 20px 24px;
         }
         .channels-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
-            gap: 18px;
-            margin-top: 6px;
+            gap: 16px;
+            margin-top: 4px;
         }
 
         /* ─── CARD ─── */
@@ -218,36 +212,27 @@
             background: var(--bg2);
             border-radius: var(--radius);
             overflow: hidden;
-            border: 3px solid transparent;
+            border: 2px solid transparent;
             box-shadow: var(--shadow);
-            cursor: pointer;
-            transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
             display: flex;
             flex-direction: column;
             position: relative;
             outline: none;
-            min-height: 160px;
-            user-select: none;
-            -webkit-tap-highlight-color: transparent;
+            min-height: 150px;
         }
-        .channel-card:hover,
         .channel-card:focus-visible {
-            transform: translateY(-3px);
             border-color: var(--accent);
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
-        }
-        .channel-card:focus-visible {
-            outline: 3px solid var(--accent);
+            outline: 2px solid var(--accent);
             outline-offset: 2px;
         }
 
         .card-img {
-            height: 90px;
+            height: 80px;
             display: flex;
             align-items: center;
             justify-content: center;
             background: #111;
-            padding: 12px;
+            padding: 10px;
             flex-shrink: 0;
         }
         .card-img img {
@@ -257,57 +242,51 @@
         }
 
         .card-body {
-            padding: 14px 12px 50px 12px;
+            padding: 10px 10px 12px;
             text-align: center;
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: space-between;
         }
         .card-name {
-            font-size: 0.92rem;
+            font-size: 0.85rem;
             font-weight: 600;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            margin-bottom: 2px;
+            margin-bottom: 4px;
         }
         .card-cat {
-            font-size: 0.72rem;
+            font-size: 0.65rem;
             color: var(--text2);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 5px;
+            gap: 4px;
+            margin-bottom: 8px;
         }
         .card-cat svg {
             width: 12px;
             height: 12px;
-            flex-shrink: 0;
         }
 
-        .play-overlay {
-            position: absolute;
-            bottom: 12px;
-            left: 50%;
-            transform: translateX(-50%) scale(0.92);
-            width: calc(100% - 24px);
-            padding: 10px;
+        .play-btn {
             background: var(--accent);
             color: #fff;
+            border: none;
+            border-radius: 30px;
+            padding: 8px 0;
             font-weight: 700;
-            border-radius: 10px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: background 0.15s;
+            width: 100%;
             text-align: center;
-            font-size: 0.82rem;
-            letter-spacing: 0.2px;
-            opacity: 0;
-            transition: opacity 0.15s, transform 0.15s;
-            pointer-events: none;
         }
-        .channel-card:hover .play-overlay,
-        .channel-card:focus-visible .play-overlay {
-            opacity: 1;
-            transform: translateX(-50%) scale(1);
+        .play-btn:hover,
+        .play-btn:focus-visible {
+            background: var(--accent2);
         }
 
         /* ─── LOADING / MESSAGES ─── */
@@ -318,9 +297,9 @@
             padding: 30px 0;
         }
         .spinner {
-            width: 44px;
-            height: 44px;
-            border: 5px solid rgba(255, 255, 255, 0.06);
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.06);
             border-radius: 50%;
             border-top-color: var(--accent);
             animation: spin 0.7s linear infinite;
@@ -340,7 +319,7 @@
         .error-box {
             background: rgba(239, 68, 68, 0.10);
             border-left: 4px solid #ef4444;
-            padding: 12px 18px;
+            padding: 10px 16px;
             border-radius: 8px;
             margin: 12px 0;
             color: #f87171;
@@ -349,26 +328,23 @@
         }
 
         .load-more-btn {
-            padding: 12px 36px;
+            padding: 10px 32px;
             border-radius: 40px;
             background: var(--accent);
             color: #fff;
             font-weight: 700;
             border: none;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             cursor: pointer;
-            transition: background 0.15s, transform 0.15s;
-            box-shadow: 0 3px 14px rgba(255, 87, 34, 0.20);
         }
         .load-more-btn:hover,
         .load-more-btn:focus-visible {
             background: var(--accent2);
-            transform: translateY(-2px);
         }
 
         /* ─── MODALS ─── */
         .modal-overlay {
-            display: none !important;
+            display: none;
             position: fixed;
             inset: 0;
             z-index: 9999;
@@ -378,41 +354,28 @@
             padding: 20px;
         }
         .modal-overlay.show {
-            display: flex !important;
+            display: flex;
         }
 
         .modal-box {
             background: var(--bg2);
             border-radius: var(--radius);
-            padding: 28px 24px;
-            max-width: 440px;
+            padding: 24px 20px;
+            max-width: 400px;
             width: 100%;
-            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.8);
+            box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8);
             border: 1px solid #333;
             position: relative;
-            animation: modalIn 0.2s ease;
-        }
-        @keyframes modalIn {
-            0% {
-                opacity: 0;
-                transform: scale(0.96) translateY(8px);
-            }
-            100% {
-                opacity: 1;
-                transform: scale(1) translateY(0);
-            }
         }
 
         .modal-close {
             position: absolute;
-            top: 10px;
-            right: 16px;
-            font-size: 1.8rem;
+            top: 8px;
+            right: 14px;
+            font-size: 1.6rem;
             font-weight: 300;
             color: var(--text2);
             cursor: pointer;
-            transition: color 0.2s;
-            line-height: 1;
             background: none;
             border: none;
             padding: 2px 6px;
@@ -423,28 +386,29 @@
         }
 
         .modal-title {
-            font-size: 1.4rem;
+            font-size: 1.3rem;
             font-weight: 700;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             color: #fff;
         }
         .modal-body {
             color: var(--text2);
-            font-size: 0.92rem;
+            font-size: 0.9rem;
             line-height: 1.6;
         }
         .modal-body strong {
             color: var(--text);
         }
+
         .legal-punch {
-            margin-top: 16px;
-            padding: 14px 18px;
+            margin-top: 14px;
+            padding: 12px 16px;
             background: rgba(255, 87, 34, 0.07);
-            border-radius: 10px;
+            border-radius: 8px;
             border: 1px solid rgba(255, 87, 34, 0.12);
             font-weight: 700;
             color: #fff;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             text-align: center;
         }
         .legal-punch span {
@@ -453,7 +417,7 @@
         .legal-punch .sub {
             display: block;
             font-weight: 400;
-            font-size: 0.76rem;
+            font-size: 0.7rem;
             color: var(--text2);
             margin-top: 4px;
         }
@@ -462,17 +426,16 @@
             display: flex;
             flex-direction: column;
             gap: 10px;
-            margin-top: 18px;
+            margin-top: 16px;
         }
         .modal-btn {
-            padding: 12px 18px;
-            border-radius: 12px;
+            padding: 10px 16px;
+            border-radius: 10px;
             font-weight: 700;
             text-align: center;
             background: #333;
             color: #fff;
-            transition: background 0.15s, transform 0.15s;
-            font-size: 0.95rem;
+            font-size: 0.9rem;
             border: none;
             cursor: pointer;
             text-decoration: none;
@@ -481,7 +444,6 @@
         .modal-btn:hover,
         .modal-btn:focus-visible {
             background: #444;
-            transform: translateY(-1px);
         }
         .modal-btn.primary {
             background: var(--accent);
@@ -492,7 +454,7 @@
         }
 
         .player-modal .modal-box {
-            max-width: 380px;
+            max-width: 350px;
         }
         .player-modal .modal-buttons {
             flex-direction: row;
@@ -501,7 +463,7 @@
         }
         .player-modal .modal-btn {
             flex: 1;
-            min-width: 100px;
+            min-width: 90px;
             text-align: center;
         }
 
@@ -509,17 +471,17 @@
         @media (max-width: 1100px) {
             .channels-grid {
                 grid-template-columns: repeat(3, 1fr);
-                gap: 16px;
+                gap: 14px;
             }
         }
         @media (max-width: 768px) {
             header {
                 flex-direction: column;
-                padding: 12px 14px 8px;
+                padding: 10px 14px 8px;
                 gap: 8px;
             }
             .logo h1 {
-                font-size: 1.3rem;
+                font-size: 1.2rem;
             }
             .header-actions {
                 max-width: 100%;
@@ -530,8 +492,8 @@
                 flex: 1 1 100%;
             }
             .disclaimer-btn {
-                font-size: 0.7rem;
-                padding: 5px 12px;
+                font-size: 0.65rem;
+                padding: 4px 10px;
             }
             .container {
                 padding: 6px 12px 16px;
@@ -544,28 +506,25 @@
                 padding: 8px 12px 4px;
             }
             .cat-btn {
-                padding: 6px 14px;
-                font-size: 0.72rem;
+                padding: 5px 12px;
+                font-size: 0.7rem;
             }
             .card-img {
-                height: 70px;
-                padding: 8px;
+                height: 60px;
+                padding: 6px;
             }
             .card-body {
-                padding: 10px 8px 42px 8px;
+                padding: 8px 8px 10px;
             }
             .card-name {
-                font-size: 0.78rem;
+                font-size: 0.75rem;
             }
-            .play-overlay {
+            .play-btn {
                 font-size: 0.7rem;
-                padding: 8px;
-                bottom: 8px;
-                width: calc(100% - 16px);
-                border-radius: 7px;
+                padding: 6px 0;
             }
             .modal-box {
-                padding: 20px 16px;
+                padding: 18px 14px;
                 max-width: 92%;
             }
             .player-modal .modal-buttons {
@@ -581,20 +540,14 @@
                 gap: 10px;
             }
             .card-img {
-                height: 60px;
-            }
-            .card-body {
-                padding: 8px 6px 36px 6px;
+                height: 50px;
             }
             .card-name {
-                font-size: 0.72rem;
+                font-size: 0.7rem;
             }
-            .play-overlay {
-                font-size: 0.62rem;
-                padding: 6px;
-                bottom: 6px;
-                width: calc(100% - 12px);
-                border-radius: 6px;
+            .play-btn {
+                font-size: 0.65rem;
+                padding: 5px 0;
             }
             .logo h1 {
                 font-size: 1.0rem;
@@ -607,28 +560,28 @@
         @media (min-width: 1600px) {
             .channels-grid {
                 grid-template-columns: repeat(5, 1fr);
-                gap: 24px;
+                gap: 20px;
             }
             .card-img {
-                height: 110px;
+                height: 100px;
             }
             .card-name {
                 font-size: 1.0rem;
             }
-            .play-overlay {
+            .play-btn {
                 font-size: 0.9rem;
-                padding: 12px;
+                padding: 10px 0;
             }
             .cat-btn {
-                padding: 12px 28px;
-                font-size: 0.95rem;
+                padding: 10px 24px;
+                font-size: 0.9rem;
             }
             .modal-box {
-                max-width: 500px;
-                padding: 32px 28px;
+                max-width: 480px;
+                padding: 28px 24px;
             }
             .modal-title {
-                font-size: 1.6rem;
+                font-size: 1.5rem;
             }
         }
     </style>
@@ -682,7 +635,7 @@
             <h2 class="modal-title" id="disclaimerTitle">⚖️ Disclaimer</h2>
             <div class="modal-body">
                 <p><strong>WEB BY DEMØNJI</strong> does <strong>not</strong> host, store, or broadcast any video streams. All links are sourced from publicly available third-party services.</p>
-                <p style="margin-top:12px;">We are a <strong>directory</strong> that organizes publicly available information. We do <strong>not</strong> claim ownership of any content.</p>
+                <p style="margin-top:10px;">We are a <strong>directory</strong> that organizes publicly available information. We do <strong>not</strong> claim ownership of any content.</p>
                 <div class="legal-punch">
                     ⚡ You <span>cannot</span> sue us.
                     <span class="sub">We are not liable for any content or damages from third-party streams.</span>
@@ -874,9 +827,7 @@
                 for (var j = 0; j < cats.length; j++) {
                     var c2 = cats[j];
                     var active = c2 === 'All' ? ' active' : '';
-                    var sel = c2 === 'All' ? 'true' : 'false';
-                    html += '<button class="cat-btn' + active + '" data-cat="' + c2 + '" role="tab" aria-selected="' +
-                        sel + '">' + c2 + '</button>';
+                    html += '<button class="cat-btn' + active + '" data-cat="' + c2 + '" role="tab">' + c2 + '</button>';
                 }
                 catContainer.innerHTML = html;
             }
@@ -918,25 +869,68 @@
                     var ch = visible[i];
                     var card = document.createElement('div');
                     card.className = 'channel-card';
-                    card.setAttribute('role', 'button');
+                    card.setAttribute('role', 'article');
                     card.setAttribute('tabindex', '0');
                     card.dataset.stream = btoa(ch.url);
                     card.dataset.name = ch.name;
                     card.dataset.icon = ch.icon;
-                    card.dataset.index = i;
+
+                    var btn = document.createElement('button');
+                    btn.className = 'play-btn';
+                    btn.textContent = '▶ Play';
+                    btn.setAttribute('aria-label', 'Play ' + ch.name);
+
+                    // Store data on button as well
+                    btn.dataset.stream = btoa(ch.url);
+                    btn.dataset.name = ch.name;
+                    btn.dataset.icon = ch.icon;
 
                     card.innerHTML =
                         '<div class="card-img">' +
                         '<img src="' + ch.icon + '" alt="' + ch.name + '" loading="lazy" onerror="this.onerror=null;this.src=\'demonji.png\';" />' +
                         '</div>' +
                         '<div class="card-body">' +
+                        '<div>' +
                         '<div class="card-name" title="' + ch.name + '">' + ch.name + '</div>' +
                         '<div class="card-cat">' +
                         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>' +
                         '<span>' + ch.category + '</span>' +
                         '</div>' +
                         '</div>' +
-                        '<div class="play-overlay">▶ Play</div>';
+                        '</div>';
+
+                    // Append the play button separately inside card-body after the existing content
+                    var body = card.querySelector('.card-body');
+                    body.appendChild(btn);
+
+                    // Click on the button triggers player
+                    btn.addEventListener('click', function(e) {
+                        e.stopPropagation(); // prevent card click if any
+                        var stream = this.dataset.stream;
+                        var name = this.dataset.name;
+                        var icon = this.dataset.icon;
+                        openPlayer(stream, name, icon);
+                    });
+
+                    // Click on the card itself (anywhere except button) also triggers player
+                    card.addEventListener('click', function(e) {
+                        if (e.target.classList.contains('play-btn')) return;
+                        var stream = this.dataset.stream;
+                        var name = this.dataset.name;
+                        var icon = this.dataset.icon;
+                        openPlayer(stream, name, icon);
+                    });
+
+                    // Keyboard: Enter on card triggers player
+                    card.addEventListener('keydown', function(e) {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            var stream = this.dataset.stream;
+                            var name = this.dataset.name;
+                            var icon = this.dataset.icon;
+                            openPlayer(stream, name, icon);
+                        }
+                    });
 
                     grid.appendChild(card);
                 }
@@ -946,33 +940,10 @@
                 else hideLoadMore();
             }
 
-            // ─── EVENT DELEGATION FOR CLICKS ───
-            grid.addEventListener('click', function(e) {
-                var card = e.target.closest('.channel-card');
-                if (card) {
-                    e.preventDefault();
-                    openPlayer(card);
-                }
-            });
-
-            // Also handle keyboard Enter/Space on cards (delegated)
-            grid.addEventListener('keydown', function(e) {
-                var card = e.target.closest('.channel-card');
-                if (!card) return;
-                if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    openPlayer(card);
-                }
-            });
-
             // ─── OPEN PLAYER ───
-            function openPlayer(card) {
+            function openPlayer(stream, name, icon) {
                 try {
-                    var stream = card.dataset.stream;
-                    var name = card.dataset.name || 'Channel';
-                    var icon = card.dataset.icon || '';
                     var back = window.location.href;
-
                     ogLink.href = 'player.html?s=' + encodeURIComponent(stream) + '&name=' + encodeURIComponent(name) +
                         '&icon=' + encodeURIComponent(icon) + '&back=' + encodeURIComponent(back);
                     simpleLink.href = 'simple-player.html?s=' + encodeURIComponent(stream) + '&name=' + encodeURIComponent(
@@ -985,11 +956,10 @@
                     }, 100);
                 } catch (err) {
                     console.warn('Error opening player:', err);
-                    // fallback: try to open original player directly
-                    var fallbackUrl = 'player.html?s=' + encodeURIComponent(card.dataset.stream) +
-                        '&name=' + encodeURIComponent(card.dataset.name || '') +
+                    // fallback
+                    window.location.href = 'player.html?s=' + encodeURIComponent(stream) +
+                        '&name=' + encodeURIComponent(name) +
                         '&back=' + encodeURIComponent(window.location.href);
-                    window.location.href = fallbackUrl;
                 }
             }
 
@@ -1001,10 +971,8 @@
                 var btns = catContainer.querySelectorAll('.cat-btn');
                 for (var i = 0; i < btns.length; i++) {
                     btns[i].classList.remove('active');
-                    btns[i].setAttribute('aria-selected', 'false');
                 }
                 btn.classList.add('active');
-                btn.setAttribute('aria-selected', 'true');
                 applyFilters();
                 setTimeout(function() {
                     var first = grid.querySelector('.channel-card');
@@ -1019,10 +987,6 @@
                 searchTimer = setTimeout(function() {
                     searchTerm = searchInput.value.trim();
                     applyFilters();
-                    setTimeout(function() {
-                        var first = grid.querySelector('.channel-card');
-                        if (first) first.focus();
-                    }, 80);
                 }, 250);
             });
 
