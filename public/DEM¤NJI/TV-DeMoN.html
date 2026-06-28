@@ -20,8 +20,8 @@
             --text2: #999;
             --accent: #FF5722;
             --accent2: #ff7043;
-            --radius: 12px;
-            --shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            --radius: 10px;
+            --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
             --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
@@ -37,21 +37,21 @@
         }
 
         :focus-visible {
-            outline: 3px solid var(--accent);
+            outline: 2px solid var(--accent);
             outline-offset: 2px;
         }
 
         /* ─── SCROLLBAR ─── */
         ::-webkit-scrollbar {
-            width: 5px;
-            height: 5px;
+            width: 4px;
+            height: 4px;
         }
         ::-webkit-scrollbar-track {
             background: transparent;
         }
         ::-webkit-scrollbar-thumb {
             background: #444;
-            border-radius: 8px;
+            border-radius: 6px;
         }
 
         /* ─── HEADER ─── */
@@ -60,13 +60,13 @@
             top: 0;
             z-index: 20;
             background: rgba(13, 13, 13, 0.94);
-            padding: 12px 20px 10px;
+            padding: 10px 16px 8px;
             border-bottom: 1px solid #282828;
             display: flex;
             flex-wrap: wrap;
             align-items: center;
             justify-content: space-between;
-            gap: 10px 16px;
+            gap: 8px 12px;
         }
 
         .logo {
@@ -76,21 +76,21 @@
             flex-shrink: 0;
         }
         .logo h1 {
-            font-size: 1.4rem;
+            font-size: 1.3rem;
             font-weight: 800;
             background: linear-gradient(135deg, #FF9800, #FF5722);
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
-            letter-spacing: -0.3px;
+            letter-spacing: -0.2px;
             white-space: nowrap;
         }
         .logo .badge {
-            font-size: 0.55rem;
+            font-size: 0.5rem;
             font-weight: 700;
             background: var(--accent);
             color: #fff;
-            padding: 2px 10px;
+            padding: 2px 8px;
             border-radius: 30px;
             text-transform: uppercase;
         }
@@ -98,10 +98,10 @@
         .header-actions {
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 8px;
             flex: 1 1 auto;
-            min-width: 140px;
-            max-width: 440px;
+            min-width: 120px;
+            max-width: 400px;
         }
 
         .search-wrap {
@@ -110,12 +110,12 @@
         }
         .search-wrap input {
             width: 100%;
-            padding: 8px 14px 8px 36px;
+            padding: 6px 12px 6px 32px;
             border-radius: 40px;
             border: 2px solid #333;
             background: var(--bg2);
             color: var(--text);
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             outline: none;
         }
         .search-wrap input:focus {
@@ -126,13 +126,13 @@
         }
         .search-wrap .icon {
             position: absolute;
-            left: 12px;
+            left: 10px;
             top: 50%;
             transform: translateY(-50%);
             color: #666;
             pointer-events: none;
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
         }
 
         .disclaimer-btn {
@@ -140,9 +140,9 @@
             background: transparent;
             border: 2px solid #444;
             color: var(--text2);
-            padding: 4px 12px;
+            padding: 4px 10px;
             border-radius: 40px;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             font-weight: 600;
             cursor: pointer;
             display: flex;
@@ -156,24 +156,24 @@
             color: #fff;
         }
         .disclaimer-btn svg {
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
         }
 
         /* ─── CATEGORIES ─── */
         .cat-wrap {
-            padding: 10px 20px 4px;
+            padding: 8px 16px 4px;
             overflow-x: auto;
         }
         .cat-scroll {
             display: flex;
-            gap: 8px;
-            padding: 2px 0 10px;
+            gap: 6px;
+            padding: 2px 0 8px;
             min-width: max-content;
         }
         .cat-btn {
-            padding: 6px 16px;
-            font-size: 0.78rem;
+            padding: 4px 14px;
+            font-size: 0.72rem;
             font-weight: 600;
             color: var(--text2);
             background: var(--bg2);
@@ -196,14 +196,14 @@
 
         /* ─── CHANNEL GRID ─── */
         .container {
-            max-width: 1500px;
+            max-width: 1400px;
             margin: 0 auto;
-            padding: 8px 20px 24px;
+            padding: 6px 16px 20px;
         }
         .channels-grid {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 16px;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 14px;
             margin-top: 4px;
         }
 
@@ -218,7 +218,10 @@
             flex-direction: column;
             position: relative;
             outline: none;
-            min-height: 150px;
+            max-width: 240px; /* prevent over-stretching on large screens */
+            margin: 0 auto; /* center within grid cell */
+            width: 100%;
+            min-height: 130px;
         }
         .channel-card:focus-visible {
             border-color: var(--accent);
@@ -227,12 +230,12 @@
         }
 
         .card-img {
-            height: 80px;
+            height: 70px;
             display: flex;
             align-items: center;
             justify-content: center;
             background: #111;
-            padding: 10px;
+            padding: 8px;
             flex-shrink: 0;
         }
         .card-img img {
@@ -242,7 +245,7 @@
         }
 
         .card-body {
-            padding: 10px 10px 12px;
+            padding: 8px 8px 10px;
             text-align: center;
             flex: 1;
             display: flex;
@@ -250,25 +253,25 @@
             justify-content: space-between;
         }
         .card-name {
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             font-weight: 600;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
         .card-cat {
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             color: var(--text2);
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 4px;
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
         .card-cat svg {
-            width: 12px;
-            height: 12px;
+            width: 10px;
+            height: 10px;
         }
 
         .play-btn {
@@ -276,13 +279,15 @@
             color: #fff;
             border: none;
             border-radius: 30px;
-            padding: 8px 0;
+            padding: 6px 0;
             font-weight: 700;
-            font-size: 0.8rem;
+            font-size: 0.7rem;
             cursor: pointer;
             transition: background 0.15s;
             width: 100%;
             text-align: center;
+            max-width: 120px;
+            margin: 0 auto;
         }
         .play-btn:hover,
         .play-btn:focus-visible {
@@ -294,11 +299,11 @@
         .load-more-wrap {
             display: flex;
             justify-content: center;
-            padding: 30px 0;
+            padding: 24px 0;
         }
         .spinner {
-            width: 40px;
-            height: 40px;
+            width: 36px;
+            height: 36px;
             border: 4px solid rgba(255, 255, 255, 0.06);
             border-radius: 50%;
             border-top-color: var(--accent);
@@ -312,29 +317,29 @@
 
         .message {
             text-align: center;
-            padding: 30px 10px;
+            padding: 24px 10px;
             color: var(--text2);
-            font-size: 1rem;
+            font-size: 0.95rem;
         }
         .error-box {
             background: rgba(239, 68, 68, 0.10);
             border-left: 4px solid #ef4444;
-            padding: 10px 16px;
-            border-radius: 8px;
-            margin: 12px 0;
+            padding: 8px 14px;
+            border-radius: 6px;
+            margin: 10px 0;
             color: #f87171;
             font-weight: 500;
             display: none;
         }
 
         .load-more-btn {
-            padding: 10px 32px;
+            padding: 8px 28px;
             border-radius: 40px;
             background: var(--accent);
             color: #fff;
             font-weight: 700;
             border: none;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             cursor: pointer;
         }
         .load-more-btn:hover,
@@ -360,8 +365,8 @@
         .modal-box {
             background: var(--bg2);
             border-radius: var(--radius);
-            padding: 24px 20px;
-            max-width: 400px;
+            padding: 20px 18px;
+            max-width: 380px;
             width: 100%;
             box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8);
             border: 1px solid #333;
@@ -370,9 +375,9 @@
 
         .modal-close {
             position: absolute;
-            top: 8px;
-            right: 14px;
-            font-size: 1.6rem;
+            top: 6px;
+            right: 12px;
+            font-size: 1.5rem;
             font-weight: 300;
             color: var(--text2);
             cursor: pointer;
@@ -386,14 +391,14 @@
         }
 
         .modal-title {
-            font-size: 1.3rem;
+            font-size: 1.2rem;
             font-weight: 700;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             color: #fff;
         }
         .modal-body {
             color: var(--text2);
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             line-height: 1.6;
         }
         .modal-body strong {
@@ -401,14 +406,14 @@
         }
 
         .legal-punch {
-            margin-top: 14px;
-            padding: 12px 16px;
+            margin-top: 12px;
+            padding: 10px 14px;
             background: rgba(255, 87, 34, 0.07);
             border-radius: 8px;
             border: 1px solid rgba(255, 87, 34, 0.12);
             font-weight: 700;
             color: #fff;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             text-align: center;
         }
         .legal-punch span {
@@ -417,7 +422,7 @@
         .legal-punch .sub {
             display: block;
             font-weight: 400;
-            font-size: 0.7rem;
+            font-size: 0.65rem;
             color: var(--text2);
             margin-top: 4px;
         }
@@ -425,17 +430,17 @@
         .modal-buttons {
             display: flex;
             flex-direction: column;
-            gap: 10px;
-            margin-top: 16px;
+            gap: 8px;
+            margin-top: 14px;
         }
         .modal-btn {
-            padding: 10px 16px;
-            border-radius: 10px;
+            padding: 8px 14px;
+            border-radius: 8px;
             font-weight: 700;
             text-align: center;
             background: #333;
             color: #fff;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
             border: none;
             cursor: pointer;
             text-decoration: none;
@@ -454,7 +459,7 @@
         }
 
         .player-modal .modal-box {
-            max-width: 350px;
+            max-width: 320px;
         }
         .player-modal .modal-buttons {
             flex-direction: row;
@@ -463,68 +468,69 @@
         }
         .player-modal .modal-btn {
             flex: 1;
-            min-width: 90px;
+            min-width: 80px;
             text-align: center;
         }
 
         /* ─── RESPONSIVE ─── */
-        @media (max-width: 1100px) {
+        @media (max-width: 800px) {
             .channels-grid {
-                grid-template-columns: repeat(3, 1fr);
-                gap: 14px;
-            }
-        }
-        @media (max-width: 768px) {
-            header {
-                flex-direction: column;
-                padding: 10px 14px 8px;
-                gap: 8px;
-            }
-            .logo h1 {
-                font-size: 1.2rem;
-            }
-            .header-actions {
-                max-width: 100%;
-                width: 100%;
-                flex-wrap: wrap;
-            }
-            .search-wrap {
-                flex: 1 1 100%;
-            }
-            .disclaimer-btn {
-                font-size: 0.65rem;
-                padding: 4px 10px;
-            }
-            .container {
-                padding: 6px 12px 16px;
-            }
-            .channels-grid {
-                grid-template-columns: repeat(2, 1fr);
+                grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
                 gap: 12px;
             }
-            .cat-wrap {
-                padding: 8px 12px 4px;
-            }
-            .cat-btn {
-                padding: 5px 12px;
-                font-size: 0.7rem;
+            .channel-card {
+                max-width: 180px;
             }
             .card-img {
                 height: 60px;
-                padding: 6px;
-            }
-            .card-body {
-                padding: 8px 8px 10px;
             }
             .card-name {
-                font-size: 0.75rem;
+                font-size: 0.7rem;
             }
             .play-btn {
-                font-size: 0.7rem;
-                padding: 6px 0;
+                font-size: 0.6rem;
+                padding: 4px 0;
+                max-width: 90px;
+            }
+        }
+        @media (max-width: 480px) {
+            .channels-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 10px;
+            }
+            .channel-card {
+                max-width: 160px;
+            }
+            .card-img {
+                height: 50px;
+                padding: 4px;
+            }
+            .card-body {
+                padding: 6px 6px 8px;
+            }
+            .card-name {
+                font-size: 0.65rem;
+            }
+            .play-btn {
+                font-size: 0.55rem;
+                padding: 4px 0;
+                max-width: 70px;
+            }
+            .logo h1 {
+                font-size: 1.0rem;
+            }
+            .logo .badge {
+                font-size: 0.4rem;
+                padding: 1px 6px;
+            }
+            header {
+                padding: 6px 10px 4px;
+            }
+            .container {
+                padding: 4px 10px 16px;
             }
             .modal-box {
-                padding: 18px 14px;
+                padding: 16px 14px;
                 max-width: 92%;
             }
             .player-modal .modal-buttons {
@@ -534,54 +540,24 @@
                 min-width: unset;
             }
         }
-        @media (max-width: 420px) {
+        @media (min-width: 1200px) {
             .channels-grid {
-                grid-template-columns: 1fr 1fr;
-                gap: 10px;
+                grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+                gap: 18px;
+            }
+            .channel-card {
+                max-width: 260px;
             }
             .card-img {
-                height: 50px;
+                height: 90px;
             }
             .card-name {
-                font-size: 0.7rem;
+                font-size: 0.95rem;
             }
             .play-btn {
-                font-size: 0.65rem;
-                padding: 5px 0;
-            }
-            .logo h1 {
-                font-size: 1.0rem;
-            }
-            .logo .badge {
-                font-size: 0.45rem;
-                padding: 1px 6px;
-            }
-        }
-        @media (min-width: 1600px) {
-            .channels-grid {
-                grid-template-columns: repeat(5, 1fr);
-                gap: 20px;
-            }
-            .card-img {
-                height: 100px;
-            }
-            .card-name {
-                font-size: 1.0rem;
-            }
-            .play-btn {
-                font-size: 0.9rem;
-                padding: 10px 0;
-            }
-            .cat-btn {
-                padding: 10px 24px;
-                font-size: 0.9rem;
-            }
-            .modal-box {
-                max-width: 480px;
-                padding: 28px 24px;
-            }
-            .modal-title {
-                font-size: 1.5rem;
+                font-size: 0.8rem;
+                padding: 8px 0;
+                max-width: 140px;
             }
         }
     </style>
@@ -635,7 +611,7 @@
             <h2 class="modal-title" id="disclaimerTitle">⚖️ Disclaimer</h2>
             <div class="modal-body">
                 <p><strong>WEB BY DEMØNJI</strong> does <strong>not</strong> host, store, or broadcast any video streams. All links are sourced from publicly available third-party services.</p>
-                <p style="margin-top:10px;">We are a <strong>directory</strong> that organizes publicly available information. We do <strong>not</strong> claim ownership of any content.</p>
+                <p style="margin-top:8px;">We are a <strong>directory</strong> that organizes publicly available information. We do <strong>not</strong> claim ownership of any content.</p>
                 <div class="legal-punch">
                     ⚡ You <span>cannot</span> sue us.
                     <span class="sub">We are not liable for any content or damages from third-party streams.</span>
@@ -879,8 +855,6 @@
                     btn.className = 'play-btn';
                     btn.textContent = '▶ Play';
                     btn.setAttribute('aria-label', 'Play ' + ch.name);
-
-                    // Store data on button as well
                     btn.dataset.stream = btoa(ch.url);
                     btn.dataset.name = ch.name;
                     btn.dataset.icon = ch.icon;
@@ -899,20 +873,17 @@
                         '</div>' +
                         '</div>';
 
-                    // Append the play button separately inside card-body after the existing content
                     var body = card.querySelector('.card-body');
                     body.appendChild(btn);
 
-                    // Click on the button triggers player
                     btn.addEventListener('click', function(e) {
-                        e.stopPropagation(); // prevent card click if any
+                        e.stopPropagation();
                         var stream = this.dataset.stream;
                         var name = this.dataset.name;
                         var icon = this.dataset.icon;
                         openPlayer(stream, name, icon);
                     });
 
-                    // Click on the card itself (anywhere except button) also triggers player
                     card.addEventListener('click', function(e) {
                         if (e.target.classList.contains('play-btn')) return;
                         var stream = this.dataset.stream;
@@ -921,7 +892,6 @@
                         openPlayer(stream, name, icon);
                     });
 
-                    // Keyboard: Enter on card triggers player
                     card.addEventListener('keydown', function(e) {
                         if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
@@ -950,13 +920,11 @@
                         name) + '&back=' + encodeURIComponent(back);
 
                     openModal(playerModal);
-                    // Focus first button after a short delay
                     setTimeout(function() {
                         if (ogLink) ogLink.focus();
                     }, 100);
                 } catch (err) {
                     console.warn('Error opening player:', err);
-                    // fallback
                     window.location.href = 'player.html?s=' + encodeURIComponent(stream) +
                         '&name=' + encodeURIComponent(name) +
                         '&back=' + encodeURIComponent(window.location.href);
