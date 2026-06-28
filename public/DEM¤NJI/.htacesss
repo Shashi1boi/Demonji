@@ -1,2 +1,0 @@
-RewriteEngine On
-RewriteRule ^playlist\.m3u8$ proxy.php [L,QSA]
