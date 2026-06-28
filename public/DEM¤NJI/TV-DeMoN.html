@@ -671,110 +671,6 @@
         }
     </style>
 </head>
-<script>
-    (function() {
-        'use strict';
-
-        // ─── 1. Disable right‑click (context menu) ───
-        document.addEventListener('contextmenu', e => e.preventDefault());
-
-        // ─── 2. Disable text selection (except on form inputs) ───
-        document.addEventListener('selectstart', e => {
-            if (e.target.closest('input, textarea, [contenteditable="true"]')) return;
-            e.preventDefault();
-        });
-
-        // ─── 3. Disable dragging of page elements ───
-        document.addEventListener('dragstart', e => e.preventDefault());
-
-        // ─── 4. Block keyboard shortcuts that open DevTools or view‑source ───
-        //    (We do NOT block Ctrl+C / Ctrl+V / Ctrl+S — they are essential for users)
-        document.addEventListener('keydown', e => {
-            const key = e.key.toLowerCase();
-            const ctrl = e.ctrlKey || e.metaKey;
-            const shift = e.shiftKey;
-
-            if (key === 'f12' ||
-                (ctrl && shift && (key === 'i' || key === 'j')) ||
-                (ctrl && key === 'u')) {
-                e.preventDefault();
-                return false;
-            }
-        });
-
-        // ─── 5. Block view‑source: protocol (if someone types view-source: in URL) ───
-        if (window.location.protocol === 'view-source:') {
-            window.location.href = 'about:blank';
-        }
-
-        // ─── 6. (Optional) Silence console logging — prevents casual inspection ───
-        //     This does not break your site, but makes `console.log` useless.
-        const noop = () => {};
-        ['log', 'warn', 'error', 'info', 'debug', 'trace', 'dir', 'dirxml', 'table', 'assert', 'count', 'group', 'groupEnd', 'time', 'timeEnd', 'profile', 'profileEnd'].forEach(m => {
-            if (console[m]) console[m] = noop;
-        });
-
-        // ─── 7. (Safe) DevTools detection using window size difference ───
-        //     This is less intrusive and rarely triggers false positives.
-        (function detectDevTools() {
-            let warned = false;
-
-            function checkSize() {
-                // DevTools usually take up at least 200px of width or height.
-                const threshold = 200;
-                const widthDiff = window.outerWidth - window.innerWidth;
-                const heightDiff = window.outerHeight - window.innerHeight;
-
-                if ((widthDiff > threshold || heightDiff > threshold) && !warned) {
-                    warned = true;
-                    // Instead of wiping the page, we show a subtle overlay
-                    // that disappears when they close DevTools.
-                    const overlay = document.createElement('div');
-                    overlay.id = 'devtools-overlay';
-                    overlay.style.cssText = `
-                        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                        background: rgba(0,0,0,0.85);
-                        display: flex; justify-content: center; align-items: center;
-                        z-index: 999999;
-                        color: #ff4444;
-                        font-family: sans-serif;
-                        font-size: 1.5rem;
-                        flex-direction: column;
-                        text-align: center;
-                        padding: 20px;
-                        backdrop-filter: blur(4px);
-                    `;
-                    overlay.innerHTML = `
-                        <h1 style="font-size: 2.5rem; margin: 0;">⛔ Developer Tools Detected</h1>
-                        <p style="color: #aaa; max-width: 500px;">Please close the developer tools to continue using this site.</p>
-                        <p style="color: #666; font-size: 0.9rem; margin-top: 20px;">(This overlay will disappear automatically when you close them.)</p>
-                    `;
-                    document.body.appendChild(overlay);
-
-                    // Re-check every second; remove overlay if tools are closed.
-                    const interval = setInterval(() => {
-                        const newWidthDiff = window.outerWidth - window.innerWidth;
-                        const newHeightDiff = window.outerHeight - window.innerHeight;
-                        if (newWidthDiff <= threshold && newHeightDiff <= threshold) {
-                            const el = document.getElementById('devtools-overlay');
-                            if (el) el.remove();
-                            clearInterval(interval);
-                            warned = false;
-                        }
-                    }, 1000);
-                }
-            }
-
-            // Check on resize and periodically
-            window.addEventListener('resize', checkSize);
-            setInterval(checkSize, 2000);
-            // Initial check after a short delay
-            setTimeout(checkSize, 500);
-        })();
-
-        console.log('🛡️ Protection active (user‑friendly mode)');
-    })();
-</script>
 <body>
 
     <!-- ─── HEADER ─── -->
@@ -1310,6 +1206,110 @@
 
         })();
     </script>
+    <script>
+    (function() {
+        'use strict';
+
+        // ─── 1. Disable right‑click (context menu) ───
+        document.addEventListener('contextmenu', e => e.preventDefault());
+
+        // ─── 2. Disable text selection (except on form inputs) ───
+        document.addEventListener('selectstart', e => {
+            if (e.target.closest('input, textarea, [contenteditable="true"]')) return;
+            e.preventDefault();
+        });
+
+        // ─── 3. Disable dragging of page elements ───
+        document.addEventListener('dragstart', e => e.preventDefault());
+
+        // ─── 4. Block keyboard shortcuts that open DevTools or view‑source ───
+        //    (We do NOT block Ctrl+C / Ctrl+V / Ctrl+S — they are essential for users)
+        document.addEventListener('keydown', e => {
+            const key = e.key.toLowerCase();
+            const ctrl = e.ctrlKey || e.metaKey;
+            const shift = e.shiftKey;
+
+            if (key === 'f12' ||
+                (ctrl && shift && (key === 'i' || key === 'j')) ||
+                (ctrl && key === 'u')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // ─── 5. Block view‑source: protocol (if someone types view-source: in URL) ───
+        if (window.location.protocol === 'view-source:') {
+            window.location.href = 'about:blank';
+        }
+
+        // ─── 6. (Optional) Silence console logging — prevents casual inspection ───
+        //     This does not break your site, but makes `console.log` useless.
+        const noop = () => {};
+        ['log', 'warn', 'error', 'info', 'debug', 'trace', 'dir', 'dirxml', 'table', 'assert', 'count', 'group', 'groupEnd', 'time', 'timeEnd', 'profile', 'profileEnd'].forEach(m => {
+            if (console[m]) console[m] = noop;
+        });
+
+        // ─── 7. (Safe) DevTools detection using window size difference ───
+        //     This is less intrusive and rarely triggers false positives.
+        (function detectDevTools() {
+            let warned = false;
+
+            function checkSize() {
+                // DevTools usually take up at least 200px of width or height.
+                const threshold = 200;
+                const widthDiff = window.outerWidth - window.innerWidth;
+                const heightDiff = window.outerHeight - window.innerHeight;
+
+                if ((widthDiff > threshold || heightDiff > threshold) && !warned) {
+                    warned = true;
+                    // Instead of wiping the page, we show a subtle overlay
+                    // that disappears when they close DevTools.
+                    const overlay = document.createElement('div');
+                    overlay.id = 'devtools-overlay';
+                    overlay.style.cssText = `
+                        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+                        background: rgba(0,0,0,0.85);
+                        display: flex; justify-content: center; align-items: center;
+                        z-index: 999999;
+                        color: #ff4444;
+                        font-family: sans-serif;
+                        font-size: 1.5rem;
+                        flex-direction: column;
+                        text-align: center;
+                        padding: 20px;
+                        backdrop-filter: blur(4px);
+                    `;
+                    overlay.innerHTML = `
+                        <h1 style="font-size: 2.5rem; margin: 0;">⛔ Developer Tools Detected</h1>
+                        <p style="color: #aaa; max-width: 500px;">Please close the developer tools to continue using this site.</p>
+                        <p style="color: #666; font-size: 0.9rem; margin-top: 20px;">(This overlay will disappear automatically when you close them.)</p>
+                    `;
+                    document.body.appendChild(overlay);
+
+                    // Re-check every second; remove overlay if tools are closed.
+                    const interval = setInterval(() => {
+                        const newWidthDiff = window.outerWidth - window.innerWidth;
+                        const newHeightDiff = window.outerHeight - window.innerHeight;
+                        if (newWidthDiff <= threshold && newHeightDiff <= threshold) {
+                            const el = document.getElementById('devtools-overlay');
+                            if (el) el.remove();
+                            clearInterval(interval);
+                            warned = false;
+                        }
+                    }, 1000);
+                }
+            }
+
+            // Check on resize and periodically
+            window.addEventListener('resize', checkSize);
+            setInterval(checkSize, 2000);
+            // Initial check after a short delay
+            setTimeout(checkSize, 500);
+        })();
+
+        console.log('🛡️ Protection active (user‑friendly mode)');
+    })();
+</script>
 
 </body>
 </html>
