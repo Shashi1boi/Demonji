@@ -23,7 +23,7 @@
             --accent-glow: rgba(255, 87, 34, 0.35);
             --radius: 18px;
             --shadow: 0 6px 18px rgba(0, 0, 0, 0.6);
-            --transition: 0.25s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+            --transition: 0.2s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
         html {
             scroll-behavior: smooth;
@@ -34,6 +34,8 @@
             color: var(--text-primary);
             line-height: 1.6;
             min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
         a {
             color: inherit;
@@ -62,11 +64,13 @@
             align-items: center;
             justify-content: space-between;
             gap: 16px;
+            will-change: transform;
         }
         .logo {
             display: flex;
             align-items: center;
             gap: 6px;
+            flex-shrink: 0;
         }
         .logo h1 {
             font-size: 2rem;
@@ -87,6 +91,7 @@
             border-radius: 30px;
             letter-spacing: 0.3px;
             text-transform: uppercase;
+            flex-shrink: 0;
         }
 
         .header-actions {
@@ -94,6 +99,8 @@
             align-items: center;
             gap: 14px;
             flex-wrap: wrap;
+            flex: 1;
+            min-width: 0;
         }
 
         /* ── disclaimer button ── */
@@ -106,11 +113,13 @@
             font-size: 0.85rem;
             font-weight: 600;
             cursor: pointer;
-            transition: var(--transition);
+            transition: border-color var(--transition), color var(--transition), background var(--transition), box-shadow var(--transition);
             display: flex;
             align-items: center;
             gap: 8px;
             white-space: nowrap;
+            flex-shrink: 0;
+            will-change: transform;
         }
         .disclaimer-btn:hover {
             border-color: var(--accent);
@@ -127,7 +136,7 @@
         /* ── search ── */
         .search-wrap {
             flex: 1;
-            min-width: 180px;
+            min-width: 140px;
             max-width: 480px;
             position: relative;
         }
@@ -147,8 +156,9 @@
             background: var(--bg-secondary);
             color: var(--text-primary);
             font-size: 1rem;
-            transition: var(--transition);
+            transition: border-color var(--transition), box-shadow var(--transition);
             outline: none;
+            -webkit-appearance: none;
         }
         .search-wrap input:focus {
             border-color: var(--accent);
@@ -158,13 +168,14 @@
             color: #666;
         }
 
-        /* ── category filters (TV-style horizontal scroll) ── */
+        /* ── category filters (horizontal scroll) ── */
         .cat-wrap {
             padding: 16px 0 8px;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: thin;
             margin-bottom: 4px;
+            contain: layout style;
         }
         .cat-wrap::-webkit-scrollbar {
             height: 4px;
@@ -178,6 +189,7 @@
             gap: 10px;
             padding: 4px 0 12px;
             min-width: max-content;
+            will-change: transform;
         }
         .cat-btn {
             padding: 10px 24px;
@@ -192,6 +204,8 @@
             flex-shrink: 0;
             white-space: nowrap;
             user-select: none;
+            will-change: transform;
+            touch-action: manipulation;
         }
         .cat-btn:hover {
             color: #fff;
@@ -210,6 +224,7 @@
             grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
             gap: 28px;
             margin-top: 8px;
+            contain: layout style;
         }
 
         .channel-card {
@@ -223,12 +238,21 @@
             display: flex;
             flex-direction: column;
             position: relative;
-            animation: fadeUp 0.45s ease forwards;
+            animation: fadeUp 0.4s ease forwards;
+            contain: layout style paint;
+            will-change: transform;
+            -webkit-tap-highlight-color: transparent;
         }
         .channel-card:hover {
-            transform: translateY(-8px);
+            transform: translateY(-6px);
             box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7);
             border-color: var(--accent);
+        }
+        /* Reduce hover transform on smaller screens for smoother feel */
+        @media (max-width: 768px) {
+            .channel-card:hover {
+                transform: translateY(-3px);
+            }
         }
 
         .channel-image {
@@ -239,15 +263,18 @@
             background: #181818;
             padding: 14px;
             flex-shrink: 0;
+            contain: layout style;
         }
         .channel-image img {
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
-            transition: transform 0.4s ease;
+            transition: transform 0.3s ease;
+            will-change: transform;
+            background: #181818;
         }
         .channel-card:hover .channel-image img {
-            transform: scale(1.06);
+            transform: scale(1.05);
         }
 
         .channel-info {
@@ -257,6 +284,7 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            contain: layout style;
         }
         .channel-name {
             font-size: 1.05rem;
@@ -296,10 +324,13 @@
             transition: opacity var(--transition), transform var(--transition), background var(--transition);
             font-size: 0.95rem;
             letter-spacing: 0.3px;
+            will-change: transform, opacity;
+            pointer-events: none;
         }
         .channel-card:hover .play-btn {
             opacity: 1;
             transform: translateX(-50%) scale(1);
+            pointer-events: auto;
         }
         .play-btn:hover {
             background: var(--accent-hover);
@@ -319,6 +350,7 @@
             border-radius: 50%;
             border-top-color: var(--accent);
             animation: spin 0.9s linear infinite;
+            will-change: transform;
         }
         .message {
             text-align: center;
@@ -345,13 +377,18 @@
             border: none;
             font-size: 1rem;
             cursor: pointer;
-            transition: var(--transition);
+            transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
             box-shadow: 0 4px 12px rgba(255, 87, 34, 0.3);
+            will-change: transform;
+            touch-action: manipulation;
         }
         .load-more-btn:hover {
             background: var(--accent-hover);
             transform: translateY(-3px);
             box-shadow: 0 8px 22px rgba(255, 87, 34, 0.4);
+        }
+        .load-more-btn:active {
+            transform: translateY(0);
         }
 
         /* ── modals ── */
@@ -366,9 +403,11 @@
             justify-content: center;
             align-items: center;
             padding: 20px;
+            will-change: opacity;
         }
         .modal-overlay.show {
             display: flex;
+            animation: fadeIn 0.25s ease;
         }
 
         .modal-box {
@@ -381,6 +420,7 @@
             animation: fadeUp 0.3s ease;
             position: relative;
             border: 1px solid #333;
+            contain: layout style paint;
         }
         .modal-close {
             position: absolute;
@@ -392,6 +432,7 @@
             cursor: pointer;
             transition: color 0.2s;
             line-height: 1;
+            touch-action: manipulation;
         }
         .modal-close:hover {
             color: var(--accent);
@@ -443,14 +484,19 @@
             text-align: center;
             background: #2e2e2e;
             color: #fff;
-            transition: var(--transition);
+            transition: background var(--transition), transform var(--transition);
             font-size: 1rem;
             border: none;
             cursor: pointer;
+            will-change: transform;
+            touch-action: manipulation;
         }
         .modal-btn:hover {
             background: #3f3f3f;
             transform: translateY(-2px);
+        }
+        .modal-btn:active {
+            transform: translateY(0);
         }
         .modal-btn.primary {
             background: var(--accent);
@@ -459,7 +505,7 @@
             background: var(--accent-hover);
         }
 
-        /* ── player modal (channel click) ── */
+        /* ── player modal ── */
         .player-modal .modal-box {
             max-width: 400px;
         }
@@ -489,6 +535,14 @@
                 transform: translateY(0);
             }
         }
+        @keyframes fadeIn {
+            0% {
+                opacity: 0;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
 
         /* ── responsive ── */
         @media (max-width: 768px) {
@@ -506,10 +560,12 @@
             .header-actions {
                 width: 100%;
                 justify-content: space-between;
+                flex-wrap: wrap;
             }
             .search-wrap {
                 max-width: 100%;
                 width: 100%;
+                min-width: unset;
             }
             .channels-grid {
                 grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -543,18 +599,20 @@
             }
             .channel-image {
                 height: 80px;
+                padding: 10px;
             }
             .channel-info {
                 padding: 12px 10px 52px 10px;
             }
             .channel-name {
-                font-size: 0.9rem;
+                font-size: 0.85rem;
             }
             .play-btn {
-                font-size: 0.8rem;
+                font-size: 0.75rem;
                 padding: 10px;
                 bottom: 12px;
                 width: calc(100% - 20px);
+                border-radius: 10px;
             }
             .logo h1 {
                 font-size: 1.3rem;
@@ -562,6 +620,18 @@
             .logo .badge {
                 font-size: 0.55rem;
                 padding: 1px 8px;
+            }
+            .channel-category {
+                font-size: 0.7rem;
+            }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
             }
         }
     </style>
@@ -577,8 +647,8 @@
 
         <div class="header-actions">
             <!-- DISCLAIMER BUTTON -->
-            <button class="disclaimer-btn" id="disclaimerToggle">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <button class="disclaimer-btn" id="disclaimerToggle" aria-label="Disclaimer">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                     <path d="M12 8v4" />
                     <path d="M12 16h.01" />
@@ -587,15 +657,15 @@
             </button>
 
             <div class="search-wrap">
-                <span class="search-icon">
+                <span class="search-icon" aria-hidden="true">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 </span>
-                <input type="text" id="searchInput" placeholder="Search channels…" autocomplete="off" />
+                <input type="text" id="searchInput" placeholder="Search channels…" autocomplete="off" aria-label="Search channels" />
             </div>
         </div>
     </header>
 
-    <!-- ─── CATEGORY FILTERS (TV-style horizontal scroll) ─── -->
+    <!-- ─── CATEGORY FILTERS ─── -->
     <div class="container">
         <div class="cat-wrap">
             <div class="cat-scroll" id="categoryFilters" role="tablist" aria-label="Categories"></div>
@@ -605,14 +675,14 @@
     <!-- ─── MAIN ─── -->
     <div class="container">
         <main>
-            <div id="channelGrid" class="channels-grid"></div>
+            <div id="channelGrid" class="channels-grid" role="list"></div>
 
             <div id="loadingSpinner" class="loading-wrap" style="display:none;">
-                <div class="spinner"></div>
+                <div class="spinner" role="status" aria-label="Loading"></div>
             </div>
 
             <div id="messageContainer" class="message" style="display:none;"></div>
-            <div id="errorContainer" class="error-box"></div>
+            <div id="errorContainer" class="error-box" role="alert"></div>
 
             <div id="loadMoreContainer" class="load-more-wrap" style="display:none;">
                 <button id="loadMoreBtn" class="load-more-btn">Load More Channels</button>
@@ -621,10 +691,10 @@
     </div>
 
     <!-- ─── DISCLAIMER MODAL ─── -->
-    <div id="disclaimerModal" class="modal-overlay">
+    <div id="disclaimerModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
         <div class="modal-box">
-            <span class="modal-close" id="disclaimerClose">&times;</span>
-            <h2 class="modal-title">⚖️ Disclaimer</h2>
+            <span class="modal-close" id="disclaimerClose" aria-label="Close disclaimer">&times;</span>
+            <h2 class="modal-title" id="disclaimerTitle">⚖️ Disclaimer</h2>
             <div class="modal-body">
                 <p>
                     <strong>WEB BY DEMØNJI</strong> does <strong>not</strong> host, store, or broadcast
@@ -637,7 +707,6 @@
                     that organizes publicly available information.
                 </p>
 
-                <!-- 🔥 PUNCH LINE -->
                 <div class="legal-punch">
                     ⚡ You <span>cannot</span> sue us.
                     <br />
@@ -654,21 +723,20 @@
         </div>
     </div>
 
-    <!-- ─── PLAYER MODAL (channel click) ─── -->
-    <div id="playerModal" class="modal-overlay player-modal">
+    <!-- ─── PLAYER MODAL ─── -->
+    <div id="playerModal" class="modal-overlay player-modal" role="dialog" aria-modal="true" aria-labelledby="playerTitle">
         <div class="modal-box">
-            <span class="modal-close" id="playerModalClose">&times;</span>
-            <h2 class="modal-title">▶️ Choose Player</h2>
+            <span class="modal-close" id="playerModalClose" aria-label="Close player options">&times;</span>
+            <h2 class="modal-title" id="playerTitle">▶️ Choose Player</h2>
             <div class="modal-body" style="text-align:center;color:var(--text-secondary);margin-bottom:6px;">
                 Select how you'd like to watch this channel.
             </div>
             <div class="modal-buttons">
-                <a id="ogPlayerLink" href="#" target="_blank" class="modal-btn primary">Original Player</a>
-                <a id="simplePlayerLink" href="#" target="_blank" class="modal-btn">Simple Player</a>
+                <a id="ogPlayerLink" href="#" target="_blank" rel="noopener noreferrer" class="modal-btn primary">Original Player</a>
+                <a id="simplePlayerLink" href="#" target="_blank" rel="noopener noreferrer" class="modal-btn">Simple Player</a>
             </div>
         </div>
     </div>
-
 
     <!-- ─── SCRIPT ─── -->
     <script>
@@ -692,13 +760,11 @@
             const searchInput = document.getElementById('searchInput');
             const catContainer = document.getElementById('categoryFilters');
 
-            // Disclaimer
             const disclaimerModal = document.getElementById('disclaimerModal');
             const disclaimerToggle = document.getElementById('disclaimerToggle');
             const disclaimerClose = document.getElementById('disclaimerClose');
             const disclaimerAck = document.getElementById('disclaimerAcknowledge');
 
-            // Player modal
             const playerModal = document.getElementById('playerModal');
             const playerClose = document.getElementById('playerModalClose');
             const ogLink = document.getElementById('ogPlayerLink');
@@ -710,6 +776,8 @@
             let rendered = 0;
             let selectedCategory = 'All';
             let searchTerm = '';
+            let isLoading = false;
+            let observer = null;
 
             // ─── HELPERS ───
             function showLoading() { loadingEl.style.display = 'flex'; }
@@ -760,8 +828,8 @@
                 const lines = raw.split('\n');
                 let cur = {};
 
-                for (const line of lines) {
-                    const t = line.trim();
+                for (let i = 0; i < lines.length; i++) {
+                    const t = lines[i].trim();
                     if (t.startsWith('#EXTINF')) {
                         const m = /#EXTINF:-1\s+(.*),(.*)/.exec(t);
                         if (m) {
@@ -814,12 +882,44 @@
                 }
             }
 
-            // ─── CATEGORY FILTERS (horizontal scroll) ───
+            // ─── CATEGORY FILTERS ───
             function buildCategoryFilter() {
                 const cats = ['All', ...new Set(allChannels.map(c => c.category).sort())];
                 catContainer.innerHTML = cats.map(c =>
                     `<button class="cat-btn ${c === 'All' ? 'active' : ''}" data-cat="${c}" role="tab" aria-selected="${c === 'All' ? 'true' : 'false'}">${c}</button>`
                 ).join('');
+            }
+
+            // ─── INTERSECTION OBSERVER FOR LAZY IMAGES ───
+            function setupLazyObserver() {
+                if (observer) {
+                    observer.disconnect();
+                    observer = null;
+                }
+
+                const images = grid.querySelectorAll('img[data-src]');
+                if (!images.length) return;
+
+                observer = new IntersectionObserver((entries) => {
+                    for (const entry of entries) {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            const src = img.getAttribute('data-src');
+                            if (src) {
+                                img.src = src;
+                                img.removeAttribute('data-src');
+                            }
+                            observer.unobserve(img);
+                        }
+                    }
+                }, {
+                    rootMargin: '100px',
+                    threshold: 0.01
+                });
+
+                for (const img of images) {
+                    observer.observe(img);
+                }
             }
 
             // ─── FILTER & RENDER ───
@@ -841,74 +941,107 @@
             }
 
             function renderGrid(reset) {
-                if (reset) {
-                    grid.innerHTML = '';
-                    rendered = 0;
-                    if (!visible.length) {
-                        showMsg('No channels match your selection.');
+                if (isLoading) return;
+                isLoading = true;
+
+                requestAnimationFrame(() => {
+                    if (reset) {
+                        grid.innerHTML = '';
+                        rendered = 0;
+                        if (!visible.length) {
+                            showMsg('No channels match your selection.');
+                            hideLoadMore();
+                            isLoading = false;
+                            return;
+                        }
+                    }
+
+                    const start = rendered;
+                    const end = Math.min(start + PER_PAGE, visible.length);
+                    if (start >= end) {
                         hideLoadMore();
+                        isLoading = false;
                         return;
                     }
-                }
 
-                const start = rendered;
-                const end = Math.min(start + PER_PAGE, visible.length);
+                    const fragment = document.createDocumentFragment();
 
-                for (let i = start; i < end; i++) {
-                    const ch = visible[i];
-                    const card = document.createElement('a');
-                    card.className = 'channel-card';
-                    card.href = '#';
-                    card.dataset.stream = btoa(ch.url);
-                    card.dataset.name = ch.name;
-                    card.dataset.icon = ch.icon;
+                    for (let i = start; i < end; i++) {
+                        const ch = visible[i];
+                        const card = document.createElement('a');
+                        card.className = 'channel-card';
+                        card.href = '#';
+                        card.dataset.stream = btoa(ch.url);
+                        card.dataset.name = ch.name;
+                        card.dataset.icon = ch.icon;
+                        card.setAttribute('role', 'listitem');
 
-                    card.innerHTML = `
-                        <div class="channel-image">
-                            <img src="${ch.icon}" alt="${ch.name}" loading="lazy" onerror="this.onerror=null;this.src='demonji.png';" />
-                        </div>
-                        <div class="channel-info">
-                            <div>
-                                <h3 class="channel-name" title="${ch.name}">${ch.name}</h3>
-                                <div class="channel-category">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
-                                    <span>${ch.category}</span>
+                        // Use data-src for lazy loading
+                        const imgSrc = ch.icon;
+
+                        card.innerHTML = `
+                            <div class="channel-image">
+                                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%23181818'/%3E%3C/svg%3E" data-src="${imgSrc}" alt="${ch.name}" loading="lazy" />
+                            </div>
+                            <div class="channel-info">
+                                <div>
+                                    <h3 class="channel-name" title="${ch.name}">${ch.name}</h3>
+                                    <div class="channel-category">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>
+                                        <span>${ch.category}</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="play-btn">▶ Play Now</div>
-                    `;
+                            <div class="play-btn">▶ Play Now</div>
+                        `;
 
-                    card.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        const stream = this.dataset.stream;
-                        const name = this.dataset.name;
-                        const icon = this.dataset.icon;
-                        const back = window.location.href;
+                        fragment.appendChild(card);
+                    }
 
-                        ogLink.href =
-                            `player.html?s=${encodeURIComponent(stream)}&name=${encodeURIComponent(name)}&icon=${encodeURIComponent(icon)}&back=${encodeURIComponent(back)}`;
-                        simpleLink.href =
-                            `simple-player.html?s=${encodeURIComponent(stream)}&name=${encodeURIComponent(name)}&back=${encodeURIComponent(back)}`;
+                    grid.appendChild(fragment);
 
-                        openModal(playerModal);
-                    });
+                    // Set up lazy loading for new images
+                    setupLazyObserver();
 
-                    grid.appendChild(card);
-                }
+                    rendered = end;
 
-                rendered = end;
+                    if (rendered < visible.length) showLoadMore();
+                    else hideLoadMore();
 
-                if (rendered < visible.length) showLoadMore();
-                else hideLoadMore();
+                    isLoading = false;
+                });
             }
 
-            // ─── EVENT LISTENERS ───
+            // ─── EVENT DELEGATION: channel clicks ───
+            grid.addEventListener('click', function(e) {
+                const card = e.target.closest('.channel-card');
+                if (!card) return;
 
-            // Category clicks
+                // Ignore clicks on the play button itself (it's inside the card)
+                // but we want the card click to trigger the modal
+                const stream = card.dataset.stream;
+                const name = card.dataset.name;
+                const icon = card.dataset.icon;
+                if (!stream) return;
+
+                e.preventDefault();
+
+                const back = window.location.href;
+
+                ogLink.href =
+                    `player.html?s=${encodeURIComponent(stream)}&name=${encodeURIComponent(name)}&icon=${encodeURIComponent(icon)}&back=${encodeURIComponent(back)}`;
+                simpleLink.href =
+                    `simple-player.html?s=${encodeURIComponent(stream)}&name=${encodeURIComponent(name)}&back=${encodeURIComponent(back)}`;
+
+                openModal(playerModal);
+            });
+
+            // ─── CATEGORY CLICKS ───
             catContainer.addEventListener('click', function(e) {
                 const btn = e.target.closest('.cat-btn');
                 if (!btn) return;
+                if (btn.dataset.cat === selectedCategory) return;
+
                 selectedCategory = btn.dataset.cat;
                 document.querySelectorAll('.cat-btn').forEach(b => {
                     b.classList.remove('active');
@@ -916,22 +1049,28 @@
                 });
                 btn.classList.add('active');
                 btn.setAttribute('aria-selected', 'true');
+
+                // Reset search input when changing category? No, keep it.
                 applyFilters();
             });
 
-            // Search (debounced)
+            // ─── SEARCH (debounced) ───
             let searchTimer;
             searchInput.addEventListener('input', function() {
                 clearTimeout(searchTimer);
                 searchTimer = setTimeout(() => {
-                    searchTerm = this.value.trim();
+                    const newTerm = this.value.trim();
+                    if (newTerm === searchTerm) return;
+                    searchTerm = newTerm;
                     applyFilters();
-                }, 280);
+                }, 250);
             });
 
-            // Load more
+            // ─── LOAD MORE ───
             loadMoreBtn.addEventListener('click', function() {
-                renderGrid(false);
+                if (!isLoading) {
+                    renderGrid(false);
+                }
             });
 
             // ─── DISCLAIMER MODAL ───
@@ -963,6 +1102,14 @@
 
             // ─── GO ───
             fetchAndPrepare();
+
+            // ─── CLEANUP OBSERVER on page unload ───
+            window.addEventListener('beforeunload', function() {
+                if (observer) {
+                    observer.disconnect();
+                    observer = null;
+                }
+            });
 
         })();
     </script>
