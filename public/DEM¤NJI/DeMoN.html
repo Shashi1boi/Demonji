@@ -64,7 +64,6 @@
             align-items: center;
             justify-content: space-between;
             gap: 16px;
-            will-change: transform;
         }
         .logo {
             display: flex;
@@ -119,7 +118,6 @@
             gap: 8px;
             white-space: nowrap;
             flex-shrink: 0;
-            will-change: transform;
         }
         .disclaimer-btn:hover {
             border-color: var(--accent);
@@ -168,14 +166,13 @@
             color: #666;
         }
 
-        /* ── category filters (horizontal scroll) ── */
+        /* ── category filters ── */
         .cat-wrap {
             padding: 16px 0 8px;
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
             scrollbar-width: thin;
             margin-bottom: 4px;
-            contain: layout style;
         }
         .cat-wrap::-webkit-scrollbar {
             height: 4px;
@@ -189,7 +186,6 @@
             gap: 10px;
             padding: 4px 0 12px;
             min-width: max-content;
-            will-change: transform;
         }
         .cat-btn {
             padding: 10px 24px;
@@ -204,8 +200,6 @@
             flex-shrink: 0;
             white-space: nowrap;
             user-select: none;
-            will-change: transform;
-            touch-action: manipulation;
         }
         .cat-btn:hover {
             color: #fff;
@@ -224,7 +218,6 @@
             grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
             gap: 28px;
             margin-top: 8px;
-            contain: layout style;
         }
 
         .channel-card {
@@ -239,8 +232,6 @@
             flex-direction: column;
             position: relative;
             animation: fadeUp 0.4s ease forwards;
-            contain: layout style paint;
-            will-change: transform;
             -webkit-tap-highlight-color: transparent;
         }
         .channel-card:hover {
@@ -248,7 +239,6 @@
             box-shadow: 0 16px 36px rgba(0, 0, 0, 0.7);
             border-color: var(--accent);
         }
-        /* Reduce hover transform on smaller screens for smoother feel */
         @media (max-width: 768px) {
             .channel-card:hover {
                 transform: translateY(-3px);
@@ -263,14 +253,12 @@
             background: #181818;
             padding: 14px;
             flex-shrink: 0;
-            contain: layout style;
         }
         .channel-image img {
             max-width: 100%;
             max-height: 100%;
             object-fit: contain;
             transition: transform 0.3s ease;
-            will-change: transform;
             background: #181818;
         }
         .channel-card:hover .channel-image img {
@@ -284,7 +272,6 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
-            contain: layout style;
         }
         .channel-name {
             font-size: 1.05rem;
@@ -324,7 +311,6 @@
             transition: opacity var(--transition), transform var(--transition), background var(--transition);
             font-size: 0.95rem;
             letter-spacing: 0.3px;
-            will-change: transform, opacity;
             pointer-events: none;
         }
         .channel-card:hover .play-btn {
@@ -350,7 +336,6 @@
             border-radius: 50%;
             border-top-color: var(--accent);
             animation: spin 0.9s linear infinite;
-            will-change: transform;
         }
         .message {
             text-align: center;
@@ -379,8 +364,6 @@
             cursor: pointer;
             transition: background var(--transition), transform var(--transition), box-shadow var(--transition);
             box-shadow: 0 4px 12px rgba(255, 87, 34, 0.3);
-            will-change: transform;
-            touch-action: manipulation;
         }
         .load-more-btn:hover {
             background: var(--accent-hover);
@@ -403,7 +386,6 @@
             justify-content: center;
             align-items: center;
             padding: 20px;
-            will-change: opacity;
         }
         .modal-overlay.show {
             display: flex;
@@ -420,7 +402,6 @@
             animation: fadeUp 0.3s ease;
             position: relative;
             border: 1px solid #333;
-            contain: layout style paint;
         }
         .modal-close {
             position: absolute;
@@ -432,7 +413,6 @@
             cursor: pointer;
             transition: color 0.2s;
             line-height: 1;
-            touch-action: manipulation;
         }
         .modal-close:hover {
             color: var(--accent);
@@ -450,10 +430,6 @@
         }
         .modal-body strong {
             color: var(--text-primary);
-        }
-        .modal-body .highlight {
-            color: var(--accent);
-            font-weight: 700;
         }
         .modal-body .legal-punch {
             display: block;
@@ -488,8 +464,6 @@
             font-size: 1rem;
             border: none;
             cursor: pointer;
-            will-change: transform;
-            touch-action: manipulation;
         }
         .modal-btn:hover {
             background: #3f3f3f;
@@ -636,167 +610,6 @@
         }
     </style>
 </head>
-<script>
-    (function() {
-        'use strict';
-
-        // ─── 1. Disable right-click ───
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            return false;
-        });
-
-        // ─── 2. Disable text selection ───
-        document.addEventListener('selectstart', function(e) {
-            e.preventDefault();
-        });
-
-        // ─── 3. Block keyboard shortcuts for DevTools / Save / Copy ───
-        document.addEventListener('keydown', function(e) {
-            const key = e.key.toLowerCase();
-            // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U (view source), Ctrl+S (save), Ctrl+C (copy)
-            if (key === 'f12' ||
-                (e.ctrlKey && e.shiftKey && (key === 'i' || key === 'j')) ||
-                (e.ctrlKey && key === 'u') ||
-                (e.ctrlKey && key === 's') ||
-                (e.ctrlKey && key === 'c')) {
-                e.preventDefault();
-                return false;
-            }
-        });
-
-        // ─── 4. Disable drag (to prevent dragging images/text) ───
-        document.addEventListener('dragstart', function(e) {
-            e.preventDefault();
-        });
-
-        // ─── 5. (Optional) Override console to reduce visibility ───
-        // This does not break your site, just prevents casual logging.
-        const noop = function() {};
-        console.log = noop;
-        console.warn = noop;
-        console.error = noop;
-        console.info = noop;
-        console.debug = noop;
-
-        // ─── 6. Attempt to block view-source (not fully reliable) ───
-        if (window.location.protocol === 'view-source:') {
-            window.location.href = 'about:blank';
-        }
-
-        // ─── 7. (Optional) Detect DevTools without locking you out ───
-        // We do NOT use the debugger trick here to avoid false positives.
-        // If you want a safer detection, you can use the following method
-        // that checks window dimensions (less aggressive).
-        // Uncomment if you still want a mild detection:
-        /*
-        function checkDevTools() {
-            const threshold = 160; // width difference for devtools
-            const widthDiff = window.outerWidth - window.innerWidth;
-<script>
-    (function() {
-        'use strict';
-
-        // ─── 1. Disable right‑click (context menu) ───
-        document.addEventListener('contextmenu', e => e.preventDefault());
-
-        // ─── 2. Disable text selection (except on form inputs) ───
-        document.addEventListener('selectstart', e => {
-            if (e.target.closest('input, textarea, [contenteditable="true"]')) return;
-            e.preventDefault();
-        });
-
-        // ─── 3. Disable dragging of page elements ───
-        document.addEventListener('dragstart', e => e.preventDefault());
-
-        // ─── 4. Block keyboard shortcuts that open DevTools or view‑source ───
-        //    (We do NOT block Ctrl+C / Ctrl+V / Ctrl+S — they are essential for users)
-        document.addEventListener('keydown', e => {
-            const key = e.key.toLowerCase();
-            const ctrl = e.ctrlKey || e.metaKey;
-            const shift = e.shiftKey;
-
-            if (key === 'f12' ||
-                (ctrl && shift && (key === 'i' || key === 'j')) ||
-                (ctrl && key === 'u')) {
-                e.preventDefault();
-                return false;
-            }
-        });
-
-        // ─── 5. Block view‑source: protocol (if someone types view-source: in URL) ───
-        if (window.location.protocol === 'view-source:') {
-            window.location.href = 'about:blank';
-        }
-
-        // ─── 6. (Optional) Silence console logging — prevents casual inspection ───
-        //     This does not break your site, but makes `console.log` useless.
-        const noop = () => {};
-        ['log', 'warn', 'error', 'info', 'debug', 'trace', 'dir', 'dirxml', 'table', 'assert', 'count', 'group', 'groupEnd', 'time', 'timeEnd', 'profile', 'profileEnd'].forEach(m => {
-            if (console[m]) console[m] = noop;
-        });
-
-        // ─── 7. (Safe) DevTools detection using window size difference ───
-        //     This is less intrusive and rarely triggers false positives.
-        (function detectDevTools() {
-            let warned = false;
-
-            function checkSize() {
-                // DevTools usually take up at least 200px of width or height.
-                const threshold = 200;
-                const widthDiff = window.outerWidth - window.innerWidth;
-                const heightDiff = window.outerHeight - window.innerHeight;
-
-                if ((widthDiff > threshold || heightDiff > threshold) && !warned) {
-                    warned = true;
-                    // Instead of wiping the page, we show a subtle overlay
-                    // that disappears when they close DevTools.
-                    const overlay = document.createElement('div');
-                    overlay.id = 'devtools-overlay';
-                    overlay.style.cssText = `
-                        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-                        background: rgba(0,0,0,0.85);
-                        display: flex; justify-content: center; align-items: center;
-                        z-index: 999999;
-                        color: #ff4444;
-                        font-family: sans-serif;
-                        font-size: 1.5rem;
-                        flex-direction: column;
-                        text-align: center;
-                        padding: 20px;
-                        backdrop-filter: blur(4px);
-                    `;
-                    overlay.innerHTML = `
-                        <h1 style="font-size: 2.5rem; margin: 0;">⛔ Developer Tools Detected</h1>
-                        <p style="color: #aaa; max-width: 500px;">Please close the developer tools to continue using this site.</p>
-                        <p style="color: #666; font-size: 0.9rem; margin-top: 20px;">(This overlay will disappear automatically when you close them.)</p>
-                    `;
-                    document.body.appendChild(overlay);
-
-                    // Re-check every second; remove overlay if tools are closed.
-                    const interval = setInterval(() => {
-                        const newWidthDiff = window.outerWidth - window.innerWidth;
-                        const newHeightDiff = window.outerHeight - window.innerHeight;
-                        if (newWidthDiff <= threshold && newHeightDiff <= threshold) {
-                            const el = document.getElementById('devtools-overlay');
-                            if (el) el.remove();
-                            clearInterval(interval);
-                            warned = false;
-                        }
-                    }, 1000);
-                }
-            }
-
-            // Check on resize and periodically
-            window.addEventListener('resize', checkSize);
-            setInterval(checkSize, 2000);
-            // Initial check after a short delay
-            setTimeout(checkSize, 500);
-        })();
-
-        console.log('🛡️ Protection active (user‑friendly mode)');
-    })();
-</script>
 <body>
 
     <!-- ─── HEADER ─── -->
@@ -807,7 +620,6 @@
         </div>
 
         <div class="header-actions">
-            <!-- DISCLAIMER BUTTON -->
             <button class="disclaimer-btn" id="disclaimerToggle" aria-label="Disclaimer">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
@@ -899,7 +711,7 @@
         </div>
     </div>
 
-    <!-- ─── SCRIPT ─── -->
+    <!-- ─── MAIN SCRIPT ─── -->
     <script>
         (function() {
             'use strict';
@@ -908,8 +720,9 @@
             const PLAYLIST_URL =
                 'https://demonji.onrender.com/multiple/playlist.php?server=server3&categories=181%2C176%2C547%2C1588%2C1452%2C209%2C4%2C352%2C154%2C1234%2C1047%2C480%2C7%2C324%2C138%2C1131%2C1112%2C1150%2C1153%2C1151%2C1152%2C1124%2C1182%2C1156%2C1159%2C415%2C1119%2C1120%2C1127%2C1128%2C1126%2C1125%2C1129%2C564%2C1162%2C172%2C684%2C1064%2C218%2C216%2C230%2C140%2C1273%2C215';
             const CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
-            const PER_PAGE = 30;
+            const PER_PAGE = 40; // increased for smoother scrolling
             const MAX_RETRIES = 3;
+            const DEFAULT_ICON = 'demonji.png'; // fallback if image fails
 
             // ─── DOM refs ───
             const grid = document.getElementById('channelGrid');
@@ -1000,7 +813,7 @@
                             const group = /group-title="([^"]*)"/.exec(attrs);
                             cur = {
                                 name: name,
-                                icon: logo ? logo[1] : 'demonji.png',
+                                icon: logo ? logo[1] : DEFAULT_ICON,
                                 category: group ? group[1] : 'General',
                             };
                         }
@@ -1051,7 +864,7 @@
                 ).join('');
             }
 
-            // ─── INTERSECTION OBSERVER FOR LAZY IMAGES ───
+            // ─── LAZY LOAD OBSERVER ───
             function setupLazyObserver() {
                 if (observer) {
                     observer.disconnect();
@@ -1074,7 +887,7 @@
                         }
                     }
                 }, {
-                    rootMargin: '100px',
+                    rootMargin: '200px', // load earlier
                     threshold: 0.01
                 });
 
@@ -1137,12 +950,12 @@
                         card.dataset.icon = ch.icon;
                         card.setAttribute('role', 'listitem');
 
-                        // Use data-src for lazy loading
-                        const imgSrc = ch.icon;
+                        // Use data-src for lazy loading, with onerror fallback
+                        const imgSrc = ch.icon || DEFAULT_ICON;
 
                         card.innerHTML = `
                             <div class="channel-image">
-                                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%23181818'/%3E%3C/svg%3E" data-src="${imgSrc}" alt="${ch.name}" loading="lazy" />
+                                <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='%23181818'/%3E%3C/svg%3E" data-src="${imgSrc}" alt="${ch.name}" loading="lazy" onerror="this.onerror=null;this.src='${DEFAULT_ICON}';" />
                             </div>
                             <div class="channel-info">
                                 <div>
@@ -1161,7 +974,7 @@
 
                     grid.appendChild(fragment);
 
-                    // Set up lazy loading for new images
+                    // Lazy load images in this batch
                     setupLazyObserver();
 
                     rendered = end;
@@ -1178,8 +991,6 @@
                 const card = e.target.closest('.channel-card');
                 if (!card) return;
 
-                // Ignore clicks on the play button itself (it's inside the card)
-                // but we want the card click to trigger the modal
                 const stream = card.dataset.stream;
                 const name = card.dataset.name;
                 const icon = card.dataset.icon;
@@ -1211,7 +1022,6 @@
                 btn.classList.add('active');
                 btn.setAttribute('aria-selected', 'true');
 
-                // Reset search input when changing category? No, keep it.
                 applyFilters();
             });
 
@@ -1264,7 +1074,7 @@
             // ─── GO ───
             fetchAndPrepare();
 
-            // ─── CLEANUP OBSERVER on page unload ───
+            // ─── CLEANUP OBSERVER ───
             window.addEventListener('beforeunload', function() {
                 if (observer) {
                     observer.disconnect();
@@ -1273,6 +1083,12 @@
             });
 
         })();
+    </script>
+
+    <!-- ─── (Optional) Minimal protection – only disables right‑click ─── -->
+    <script>
+        // This is non‑intrusive and won't break your site.
+        document.addEventListener('contextmenu', e => e.preventDefault());
     </script>
 
 </body>
