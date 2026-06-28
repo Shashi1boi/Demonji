@@ -636,6 +636,75 @@
         }
     </style>
 </head>
+<script>
+    (function() {
+        'use strict';
+
+        // ─── 1. Disable right-click ───
+        document.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            return false;
+        });
+
+        // ─── 2. Disable text selection ───
+        document.addEventListener('selectstart', function(e) {
+            e.preventDefault();
+        });
+
+        // ─── 3. Block keyboard shortcuts for DevTools / Save / Copy ───
+        document.addEventListener('keydown', function(e) {
+            const key = e.key.toLowerCase();
+            // F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U (view source), Ctrl+S (save), Ctrl+C (copy)
+            if (key === 'f12' ||
+                (e.ctrlKey && e.shiftKey && (key === 'i' || key === 'j')) ||
+                (e.ctrlKey && key === 'u') ||
+                (e.ctrlKey && key === 's') ||
+                (e.ctrlKey && key === 'c')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // ─── 4. Disable drag (to prevent dragging images/text) ───
+        document.addEventListener('dragstart', function(e) {
+            e.preventDefault();
+        });
+
+        // ─── 5. (Optional) Override console to reduce visibility ───
+        // This does not break your site, just prevents casual logging.
+        const noop = function() {};
+        console.log = noop;
+        console.warn = noop;
+        console.error = noop;
+        console.info = noop;
+        console.debug = noop;
+
+        // ─── 6. Attempt to block view-source (not fully reliable) ───
+        if (window.location.protocol === 'view-source:') {
+            window.location.href = 'about:blank';
+        }
+
+        // ─── 7. (Optional) Detect DevTools without locking you out ───
+        // We do NOT use the debugger trick here to avoid false positives.
+        // If you want a safer detection, you can use the following method
+        // that checks window dimensions (less aggressive).
+        // Uncomment if you still want a mild detection:
+        /*
+        function checkDevTools() {
+            const threshold = 160; // width difference for devtools
+            const widthDiff = window.outerWidth - window.innerWidth;
+            const heightDiff = window.outerHeight - window.innerHeight;
+            if (widthDiff > threshold || heightDiff > threshold) {
+                // DevTools likely open – you can show a warning or redirect
+                // document.body.innerHTML = '<h1 style="color:red;">DevTools detected</h1>';
+            }
+        }
+        setInterval(checkDevTools, 1000);
+        */
+
+        console.log('🛡️ Protection active (safe mode)');
+    })();
+</script>
 <body>
 
     <!-- ─── HEADER ─── -->
