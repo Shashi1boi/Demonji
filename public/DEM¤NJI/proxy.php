@@ -1,58 +1,58 @@
 <?php
-// proxy.php - m3u8 proxy that preserves Akamai token for all segments
+// proxy.php
+header('Access-Control-Allow-Origin: *');
+header('Access-Control-Allow-Methods: GET, OPTIONS');
+header('Content-Type: application/vnd.apple.mpegurl');
 
-// Hardcoded target (change or pass via ?url=)
-$target = $_GET['url'] ?? 'https://in-mc-flive.fancode.com/mumbai/143399_english_hls_b76266f66a74436_1ta-di_h264/1080p.m3u8?hdntl=Expires=1782731105~_GO=Generated~acl=/mumbai/143399_english_hls_b76266f66a74436_1ta-di_h264/*~Signature=ARZJ1WIXxPRrwRMWjCPiKVQW0N17EVSgSFeDK30KVu9zLQgrQ7bJFec0Wk3KvENLLvH7Dcg_4P3EAAZKWpGkUeyIB3wL';
-
-// Parse target to get base path and query string
-$parts = parse_url($target);
-$basePath = dirname($parts['path']) . '/';
-$query = isset($parts['query']) ? '?' . $parts['query'] : '';
-
-// Fetch the original m3u8
-$ch = curl_init();
-curl_setopt_array($ch, [
-    CURLOPT_URL => $target,
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_FOLLOWLOCATION => true,
-    CURLOPT_SSL_VERIFYPEER => false,
-    CURLOPT_TIMEOUT => 30
-]);
-$content = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-curl_close($ch);
-
-if ($httpCode != 200 || empty($content)) {
-    http_response_code(404);
-    exit('Playlist not available');
+// Handle preflight OPTIONS request
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    exit(0);
 }
 
-// Rewrite segment URIs
-$lines = explode("\n", $content);
-$newLines = [];
-foreach ($lines as $line) {
-    $trimmed = trim($line);
-    if (empty($trimmed) || $trimmed[0] === '#') {
-        $newLines[] = $line; // keep comments and tags unchanged
-    } else {
-        // Construct absolute URL with token query
-        if (filter_var($trimmed, FILTER_VALIDATE_URL)) {
-            // Already absolute, just append the token query
-            $segmentUrl = $trimmed . (parse_url($trimmed, PHP_URL_QUERY) ? '&' : '?') . ltrim($query, '?');
-        } else {
-            // Relative path: combine with base path and append token
-            $segmentUrl = (isset($parts['scheme']) ? $parts['scheme'] . '://' : '') .
-                          (isset($parts['host']) ? $parts['host'] : '') .
-                          $basePath . $trimmed . $query;
-        }
-        // Encode and proxy through this script
-        $newLines[] = 'proxy.php?url=' . urlencode($segmentUrl);
+$id = isset($_GET['id']) ? $_GET['id'] : null;
+if (!$id) {
+    echo "#EXTM3U\n#EXT-X-ERROR: Missing 'id' parameter";
+    exit;
+}
+
+$jsonUrl = 'https://raw.githubusercontent.com/doctor-8trange/zyphx8/refs/heads/main/data/fancode.json';
+$jsonData = file_get_contents($jsonUrl);
+if ($jsonData === false) {
+    echo "#EXTM3U\n#EXT-X-ERROR: Failed to fetch data from source";
+    exit;
+}
+
+$data = json_decode($jsonData, true);
+if (!isset($data['matches']) || !is_array($data['matches'])) {
+    echo "#EXTM3U\n#EXT-X-ERROR: Invalid data format";
+    exit;
+}
+
+$found = null;
+foreach ($data['matches'] as $match) {
+    if (isset($match['match_id']) && (string)$match['match_id'] === (string)$id) {
+        $found = $match;
+        break;
     }
 }
-$newContent = implode("\n", $newLines);
 
-// Output as m3u8
-header('Content-Type: application/vnd.apple.mpegurl');
-header('Content-Disposition: inline; filename="playlist.m3u8"');
-echo $newContent;
-?>
+if (!$found) {
+    echo "#EXTM3U\n#EXT-X-ERROR: Match not found";
+    exit;
+}
+
+$autoStreams = isset($found['auto_streams']) ? $found['auto_streams'] : [];
+if (!is_array($autoStreams) || count($autoStreams) === 0) {
+    echo "#EXTM3U\n#EXT-X-ERROR: No stream available";
+    exit;
+}
+
+$auto = isset($autoStreams[0]['auto']) ? $autoStreams[0]['auto'] : '';
+if (empty($auto)) {
+    echo "#EXTM3U\n#EXT-X-ERROR: Stream data empty";
+    exit;
+}
+
+// Output the exact tokenized M3U8 content
+echo $auto;
+exit;
