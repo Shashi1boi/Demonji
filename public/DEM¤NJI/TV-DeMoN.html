@@ -257,23 +257,38 @@
             height: 10px;
         }
 
+        .btn-group {
+            display: flex;
+            gap: 6px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
         .play-btn {
             background: var(--accent);
             color: #fff;
             border: none;
             border-radius: 30px;
-            padding: 6px 0;
+            padding: 6px 12px;
             font-weight: 700;
             font-size: 0.7rem;
             cursor: pointer;
-            width: 100%;
-            max-width: 120px;
-            margin: 0 auto;
             transition: background 0.15s;
+            flex: 1;
+            min-width: 50px;
         }
         .play-btn:hover,
         .play-btn:focus-visible {
             background: var(--accent2);
+        }
+        .play-btn.simple {
+            background: var(--accent);
+        }
+        .play-btn.original {
+            background: #444;
+        }
+        .play-btn.original:hover,
+        .play-btn.original:focus-visible {
+            background: #666;
         }
 
         /* ─── LOADING / MESSAGES ─── */
@@ -329,7 +344,7 @@
             background: var(--accent2);
         }
 
-        /* ─── DISCLAIMER MODAL (only modal left) ─── */
+        /* ─── DISCLAIMER MODAL ─── */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -457,8 +472,8 @@
             }
             .play-btn {
                 font-size: 0.6rem;
-                padding: 4px 0;
-                max-width: 90px;
+                padding: 4px 8px;
+                min-width: 40px;
             }
         }
         @media (max-width: 480px) {
@@ -481,8 +496,8 @@
             }
             .play-btn {
                 font-size: 0.55rem;
-                padding: 4px 0;
-                max-width: 70px;
+                padding: 4px 6px;
+                min-width: 30px;
             }
             .logo h1 {
                 font-size: 1.0rem;
@@ -518,8 +533,7 @@
             }
             .play-btn {
                 font-size: 0.8rem;
-                padding: 8px 0;
-                max-width: 140px;
+                padding: 8px 14px;
             }
         }
     </style>
@@ -618,7 +632,7 @@
             var searchTerm = '';
             var isLoading = false;
 
-            // ─── MODAL FUNCTIONS (global for inline onclick) ───
+            // ─── MODAL FUNCTIONS ───
             window.closeDisclaimerModal = function() {
                 disclaimerModal.style.display = 'none';
                 disclaimerModal.classList.remove('show');
@@ -633,14 +647,15 @@
                 }, 100);
             };
 
-            // ─── DIRECT PLAYER NAVIGATION ───
-            window.playChannel = function(stream, name, icon) {
+            // ─── PLAYER LAUNCHERS (open in new tab) ───
+            window.openPlayer = function(stream, name, icon, type) {
                 var back = window.location.href;
-                var url = 'player.html?s=' + encodeURIComponent(stream) +
+                var playerPage = (type === 'simple') ? 'simple-player.html' : 'player.html';
+                var url = playerPage + '?s=' + encodeURIComponent(stream) +
                     '&name=' + encodeURIComponent(name) +
                     '&icon=' + encodeURIComponent(icon) +
                     '&back=' + encodeURIComponent(back);
-                window.location.href = url;
+                window.open(url, '_blank');
             };
 
             // ─── HELPERS ───
@@ -801,15 +816,13 @@
                     var stream = btoa(ch.url);
                     var name = ch.name;
                     var icon = ch.icon;
+                    var safeName = name.replace(/'/g, "\\'");
+                    var safeIcon = icon.replace(/'/g, "\\'");
 
                     var card = document.createElement('div');
                     card.className = 'channel-card';
                     card.setAttribute('role', 'article');
                     card.setAttribute('tabindex', '0');
-
-                    // Escape single quotes for onclick attribute
-                    var safeName = name.replace(/'/g, "\\'");
-                    var safeIcon = icon.replace(/'/g, "\\'");
 
                     card.innerHTML =
                         '<div class="card-img">' +
@@ -823,22 +836,26 @@
                         '<span>' + ch.category + '</span>' +
                         '</div>' +
                         '</div>' +
-                        '<button class="play-btn" onclick="playChannel(\'' + stream + '\',\'' + safeName + '\',\'' +
-                        safeIcon + '\')">▶ Play</button>' +
+                        '<div class="btn-group">' +
+                        '<button class="play-btn simple" onclick="openPlayer(\'' + stream + '\',\'' + safeName +
+                        '\',\'' + safeIcon + '\',\'simple\')">▶ Play</button>' +
+                        '<button class="play-btn original" onclick="openPlayer(\'' + stream + '\',\'' + safeName +
+                        '\',\'' + safeIcon + '\',\'original\')">Original</button>' +
+                        '</div>' +
                         '</div>';
 
-                    // Click on card (except button) also triggers play
+                    // Click on card triggers the simple player (default)
                     card.addEventListener('click', function(e) {
-                        if (e.target.classList.contains('play-btn')) return;
-                        var btn = this.querySelector('.play-btn');
+                        if (e.target.closest('.play-btn')) return;
+                        var btn = this.querySelector('.play-btn.simple');
                         if (btn) btn.click();
                     });
 
-                    // Keyboard: Enter/Space on card triggers the button
+                    // Keyboard: Enter/Space on card triggers the simple player
                     card.addEventListener('keydown', function(e) {
                         if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            var btn = this.querySelector('.play-btn');
+                            var btn = this.querySelector('.play-btn.simple');
                             if (btn) btn.click();
                         }
                     });
@@ -887,8 +904,6 @@
             disclaimerToggle.addEventListener('click', function() {
                 openDisclaimerModal();
             });
-
-            // Click outside modal closes it
             disclaimerModal.addEventListener('click', function(e) {
                 if (e.target === this) closeDisclaimerModal();
             });
