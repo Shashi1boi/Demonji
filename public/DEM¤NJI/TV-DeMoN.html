@@ -5,14 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>WEB BY DEMØNJI · TV</title>
     <style>
-        /* ─── RESET ─── */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
         }
 
-        /* ─── ROOT ─── */
         :root {
             --bg: #0d0d0d;
             --bg2: #171717;
@@ -21,7 +19,6 @@
             --accent: #FF5722;
             --accent2: #ff7043;
             --radius: 10px;
-            --shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
             --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
@@ -32,26 +29,13 @@
             color: var(--text);
             font-family: var(--font);
             font-size: 16px;
-            line-height: 1.5;
+            line-height: 1.4;
             overflow-x: hidden;
         }
 
         :focus-visible {
             outline: 2px solid var(--accent);
             outline-offset: 2px;
-        }
-
-        /* ─── SCROLLBAR ─── */
-        ::-webkit-scrollbar {
-            width: 4px;
-            height: 4px;
-        }
-        ::-webkit-scrollbar-track {
-            background: transparent;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #444;
-            border-radius: 6px;
         }
 
         /* ─── HEADER ─── */
@@ -82,7 +66,6 @@
             -webkit-background-clip: text;
             background-clip: text;
             color: transparent;
-            letter-spacing: -0.2px;
             white-space: nowrap;
         }
         .logo .badge {
@@ -213,13 +196,12 @@
             border-radius: var(--radius);
             overflow: hidden;
             border: 2px solid transparent;
-            box-shadow: var(--shadow);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
             display: flex;
             flex-direction: column;
-            position: relative;
             outline: none;
-            max-width: 240px; /* prevent over-stretching on large screens */
-            margin: 0 auto; /* center within grid cell */
+            max-width: 240px;
+            margin: 0 auto;
             width: 100%;
             min-height: 130px;
         }
@@ -283,9 +265,7 @@
             font-weight: 700;
             font-size: 0.7rem;
             cursor: pointer;
-            transition: background 0.15s;
             width: 100%;
-            text-align: center;
             max-width: 120px;
             margin: 0 auto;
         }
@@ -347,13 +327,13 @@
             background: var(--accent2);
         }
 
-        /* ─── MODALS ─── */
+        /* ─── MODALS (super simple, no transitions) ─── */
         .modal-overlay {
             display: none;
             position: fixed;
             inset: 0;
             z-index: 9999;
-            background: rgba(0, 0, 0, 0.75);
+            background: rgba(0, 0, 0, 0.8);
             justify-content: center;
             align-items: center;
             padding: 20px;
@@ -607,7 +587,7 @@
     <!-- ─── DISCLAIMER MODAL ─── -->
     <div id="disclaimerModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
         <div class="modal-box">
-            <button class="modal-close" id="disclaimerClose" aria-label="Close disclaimer">&times;</button>
+            <button class="modal-close" onclick="closeDisclaimerModal()">&times;</button>
             <h2 class="modal-title" id="disclaimerTitle">⚖️ Disclaimer</h2>
             <div class="modal-body">
                 <p><strong>WEB BY DEMØNJI</strong> does <strong>not</strong> host, store, or broadcast any video streams. All links are sourced from publicly available third-party services.</p>
@@ -617,7 +597,7 @@
                     <span class="sub">We are not liable for any content or damages from third-party streams.</span>
                 </div>
                 <div class="modal-buttons">
-                    <button class="modal-btn primary" id="disclaimerAcknowledge">I Understand</button>
+                    <button class="modal-btn primary" onclick="closeDisclaimerModal()">I Understand</button>
                 </div>
             </div>
         </div>
@@ -626,7 +606,7 @@
     <!-- ─── PLAYER MODAL ─── -->
     <div id="playerModal" class="modal-overlay player-modal" role="dialog" aria-modal="true" aria-labelledby="playerTitle">
         <div class="modal-box">
-            <button class="modal-close" id="playerModalClose" aria-label="Close player options">&times;</button>
+            <button class="modal-close" onclick="closePlayerModal()">&times;</button>
             <h2 class="modal-title" id="playerTitle">▶️ Choose Player</h2>
             <div class="modal-body" style="text-align:center;color:var(--text2);margin-bottom:4px;">
                 Select how to watch this channel.
@@ -650,7 +630,7 @@
             var PER_PAGE = 30;
             var MAX_RETRIES = 2;
 
-            // ─── DOM ───
+            // ─── DOM REFS ───
             var grid = document.getElementById('channelGrid');
             var loadingEl = document.getElementById('loadingSpinner');
             var msgEl = document.getElementById('messageContainer');
@@ -662,11 +642,8 @@
 
             var disclaimerModal = document.getElementById('disclaimerModal');
             var disclaimerToggle = document.getElementById('disclaimerToggle');
-            var disclaimerClose = document.getElementById('disclaimerClose');
-            var disclaimerAck = document.getElementById('disclaimerAcknowledge');
 
             var playerModal = document.getElementById('playerModal');
-            var playerClose = document.getElementById('playerModalClose');
             var ogLink = document.getElementById('ogPlayerLink');
             var simpleLink = document.getElementById('simplePlayerLink');
 
@@ -677,6 +654,49 @@
             var selectedCategory = 'All';
             var searchTerm = '';
             var isLoading = false;
+
+            // ─── MODAL FUNCTIONS (global for inline onclick) ───
+            window.openPlayerModal = function(stream, name, icon) {
+                var back = window.location.href;
+                ogLink.href = 'player.html?s=' + encodeURIComponent(stream) + '&name=' + encodeURIComponent(name) +
+                    '&icon=' + encodeURIComponent(icon) + '&back=' + encodeURIComponent(back);
+                simpleLink.href = 'simple-player.html?s=' + encodeURIComponent(stream) + '&name=' + encodeURIComponent(
+                    name) + '&back=' + encodeURIComponent(back);
+
+                // Show modal
+                playerModal.style.display = 'flex';
+                playerModal.classList.add('show');
+                // Focus first button
+                setTimeout(function() {
+                    if (ogLink) ogLink.focus();
+                }, 100);
+
+                // Fallback: if modal doesn't appear after 1s, open directly
+                setTimeout(function() {
+                    if (playerModal.style.display !== 'flex') {
+                        window.location.href = ogLink.href;
+                    }
+                }, 1000);
+            };
+
+            window.closePlayerModal = function() {
+                playerModal.style.display = 'none';
+                playerModal.classList.remove('show');
+            };
+
+            window.closeDisclaimerModal = function() {
+                disclaimerModal.style.display = 'none';
+                disclaimerModal.classList.remove('show');
+            };
+
+            window.openDisclaimerModal = function() {
+                disclaimerModal.style.display = 'flex';
+                disclaimerModal.classList.add('show');
+                setTimeout(function() {
+                    var ack = document.getElementById('disclaimerAcknowledge');
+                    if (ack) ack.focus();
+                }, 100);
+            };
 
             // ─── HELPERS ───
             function showLoading() { loadingEl.style.display = 'flex'; }
@@ -696,16 +716,6 @@
             function showLoadMore() { loadMoreWrap.style.display = 'flex'; }
 
             function hideLoadMore() { loadMoreWrap.style.display = 'none'; }
-
-            function openModal(el) {
-                el.classList.add('show');
-                el.style.display = 'flex';
-            }
-
-            function closeModal(el) {
-                el.classList.remove('show');
-                el.style.display = 'none';
-            }
 
             // ─── FETCH ───
             function fetchWithRetries(url, retries, delay) {
@@ -843,62 +853,44 @@
 
                 for (var i = start; i < end; i++) {
                     var ch = visible[i];
+                    var stream = btoa(ch.url); // encode for safe URL param
+                    var name = ch.name;
+                    var icon = ch.icon;
+
                     var card = document.createElement('div');
                     card.className = 'channel-card';
                     card.setAttribute('role', 'article');
                     card.setAttribute('tabindex', '0');
-                    card.dataset.stream = btoa(ch.url);
-                    card.dataset.name = ch.name;
-                    card.dataset.icon = ch.icon;
-
-                    var btn = document.createElement('button');
-                    btn.className = 'play-btn';
-                    btn.textContent = '▶ Play';
-                    btn.setAttribute('aria-label', 'Play ' + ch.name);
-                    btn.dataset.stream = btoa(ch.url);
-                    btn.dataset.name = ch.name;
-                    btn.dataset.icon = ch.icon;
 
                     card.innerHTML =
                         '<div class="card-img">' +
-                        '<img src="' + ch.icon + '" alt="' + ch.name + '" loading="lazy" onerror="this.onerror=null;this.src=\'demonji.png\';" />' +
+                        '<img src="' + icon + '" alt="' + name + '" loading="lazy" onerror="this.onerror=null;this.src=\'demonji.png\';" />' +
                         '</div>' +
                         '<div class="card-body">' +
                         '<div>' +
-                        '<div class="card-name" title="' + ch.name + '">' + ch.name + '</div>' +
+                        '<div class="card-name" title="' + name + '">' + name + '</div>' +
                         '<div class="card-cat">' +
                         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="15" rx="2" ry="2"/><polyline points="17 2 12 7 7 2"/></svg>' +
                         '<span>' + ch.category + '</span>' +
                         '</div>' +
                         '</div>' +
+                        '<button class="play-btn" onclick="openPlayerModal(\'' + stream + '\',\'' + name.replace(/'/g, "\\'") +
+                        '\',\'' + icon.replace(/'/g, "\\'") + '\')">▶ Play</button>' +
                         '</div>';
 
-                    var body = card.querySelector('.card-body');
-                    body.appendChild(btn);
-
-                    btn.addEventListener('click', function(e) {
-                        e.stopPropagation();
-                        var stream = this.dataset.stream;
-                        var name = this.dataset.name;
-                        var icon = this.dataset.icon;
-                        openPlayer(stream, name, icon);
-                    });
-
+                    // Also allow click on card (except button) to trigger play
                     card.addEventListener('click', function(e) {
                         if (e.target.classList.contains('play-btn')) return;
-                        var stream = this.dataset.stream;
-                        var name = this.dataset.name;
-                        var icon = this.dataset.icon;
-                        openPlayer(stream, name, icon);
+                        var btn = this.querySelector('.play-btn');
+                        if (btn) btn.click();
                     });
 
+                    // Keyboard support: Enter/Space on card triggers the button
                     card.addEventListener('keydown', function(e) {
                         if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
-                            var stream = this.dataset.stream;
-                            var name = this.dataset.name;
-                            var icon = this.dataset.icon;
-                            openPlayer(stream, name, icon);
+                            var btn = this.querySelector('.play-btn');
+                            if (btn) btn.click();
                         }
                     });
 
@@ -908,27 +900,6 @@
                 rendered = end;
                 if (rendered < visible.length) showLoadMore();
                 else hideLoadMore();
-            }
-
-            // ─── OPEN PLAYER ───
-            function openPlayer(stream, name, icon) {
-                try {
-                    var back = window.location.href;
-                    ogLink.href = 'player.html?s=' + encodeURIComponent(stream) + '&name=' + encodeURIComponent(name) +
-                        '&icon=' + encodeURIComponent(icon) + '&back=' + encodeURIComponent(back);
-                    simpleLink.href = 'simple-player.html?s=' + encodeURIComponent(stream) + '&name=' + encodeURIComponent(
-                        name) + '&back=' + encodeURIComponent(back);
-
-                    openModal(playerModal);
-                    setTimeout(function() {
-                        if (ogLink) ogLink.focus();
-                    }, 100);
-                } catch (err) {
-                    console.warn('Error opening player:', err);
-                    window.location.href = 'player.html?s=' + encodeURIComponent(stream) +
-                        '&name=' + encodeURIComponent(name) +
-                        '&back=' + encodeURIComponent(window.location.href);
-                }
             }
 
             // ─── CATEGORY CLICKS ───
@@ -964,35 +935,29 @@
             });
 
             // ─── DISCLAIMER ───
-            function openDisclaimer() { openModal(disclaimerModal);
-                setTimeout(function() { disclaimerAck.focus(); }, 50); }
-
-            function closeDisclaimer() { closeModal(disclaimerModal); }
-            disclaimerToggle.addEventListener('click', openDisclaimer);
-            disclaimerClose.addEventListener('click', closeDisclaimer);
-            disclaimerAck.addEventListener('click', closeDisclaimer);
-            disclaimerModal.addEventListener('click', function(e) {
-                if (e.target === this) closeDisclaimer();
+            disclaimerToggle.addEventListener('click', function() {
+                openDisclaimerModal();
             });
 
-            // ─── PLAYER MODAL ───
-            function closePlayer() { closeModal(playerModal); }
-            playerClose.addEventListener('click', closePlayer);
+            // Click outside modal closes it
+            disclaimerModal.addEventListener('click', function(e) {
+                if (e.target === this) closeDisclaimerModal();
+            });
             playerModal.addEventListener('click', function(e) {
-                if (e.target === this) closePlayer();
+                if (e.target === this) closePlayerModal();
             });
 
             // ─── ESC ───
             document.addEventListener('keydown', function(e) {
                 if (e.key === 'Escape') {
-                    if (disclaimerModal.classList.contains('show')) closeDisclaimer();
-                    if (playerModal.classList.contains('show')) closePlayer();
+                    if (disclaimerModal.style.display === 'flex') closeDisclaimerModal();
+                    if (playerModal.style.display === 'flex') closePlayerModal();
                 }
                 if (e.key === 'Backspace' || e.key === 'BrowserBack') {
-                    if (disclaimerModal.classList.contains('show')) { e.preventDefault();
-                        closeDisclaimer(); }
-                    if (playerModal.classList.contains('show')) { e.preventDefault();
-                        closePlayer(); }
+                    if (disclaimerModal.style.display === 'flex') { e.preventDefault();
+                        closeDisclaimerModal(); }
+                    if (playerModal.style.display === 'flex') { e.preventDefault();
+                        closePlayerModal(); }
                 }
             });
 
@@ -1008,8 +973,8 @@
             // ─── VISIBILITY ───
             document.addEventListener('visibilitychange', function() {
                 if (document.hidden) {
-                    if (disclaimerModal.classList.contains('show')) closeDisclaimer();
-                    if (playerModal.classList.contains('show')) closePlayer();
+                    if (disclaimerModal.style.display === 'flex') closeDisclaimerModal();
+                    if (playerModal.style.display === 'flex') closePlayerModal();
                 }
             });
 
