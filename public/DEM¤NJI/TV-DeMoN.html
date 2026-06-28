@@ -16,16 +16,12 @@
         :root {
             --bg: #0d0d0d;
             --bg2: #171717;
-            --bg3: #222;
-            --bg4: #2a2a2a;
             --text: #eee;
             --text2: #999;
             --accent: #FF5722;
             --accent2: #ff7043;
-            --glow: rgba(255, 87, 34, 0.20);
             --radius: 14px;
             --shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-            --trans: 0.15s ease;
             --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
@@ -37,17 +33,14 @@
             font-family: var(--font);
             font-size: 17px;
             line-height: 1.5;
-            -webkit-font-smoothing: antialiased;
             overflow-x: hidden;
         }
 
-        /* ─── FOCUS ─── */
         :focus-visible {
             outline: 3px solid var(--accent);
             outline-offset: 3px;
         }
 
-        /* ─── SCROLLBAR ─── */
         ::-webkit-scrollbar {
             width: 5px;
             height: 5px;
@@ -111,7 +104,6 @@
             max-width: 440px;
         }
 
-        /* ─── SEARCH ─── */
         .search-wrap {
             position: relative;
             flex: 1;
@@ -124,7 +116,7 @@
             background: var(--bg2);
             color: var(--text);
             font-size: 0.9rem;
-            transition: border-color var(--trans);
+            transition: border-color 0.15s;
             outline: none;
         }
         .search-wrap input:focus {
@@ -145,7 +137,6 @@
             height: 18px;
         }
 
-        /* ─── DISCLAIMER BTN ─── */
         .disclaimer-btn {
             flex-shrink: 0;
             background: transparent;
@@ -156,7 +147,7 @@
             font-size: 0.78rem;
             font-weight: 600;
             cursor: pointer;
-            transition: border-color var(--trans), color var(--trans);
+            transition: border-color 0.15s, color 0.15s;
             display: flex;
             align-items: center;
             gap: 6px;
@@ -173,7 +164,7 @@
             flex-shrink: 0;
         }
 
-        /* ─── CATEGORY FILTERS ─── */
+        /* ─── CATEGORIES ─── */
         .cat-wrap {
             padding: 12px 20px 6px;
             overflow-x: auto;
@@ -194,7 +185,7 @@
             border: 2px solid #2a2a2a;
             border-radius: 40px;
             cursor: pointer;
-            transition: background var(--trans), color var(--trans), border-color var(--trans);
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
             flex-shrink: 0;
             white-space: nowrap;
             user-select: none;
@@ -202,9 +193,6 @@
         .cat-btn:hover {
             color: #fff;
             background: #2a2a2a;
-        }
-        .cat-btn:focus-visible {
-            outline-offset: 2px;
         }
         .cat-btn.active {
             color: #fff;
@@ -218,7 +206,6 @@
             margin: 0 auto;
             padding: 10px 20px 24px;
         }
-
         .channels-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
@@ -234,14 +221,14 @@
             border: 3px solid transparent;
             box-shadow: var(--shadow);
             cursor: pointer;
-            transition: transform var(--trans), border-color var(--trans), box-shadow var(--trans);
+            transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
             display: flex;
             flex-direction: column;
             position: relative;
-            text-decoration: none;
-            color: inherit;
             outline: none;
             min-height: 160px;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         .channel-card:hover,
         .channel-card:focus-visible {
@@ -250,8 +237,8 @@
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
         }
         .channel-card:focus-visible {
-            outline: none;
-            box-shadow: 0 0 0 3px var(--accent), 0 8px 24px rgba(0, 0, 0, 0.6);
+            outline: 3px solid var(--accent);
+            outline-offset: 2px;
         }
 
         .card-img {
@@ -314,7 +301,7 @@
             font-size: 0.82rem;
             letter-spacing: 0.2px;
             opacity: 0;
-            transition: opacity var(--trans), transform var(--trans);
+            transition: opacity 0.15s, transform 0.15s;
             pointer-events: none;
         }
         .channel-card:hover .play-overlay,
@@ -370,7 +357,7 @@
             border: none;
             font-size: 0.95rem;
             cursor: pointer;
-            transition: background var(--trans), transform var(--trans);
+            transition: background 0.15s, transform 0.15s;
             box-shadow: 0 3px 14px rgba(255, 87, 34, 0.20);
         }
         .load-more-btn:hover,
@@ -381,17 +368,17 @@
 
         /* ─── MODALS ─── */
         .modal-overlay {
-            display: none;
+            display: none !important;
             position: fixed;
             inset: 0;
-            z-index: 100;
-            background: rgba(0, 0, 0, 0.70);
+            z-index: 9999;
+            background: rgba(0, 0, 0, 0.75);
             justify-content: center;
             align-items: center;
             padding: 20px;
         }
         .modal-overlay.show {
-            display: flex;
+            display: flex !important;
         }
 
         .modal-box {
@@ -449,11 +436,6 @@
         .modal-body strong {
             color: var(--text);
         }
-        .modal-body .highlight {
-            color: var(--accent);
-            font-weight: 700;
-        }
-
         .legal-punch {
             margin-top: 16px;
             padding: 14px 18px;
@@ -489,7 +471,7 @@
             text-align: center;
             background: #333;
             color: #fff;
-            transition: background var(--trans), transform var(--trans);
+            transition: background 0.15s, transform 0.15s;
             font-size: 0.95rem;
             border: none;
             cursor: pointer;
@@ -509,7 +491,6 @@
             background: var(--accent2);
         }
 
-        /* ─── PLAYER MODAL ─── */
         .player-modal .modal-box {
             max-width: 380px;
         }
@@ -623,8 +604,6 @@
                 padding: 1px 6px;
             }
         }
-
-        /* ─── TV LARGE ─── */
         @media (min-width: 1600px) {
             .channels-grid {
                 grid-template-columns: repeat(5, 1fr);
@@ -662,7 +641,6 @@
             <h1>WEB BY DEMØNJI</h1>
             <span class="badge">TV</span>
         </div>
-
         <div class="header-actions">
             <button class="disclaimer-btn" id="disclaimerToggle" aria-label="Disclaimer">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -672,7 +650,6 @@
                 </svg>
                 Disclaimer
             </button>
-
             <div class="search-wrap">
                 <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 <input type="text" id="searchInput" placeholder="Search…" autocomplete="off" aria-label="Search channels" />
@@ -688,14 +665,11 @@
     <!-- ─── MAIN ─── -->
     <div class="container">
         <div id="channelGrid" class="channels-grid" role="grid" aria-label="Channel list"></div>
-
         <div id="loadingSpinner" class="loading-wrap" style="display:none;">
             <div class="spinner" role="status" aria-label="Loading"></div>
         </div>
-
         <div id="messageContainer" class="message" style="display:none;"></div>
         <div id="errorContainer" class="error-box" role="alert"></div>
-
         <div id="loadMoreContainer" class="load-more-wrap" style="display:none;">
             <button id="loadMoreBtn" class="load-more-btn">Load More</button>
         </div>
@@ -707,14 +681,8 @@
             <button class="modal-close" id="disclaimerClose" aria-label="Close disclaimer">&times;</button>
             <h2 class="modal-title" id="disclaimerTitle">⚖️ Disclaimer</h2>
             <div class="modal-body">
-                <p>
-                    <strong>WEB BY DEMØNJI</strong> does <strong>not</strong> host, store, or broadcast
-                    any video streams. All links are sourced from publicly available third-party services.
-                </p>
-                <p style="margin-top:12px;">
-                    We are a <strong>directory</strong> that organizes publicly available information.
-                    We do <strong>not</strong> claim ownership of any content.
-                </p>
+                <p><strong>WEB BY DEMØNJI</strong> does <strong>not</strong> host, store, or broadcast any video streams. All links are sourced from publicly available third-party services.</p>
+                <p style="margin-top:12px;">We are a <strong>directory</strong> that organizes publicly available information. We do <strong>not</strong> claim ownership of any content.</p>
                 <div class="legal-punch">
                     ⚡ You <span>cannot</span> sue us.
                     <span class="sub">We are not liable for any content or damages from third-party streams.</span>
@@ -800,15 +768,14 @@
 
             function hideLoadMore() { loadMoreWrap.style.display = 'none'; }
 
-            function openModal(el) { el.classList.add('show'); }
+            function openModal(el) {
+                el.classList.add('show');
+                el.style.display = 'flex';
+            }
 
-            function closeModal(el) { el.classList.remove('show'); }
-
-            function getCols() {
-                var style = window.getComputedStyle(grid);
-                var col = style.getPropertyValue('grid-template-columns');
-                if (!col || col === 'none') return 4;
-                return col.split(' ').length;
+            function closeModal(el) {
+                el.classList.remove('show');
+                el.style.display = 'none';
             }
 
             // ─── FETCH ───
@@ -899,7 +866,6 @@
                         cats.push(c); }
                 }
                 cats.sort();
-                // Move 'All' to front
                 var idx = cats.indexOf('All');
                 if (idx > 0) { cats.splice(idx, 1);
                     cats.unshift('All'); }
@@ -950,10 +916,9 @@
 
                 for (var i = start; i < end; i++) {
                     var ch = visible[i];
-                    var card = document.createElement('a');
+                    var card = document.createElement('div');
                     card.className = 'channel-card';
-                    card.href = '#';
-                    card.setAttribute('role', 'gridcell');
+                    card.setAttribute('role', 'button');
                     card.setAttribute('tabindex', '0');
                     card.dataset.stream = btoa(ch.url);
                     card.dataset.name = ch.name;
@@ -973,17 +938,6 @@
                         '</div>' +
                         '<div class="play-overlay">▶ Play</div>';
 
-                    card.addEventListener('click', function(e) {
-                        e.preventDefault();
-                        openPlayer(this);
-                    });
-                    card.addEventListener('keydown', function(e) {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            this.click();
-                        }
-                    });
-
                     grid.appendChild(card);
                 }
 
@@ -992,86 +946,51 @@
                 else hideLoadMore();
             }
 
-            // ─── GRID NAVIGATION (lightweight) ───
+            // ─── EVENT DELEGATION FOR CLICKS ───
+            grid.addEventListener('click', function(e) {
+                var card = e.target.closest('.channel-card');
+                if (card) {
+                    e.preventDefault();
+                    openPlayer(card);
+                }
+            });
+
+            // Also handle keyboard Enter/Space on cards (delegated)
             grid.addEventListener('keydown', function(e) {
-                var key = e.key;
-                if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(key)) return;
-
-                var active = document.activeElement;
-                if (!active || !active.classList.contains('channel-card')) return;
-                e.preventDefault();
-
-                var cards = grid.querySelectorAll('.channel-card');
-                var idx = Array.prototype.indexOf.call(cards, active);
-                if (idx === -1) return;
-
-                var cols = getCols();
-                var newIdx = -1;
-
-                switch (key) {
-                    case 'ArrowUp':
-                        newIdx = idx - cols;
-                        break;
-                    case 'ArrowDown':
-                        newIdx = idx + cols;
-                        break;
-                    case 'ArrowLeft':
-                        newIdx = idx - 1;
-                        break;
-                    case 'ArrowRight':
-                        newIdx = idx + 1;
-                        break;
-                }
-
-                if (newIdx < 0 || newIdx >= cards.length) return;
-
-                // For horizontal, stay in same row
-                if (key === 'ArrowLeft' || key === 'ArrowRight') {
-                    var row = Math.floor(idx / cols);
-                    var newRow = Math.floor(newIdx / cols);
-                    if (newRow !== row) return;
-                }
-
-                // For vertical, stay in same column
-                if (key === 'ArrowUp' || key === 'ArrowDown') {
-                    var col = idx % cols;
-                    var newCol = newIdx % cols;
-                    if (newCol !== col) {
-                        // Find closest in same column
-                        var candidates = [];
-                        var step = (key === 'ArrowUp') ? -1 : 1;
-                        for (var i2 = newIdx; i2 >= 0 && i2 < cards.length; i2 += step) {
-                            if (i2 % cols === col) candidates.push(i2);
-                        }
-                        if (candidates.length) {
-                            var target = key === 'ArrowUp' ? candidates[candidates.length - 1] : candidates[0];
-                            if (target >= 0 && target < cards.length) {
-                                cards[target].focus();
-                            }
-                        }
-                        return;
-                    }
-                }
-
-                if (newIdx >= 0 && newIdx < cards.length) {
-                    cards[newIdx].focus();
+                var card = e.target.closest('.channel-card');
+                if (!card) return;
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openPlayer(card);
                 }
             });
 
             // ─── OPEN PLAYER ───
             function openPlayer(card) {
-                var stream = card.dataset.stream;
-                var name = card.dataset.name;
-                var icon = card.dataset.icon;
-                var back = window.location.href;
+                try {
+                    var stream = card.dataset.stream;
+                    var name = card.dataset.name || 'Channel';
+                    var icon = card.dataset.icon || '';
+                    var back = window.location.href;
 
-                ogLink.href = 'player.html?s=' + encodeURIComponent(stream) + '&name=' + encodeURIComponent(name) +
-                    '&icon=' + encodeURIComponent(icon) + '&back=' + encodeURIComponent(back);
-                simpleLink.href = 'simple-player.html?s=' + encodeURIComponent(stream) + '&name=' + encodeURIComponent(
-                    name) + '&back=' + encodeURIComponent(back);
+                    ogLink.href = 'player.html?s=' + encodeURIComponent(stream) + '&name=' + encodeURIComponent(name) +
+                        '&icon=' + encodeURIComponent(icon) + '&back=' + encodeURIComponent(back);
+                    simpleLink.href = 'simple-player.html?s=' + encodeURIComponent(stream) + '&name=' + encodeURIComponent(
+                        name) + '&back=' + encodeURIComponent(back);
 
-                openModal(playerModal);
-                setTimeout(function() { ogLink.focus(); }, 50);
+                    openModal(playerModal);
+                    // Focus first button after a short delay
+                    setTimeout(function() {
+                        if (ogLink) ogLink.focus();
+                    }, 100);
+                } catch (err) {
+                    console.warn('Error opening player:', err);
+                    // fallback: try to open original player directly
+                    var fallbackUrl = 'player.html?s=' + encodeURIComponent(card.dataset.stream) +
+                        '&name=' + encodeURIComponent(card.dataset.name || '') +
+                        '&back=' + encodeURIComponent(window.location.href);
+                    window.location.href = fallbackUrl;
+                }
             }
 
             // ─── CATEGORY CLICKS ───
@@ -1143,15 +1062,6 @@
                     if (playerModal.classList.contains('show')) { e.preventDefault();
                         closePlayer(); }
                 }
-            });
-
-            // ─── RECALC ON RESIZE ───
-            var resizeTimer;
-            window.addEventListener('resize', function() {
-                clearTimeout(resizeTimer);
-                resizeTimer = setTimeout(function() {
-                    // grid columns auto-update via CSS
-                }, 200);
             });
 
             // ─── FOCUS FIRST CARD ───
