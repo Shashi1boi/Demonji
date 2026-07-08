@@ -4,9 +4,9 @@ $xtreamCredentials = [
     [
         'id' => 'server1',
         'name' => 'Server 1 (new)',
-        'host' => 'http://best8k.top:80',
-        'username' => 'atif90',
-        'password' => '554433'
+        'host' => 'http://elit64.xyz:2086',
+        'username' => 'orhanilkcag',
+        'password' => 'jg5hB7k'
     ],
     [
         'id' => 'server2',
