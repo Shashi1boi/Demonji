@@ -4,9 +4,9 @@ $xtreamCredentials = [
     [
         'id' => 'server1',
         'name' => 'Server 1 (new)',
-        'host' => 'http://elit64.xyz:2086',
-        'username' => 'orhanilkcag',
-        'password' => 'jg5hB7k'
+        'host' => 'http://line.wow-ott.cc:80',
+        'username' => 'NDZM6T',
+        'password' => 'FNUS78'
     ],
     [
         'id' => 'server2',
