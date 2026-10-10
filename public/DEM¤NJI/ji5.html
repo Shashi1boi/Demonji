@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluid Player - Proxied Stream</title>
+    
+    <!-- Global Network Interceptor: Forces only the stream chunks through your proxy -->
+    <script>
+        const proxyBase = "https://demonji.onrender.com/cors-proxy.php?=";
+        const targetHost = "premiumplug.fun"; // Only proxy requests going to this specific domain
+
+        // Intercept XMLHttpRequest (used by HLS engine inside Fluid Player)
+        const originalOpen = XMLHttpRequest.prototype.open;
+        XMLHttpRequest.prototype.open = function(method, url) {
+            if (typeof url === 'string' && url.includes(targetHost) && !url.includes('demonji.onrender.com')) {
+                // Wrap the request in your proxy right before it leaves the browser
+                url = proxyBase + url;
+            }
+            return originalOpen.apply(this, arguments);
+        };
+
+        // Intercept modern Fetch API (used by some fallback engines)
+        const originalFetch = window.fetch;
+        window.fetch = async function(...args) {
+            if (typeof args[0] === 'string' && args[0].includes(targetHost) && !args[0].includes('demonji.onrender.com')) {
+                args[0] = proxyBase + args[0];
+            }
+            return originalFetch.apply(this, args);
+        };
+    </script>
+
+    <!-- Load Fluid Player CDN -->
+    <script src="https://cdn.fluidplayer.com/v3/current/fluidplayer.min.js"></script>
+
+    <style>
+        body {
+            background-color: #121212;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+            margin: 0;
+        }
+        .player-container {
+            width: 100%;
+            max-width: 800px;
+            background: #000;
+            border-radius: 8px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+            margin-bottom: 20px;
+            /* Prevents sizing issues with Fluid Player */
+            position: relative; 
+        }
+        #fluid-video {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <h2>Fluid Player (Auto-Proxied)</h2>
+
+    <div class="player-container">
+        <!-- Leave the original URL here! The interceptor script above will proxy it automatically -->
+        <video id="fluid-video" controls>
+            <source src="https://premiumplug.fun/zee/zee5.php/0-9-zeetvhd.m3u8" type="application/x-mpegURL" />
+        </video>
+    </div>
+
+    <script>
+        // Initialize Fluid Player
+        var player = fluidPlayer('fluid-video', {
+            layoutControls: {
+                fillToContainer: true,
+                primaryColor: "#26a8ff", // Premium blue accent color
+                playButtonShowing: true,
+                playPauseAnimation: true
+            }
+        });
+    </script>
+
+</body>
+</html>
