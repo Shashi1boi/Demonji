@@ -7,8 +7,9 @@
 <meta name="format-detection" content="telephone=no">
 <title>Player</title>
 
-<!-- Shaka Player 2.5.5 — last version supporting Chrome 38+ (Tizen 2015-17) -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/2.5.5/shaka-player.compiled.js"></script>
+<!-- ✅ FIXED: Shaka Player 2.5.5 UI build from jsDelivr (Chrome 38+ / Tizen 2015-17) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@2.5.5/dist/controls.css">
+<script src="https://cdn.jsdelivr.net/npm/shaka-player@2.5.5/dist/shaka-player.ui.min.js"></script>
 
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -24,11 +25,25 @@ html, body {
   -webkit-text-size-adjust: 100%;
 }
 
-/* ── VIDEO ── */
-#video {
+#playerWrapper {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: #000;
+  overflow: hidden;
+}
+
+#videoContainer {
   position: absolute;
   top: 0; left: 0; right: 0; bottom: 0;
-  width: 100%; height: 100%;
+  width: 100%;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+}
+
+#video {
+  width: 100%;
+  height: 100%;
   background: #000;
   -o-object-fit: contain;
   object-fit: contain;
@@ -36,15 +51,15 @@ html, body {
   object-position: center center;
   display: block;
 }
-#video.fit-contain { -o-object-fit: contain; object-fit: contain; }
-#video.fit-cover   { -o-object-fit: cover;   object-fit: cover; }
-#video.fit-stretch { -o-object-fit: fill;    object-fit: fill; }
+#video.fit-contain { -o-object-fit: contain !important; object-fit: contain !important; }
+#video.fit-cover   { -o-object-fit: cover   !important; object-fit: cover   !important; }
+#video.fit-stretch { -o-object-fit: fill    !important; object-fit: fill    !important; }
 
-/* ── OVERLAY (top bar) ── */
-#overlay {
+/* ── CUSTOM TOP BAR (synced with Shaka controls) ── */
+#topBar {
   position: absolute;
   top: 0; left: 0; right: 0;
-  z-index: 100;
+  z-index: 10;
   padding: 12px 16px;
   padding-top: calc(12px + env(safe-area-inset-top));
   padding-left: calc(16px + env(safe-area-inset-left));
@@ -59,14 +74,15 @@ html, body {
   gap: 12px;
   -webkit-transition: opacity .3s ease, visibility .3s ease;
   transition: opacity .3s ease, visibility .3s ease;
-}
-#overlay.hidden {
-  opacity: 0;
-  visibility: hidden;
   pointer-events: none;
 }
+#topBar.hidden {
+  opacity: 0;
+  visibility: hidden;
+}
 
-.ctrl-btn {
+.top-btn {
+  pointer-events: auto;
   background: rgba(255,255,255,0.14);
   border: 1px solid rgba(255,255,255,0.28);
   color: #fff;
@@ -84,13 +100,9 @@ html, body {
   -webkit-transition: background .15s, border-color .15s;
   transition: background .15s, border-color .15s;
 }
-.ctrl-btn:hover {
-  background: rgba(255,255,255,0.22);
-}
-.ctrl-btn:active {
-  background: rgba(255,255,255,0.28);
-}
-.ctrl-btn:focus {
+.top-btn:hover  { background: rgba(255,255,255,0.22); }
+.top-btn:active { background: rgba(255,255,255,0.28); }
+.top-btn:focus  {
   background: rgba(30,90,120,0.9);
   border-color: #4fc3f7;
   box-shadow: 0 0 0 2px rgba(79,195,247,0.4);
@@ -109,6 +121,7 @@ html, body {
   text-align: center;
   color: #fff;
   text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+  pointer-events: none;
 }
 
 /* ── PLACEHOLDER ── */
@@ -171,71 +184,76 @@ html, body {
 @-webkit-keyframes spin { to { -webkit-transform: rotate(360deg); } }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ══════════════════════════════════════════════════════════════
-   RESPONSIVE
-   ══════════════════════════════════════════════════════════════ */
+/* ── SHAKA UI OVERRIDES (TV-friendly sizes) ── */
+.shaka-controls-container { font-size: 14px; }
+.shaka-bottom-controls {
+  padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
+  padding-left:   calc(12px + env(safe-area-inset-left))  !important;
+  padding-right:  calc(12px + env(safe-area-inset-right)) !important;
+}
+.shaka-seek-bar-container { height: 6px; }
 
-/* Phones (portrait) — compact overlay, hide title to save space */
-@media (max-width: 480px) {
-  #overlay { gap: 8px; padding: 10px 12px; padding-top: calc(10px + env(safe-area-inset-top)); }
-  #title { display: none; }
-  .ctrl-btn { padding: 10px 12px; min-height: 42px; font-size: 13px; }
+@media (min-width: 1280px) {
+  .shaka-controls-container { font-size: 18px; }
+  .shaka-seek-bar-container { height: 8px; }
+}
+@media (min-width: 1800px) {
+  .shaka-controls-container { font-size: 22px; }
 }
 
-/* Tablets / large phones — show title */
+/* ── RESPONSIVE ── */
+@media (max-width: 480px) {
+  #topBar { gap: 8px; padding: 10px 12px; padding-top: calc(10px + env(safe-area-inset-top)); }
+  #title { display: none; }
+  .top-btn { padding: 10px 12px; min-height: 42px; font-size: 13px; }
+}
 @media (min-width: 481px) and (max-width: 900px) {
   #title { font-size: 15px; }
-  .ctrl-btn { padding: 10px 14px; }
+  .top-btn { padding: 10px 14px; }
 }
-
-/* TV (large screens) — bigger buttons and text */
 @media (min-width: 1280px) {
-  #overlay { padding: 20px 28px; gap: 18px; }
+  #topBar { padding: 20px 28px; gap: 18px; }
   #title { font-size: 22px; }
-  .ctrl-btn { padding: 14px 22px; min-height: 54px; font-size: 17px; border-radius: 10px; }
+  .top-btn { padding: 14px 22px; min-height: 54px; font-size: 17px; border-radius: 10px; }
 }
 @media (min-width: 1800px) {
   #title { font-size: 26px; }
-  .ctrl-btn { padding: 16px 26px; min-height: 60px; font-size: 19px; }
+  .top-btn { padding: 16px 26px; min-height: 60px; font-size: 19px; }
 }
-
-/* Landscape phone — hide title, keep buttons small but tappable */
 @media (max-height: 480px) and (orientation: landscape) {
-  #overlay { padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); }
+  #topBar { padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); }
   #title { font-size: 13px; }
-  .ctrl-btn { padding: 8px 12px; min-height: 38px; font-size: 12px; }
-}
-
-/* Coarse pointer — no hover states */
-@media (hover: none) {
-  .ctrl-btn:hover { background: rgba(255,255,255,0.14); }
+  .top-btn { padding: 8px 12px; min-height: 38px; font-size: 12px; }
 }
 </style>
 </head>
 <body>
 
-<video id="video" autoplay playsinline webkit-playsinline preload="metadata"
-       x5-playsinline x5-video-player-type="h5"></video>
+<div id="playerWrapper">
+  <div id="videoContainer">
+    <video id="video" autoplay playsinline webkit-playsinline preload="metadata"
+           x5-playsinline x5-video-player-type="h5"></video>
 
-<div id="overlay">
-  <button id="backBtn" class="ctrl-btn" type="button" tabindex="0">◄ Back</button>
-  <div id="title">…</div>
-  <button id="fitBtn"  class="ctrl-btn" type="button" tabindex="0">FIT: CONTAIN</button>
-  <button id="fsBtn"   class="ctrl-btn" type="button" tabindex="0" title="Fullscreen">⛶</button>
-</div>
+    <div id="topBar">
+      <button id="backBtn" class="top-btn" type="button" tabindex="0">◄ Back</button>
+      <div id="title">…</div>
+      <button id="fitBtn" class="top-btn" type="button" tabindex="0">FIT: CONTAIN</button>
+    </div>
+  </div>
 
-<div id="placeholder">
-  <div class="spinner" id="phSpinner"></div>
-  <div id="phMsg">Loading…</div>
-  <div class="ph-actions" id="phActions" style="display:none">
-    <button id="phBackBtn" type="button">◄ Back to channels</button>
-    <button id="phRetryBtn" type="button">⟳ Retry</button>
+  <div id="placeholder">
+    <div class="spinner" id="phSpinner"></div>
+    <div id="phMsg">Loading…</div>
+    <div class="ph-actions" id="phActions" style="display:none">
+      <button id="phBackBtn" type="button">◄ Back to channels</button>
+      <button id="phRetryBtn" type="button">⟳ Retry</button>
+    </div>
   </div>
 </div>
 
 <script>
 /* ══════════════════════════════════════════════════════════════
-   ES5 SHIMS
+   ES5 SHIMS (Chrome 38+)
    ══════════════════════════════════════════════════════════════ */
 if (!Array.prototype.includes) {
   Array.prototype.includes = function(x){ return this.indexOf(x) !== -1; };
@@ -288,23 +306,25 @@ var COOKIE_STAR_SPORTS = "https://allinonereborn2.online/jtv-fetch/jstarcookie/c
 /* ══════════════════════════════════════════════════════════════
    DOM
    ══════════════════════════════════════════════════════════════ */
-var videoEl     = document.getElementById('video');
-var overlay     = document.getElementById('overlay');
-var titleEl     = document.getElementById('title');
-var backBtn     = document.getElementById('backBtn');
-var fitBtn      = document.getElementById('fitBtn');
-var fsBtn       = document.getElementById('fsBtn');
-var placeholder = document.getElementById('placeholder');
-var phMsg       = document.getElementById('phMsg');
-var phSpinner   = document.getElementById('phSpinner');
-var phActions   = document.getElementById('phActions');
-var phBackBtn   = document.getElementById('phBackBtn');
-var phRetryBtn  = document.getElementById('phRetryBtn');
+var videoEl        = document.getElementById('video');
+var videoContainer = document.getElementById('videoContainer');
+var playerWrapper  = document.getElementById('playerWrapper');
+var topBar         = document.getElementById('topBar');
+var titleEl        = document.getElementById('title');
+var backBtn        = document.getElementById('backBtn');
+var fitBtn         = document.getElementById('fitBtn');
+var placeholder    = document.getElementById('placeholder');
+var phMsg          = document.getElementById('phMsg');
+var phSpinner      = document.getElementById('phSpinner');
+var phActions      = document.getElementById('phActions');
+var phBackBtn      = document.getElementById('phBackBtn');
+var phRetryBtn     = document.getElementById('phRetryBtn');
 
 /* ══════════════════════════════════════════════════════════════
    STATE
    ══════════════════════════════════════════════════════════════ */
 var shakaPlayer    = null;
+var shakaUI        = null;
 var activeCookie   = '';
 var currentChannel = null;
 var isLoading      = false;
@@ -503,11 +523,11 @@ function findChannelById(id) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   PLAYER INIT
+   PLAYER INIT — with Shaka UI
    ══════════════════════════════════════════════════════════════ */
 function initPlayer() {
   if (typeof shaka === 'undefined' || !shaka.Player) {
-    showPlaceholder('⚠️ Player failed to load.', true, false);
+    showPlaceholder('⚠️ Player failed to load.<br>Check your internet connection.', true, false);
     return false;
   }
   try {
@@ -519,8 +539,10 @@ function initPlayer() {
     return false;
   }
 
+  /* Shaka 2.x: pass the video element to the constructor */
   shakaPlayer = new shaka.Player(videoEl);
 
+  /* Request filter — inject headers + activeCookie as query string */
   shakaPlayer.getNetworkingEngine().registerRequestFilter(function(type, request) {
     request.headers['Referer']    = 'https://www.jiotv.com/';
     request.headers['User-Agent'] = 'plaYtv/7.1.5';
@@ -532,7 +554,66 @@ function initPlayer() {
     }
   });
 
+  /* ── Attach Shaka UI controls (with quality selector) ── */
+  try {
+    var uiConfig = {
+      addSeekBar: true,
+      addBigPlayButton: true,
+      controlPanelElements: [
+        'play_pause',
+        'time_and_duration',
+        'spacer',
+        'mute',
+        'volume',
+        'quality',
+        'captions',
+        'playback_rate',
+        'picture_in_picture',
+        'fullscreen',
+        'overflow_menu'
+      ],
+      overflowMenuButtons: [
+        'quality',
+        'captions',
+        'playback_rate',
+        'picture_in_picture'
+      ]
+    };
+
+    shakaUI = new shaka.ui.Overlay(shakaPlayer, videoContainer, videoEl, uiConfig);
+    console.log('[shaka-ui] Overlay attached');
+  } catch (e) {
+    console.warn('[shaka-ui] Overlay failed, falling back to native controls:', e.message);
+    videoEl.setAttribute('controls', 'controls');
+  }
+
+  /* Sync our custom top bar with Shaka's own controls visibility */
+  syncTopBarWithShakaControls();
+
   return true;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SYNC TOP BAR ↔ SHAKA CONTROLS
+   ══════════════════════════════════════════════════════════════ */
+function syncTopBarWithShakaControls() {
+  if (typeof MutationObserver === 'undefined') return;
+
+  function tryAttach() {
+    var ctrl = videoContainer.querySelector('.shaka-controls-container');
+    if (!ctrl) { setTimeout(tryAttach, 200); return; }
+
+    var observer = new MutationObserver(function() {
+      if (ctrl.classList.contains('shaka-hidden')) {
+        topBar.classList.add('hidden');
+      } else {
+        topBar.classList.remove('hidden');
+      }
+    });
+    observer.observe(ctrl, { attributes: true, attributeFilter: ['class'] });
+    console.log('[shaka-ui] top bar synced with controls');
+  }
+  tryAttach();
 }
 
 /* ══════════════════════════════════════════════════════════════
@@ -573,7 +654,8 @@ function playChannel(channelData) {
 
     shakaPlayer.configure({
       drm: { clearKeys: clearKeysConfig },
-      streaming: { lowLatencyMode: true }
+      streaming: { lowLatencyMode: true },
+      abr: { enabled: true }
     });
 
     var urlIdx = 0;
@@ -616,7 +698,6 @@ function playChannel(channelData) {
             if (p && p.catch) p.catch(function(e){ console.warn('play() rejected:', e.message); });
           } catch (e) {}
           console.log('[play] success');
-          showOverlayThenHide();
         }).catch(function(e) {
           console.warn('[play] failed:', e && (e.code || e.message));
           tryNextCookie();
@@ -635,9 +716,9 @@ function playChannel(channelData) {
    FIT MODES
    ══════════════════════════════════════════════════════════════ */
 var fitModes = [
-  { key: 'contain', label: 'FIT' },
-  { key: 'cover',   label: 'COVER' },
-  { key: 'stretch', label: 'STRETCH' }
+  { key: 'contain', label: 'FIT: CONTAIN' },
+  { key: 'cover',   label: 'FULL: COVER' },
+  { key: 'stretch', label: 'FULL: STRETCH' }
 ];
 var fitModeIndex = 0;
 
@@ -649,88 +730,6 @@ function applyFitMode(index) {
 }
 fitBtn.addEventListener('click', function(e){ e.preventDefault(); applyFitMode(fitModeIndex + 1); });
 applyFitMode(0);
-
-/* ══════════════════════════════════════════════════════════════
-   FULLSCREEN
-   ══════════════════════════════════════════════════════════════ */
-function isFullscreen() {
-  return !!(document.fullscreenElement ||
-            document.webkitFullscreenElement ||
-            document.mozFullScreenElement ||
-            document.msFullscreenElement);
-}
-
-function toggleFullscreen() {
-  var el = document.documentElement;
-  try {
-    if (isFullscreen()) {
-      if (document.exitFullscreen) document.exitFullscreen();
-      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-      else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
-      else if (document.msExitFullscreen) document.msExitFullscreen();
-    } else {
-      if (el.requestFullscreen) {
-        var p = el.requestFullscreen();
-        if (p && p.catch) p.catch(function(){});
-      }
-      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
-      else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
-      else if (el.msRequestFullscreen) el.msRequestFullscreen();
-      else if (videoEl.webkitEnterFullscreen) videoEl.webkitEnterFullscreen();
-
-      /* Try landscape on mobile */
-      try {
-        if (screen.orientation && screen.orientation.lock) {
-          screen.orientation.lock('landscape').catch(function(){});
-        }
-      } catch (e) {}
-    }
-  } catch (e) {}
-}
-
-fsBtn.addEventListener('click', function(e){ e.preventDefault(); toggleFullscreen(); });
-
-/* Update fullscreen icon */
-function updateFsIcon() {
-  fsBtn.innerHTML = isFullscreen() ? '⛶' : '⛶';
-}
-document.addEventListener('fullscreenchange', updateFsIcon);
-document.addEventListener('webkitfullscreenchange', updateFsIcon);
-
-/* ══════════════════════════════════════════════════════════════
-   OVERLAY AUTO-HIDE
-   ══════════════════════════════════════════════════════════════ */
-var overlayTimer = null;
-var overlayPinned = false;
-
-function showOverlay() {
-  overlay.classList.remove('hidden');
-  clearTimeout(overlayTimer);
-  if (overlayPinned) return;
-  overlayTimer = setTimeout(function() {
-    /* Don't hide if a control button has focus (TV navigation) */
-    if (document.activeElement === backBtn ||
-        document.activeElement === fitBtn ||
-        document.activeElement === fsBtn) return;
-    overlay.classList.add('hidden');
-  }, 4500);
-}
-
-function showOverlayThenHide() {
-  showOverlay();
-}
-
-function hideOverlayNow() {
-  overlay.classList.add('hidden');
-  clearTimeout(overlayTimer);
-}
-
-/* Show overlay on interaction */
-if (isTouchDevice()) {
-  document.addEventListener('touchstart', showOverlay, {passive: true});
-}
-document.addEventListener('mousemove', showOverlay);
-document.addEventListener('keydown', function() { showOverlay(); }, true);
 
 /* ══════════════════════════════════════════════════════════════
    BACK / NAVIGATION
@@ -746,57 +745,21 @@ function goBack() {
 
 backBtn.addEventListener('click', function(e){ e.preventDefault(); goBack(); });
 phBackBtn.addEventListener('click', function(e){ e.preventDefault(); goBack(); });
-
 phRetryBtn.addEventListener('click', function(e) {
   e.preventDefault();
   if (currentChannel) playChannel(currentChannel);
 });
 
-/* Physical / TV back keys */
 document.addEventListener('keydown', function(e) {
   var k = e.keyCode;
-  /* 8=backspace, 27=esc, 461=Tizen RETURN, 10009=Samsung, 10033=LG */
   if (k === 8 || k === 27 || k === 461 || k === 10009 || k === 10033) {
+    /* Don't hijack Esc/Backspace when a Shaka menu is open */
+    if (document.querySelector('.shaka-overflow-menu:not(.shaka-hidden)') ||
+        document.querySelector('.shaka-settings-menu:not(.shaka-hidden)')) {
+      return;
+    }
     e.preventDefault();
     goBack();
-  }
-});
-
-/* ══════════════════════════════════════════════════════════════
-   TV REMOTE FOCUS NAVIGATION FOR OVERLAY BUTTONS
-   ══════════════════════════════════════════════════════════════ */
-document.addEventListener('keydown', function(e) {
-  var k = e.keyCode;
-  var focused = document.activeElement;
-  var inOverlay = (focused === backBtn || focused === fitBtn || focused === fsBtn);
-
-  if (k === 37) {              /* LEFT */
-    if (focused === fitBtn)  { backBtn.focus(); e.preventDefault(); }
-    else if (focused === fsBtn) { fitBtn.focus(); e.preventDefault(); }
-    else if (!inOverlay) { backBtn.focus(); e.preventDefault(); }
-  } else if (k === 39) {       /* RIGHT */
-    if (focused === backBtn) { fitBtn.focus(); e.preventDefault(); }
-    else if (focused === fitBtn) { fsBtn.focus(); e.preventDefault(); }
-    else if (!inOverlay) { fsBtn.focus(); e.preventDefault(); }
-  } else if (k === 40 || k === 13) {  /* DOWN or ENTER */
-    if (k === 40 && inOverlay) {
-      focused.blur();
-      e.preventDefault();
-      return;
-    }
-    if (k === 13 && inOverlay) {
-      e.preventDefault();
-      if (focused === backBtn) goBack();
-      else if (focused === fitBtn) applyFitMode(fitModeIndex + 1);
-      else if (focused === fsBtn) toggleFullscreen();
-      return;
-    }
-    /* ENTER with nothing focused: do nothing special */
-  } else if (k === 38) {       /* UP */
-    if (!inOverlay) {
-      backBtn.focus();
-      e.preventDefault();
-    }
   }
 });
 
@@ -806,18 +769,9 @@ document.addEventListener('keydown', function(e) {
 videoEl.addEventListener('playing', function() {
   hidePlaceholder();
   isLoading = false;
-  showOverlayThenHide();
-});
-videoEl.addEventListener('waiting', function() {
-  /* Buffering indicator (small) — kept subtle to not annoy TV users */
 });
 videoEl.addEventListener('error', function(e) {
   console.warn('video error:', e);
-});
-
-/* Tap on video shows overlay (mobile / TV OK key) */
-videoEl.addEventListener('click', function() {
-  showOverlay();
 });
 
 /* ══════════════════════════════════════════════════════════════
