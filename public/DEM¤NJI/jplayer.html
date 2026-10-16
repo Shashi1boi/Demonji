@@ -7,7 +7,7 @@
 <meta name="format-detection" content="telephone=no">
 <title>Player</title>
 
-<!-- ✅ FIXED: Shaka Player 2.5.5 UI build from jsDelivr (Chrome 38+ / Tizen 2015-17) -->
+<!-- Shaka Player 2.5.5 UI build from jsDelivr (Chrome 38+ / Tizen 2015-17) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@2.5.5/dist/controls.css">
 <script src="https://cdn.jsdelivr.net/npm/shaka-player@2.5.5/dist/shaka-player.ui.min.js"></script>
 
@@ -594,26 +594,54 @@ function initPlayer() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   SYNC TOP BAR ↔ SHAKA CONTROLS
+   SYNC TOP BAR ↔ SHAKA CONTROLS (polling — works on old Tizen)
+   Old Chromium (Tizen 2015-17) doesn't fire MutationObserver
+   reliably on class changes, so we poll every 200 ms instead.
    ══════════════════════════════════════════════════════════════ */
 function syncTopBarWithShakaControls() {
-  if (typeof MutationObserver === 'undefined') return;
+  var lastState = null;
+  var attempts  = 0;
 
-  function tryAttach() {
+  function checkForContainer() {
+    attempts++;
     var ctrl = videoContainer.querySelector('.shaka-controls-container');
-    if (!ctrl) { setTimeout(tryAttach, 200); return; }
 
-    var observer = new MutationObserver(function() {
-      if (ctrl.classList.contains('shaka-hidden')) {
-        topBar.classList.add('hidden');
+    if (!ctrl) {
+      /* Retry for ~6 seconds while Shaka UI builds its DOM */
+      if (attempts < 30) {
+        setTimeout(checkForContainer, 200);
       } else {
-        topBar.classList.remove('hidden');
+        console.warn('[shaka-ui] controls container never appeared');
       }
-    });
-    observer.observe(ctrl, { attributes: true, attributeFilter: ['class'] });
-    console.log('[shaka-ui] top bar synced with controls');
+      return;
+    }
+
+    console.log('[shaka-ui] controls container found — polling for visibility');
+
+    /* Poll every 200 ms */
+    setInterval(function() {
+      var isHidden = ctrl.classList.contains('shaka-hidden') ||
+                     ctrl.offsetParent === null ||
+                     window.getComputedStyle(ctrl).visibility === 'hidden' ||
+                     parseFloat(window.getComputedStyle(ctrl).opacity) === 0;
+
+      if (isHidden !== lastState) {
+        lastState = isHidden;
+        if (isHidden) {
+          topBar.classList.add('hidden');
+        } else {
+          topBar.classList.remove('hidden');
+        }
+      }
+    }, 200);
+
+    /* Apply the initial state right away */
+    var initialHidden = ctrl.classList.contains('shaka-hidden');
+    lastState = initialHidden;
+    if (initialHidden) topBar.classList.add('hidden');
   }
-  tryAttach();
+
+  checkForContainer();
 }
 
 /* ══════════════════════════════════════════════════════════════
