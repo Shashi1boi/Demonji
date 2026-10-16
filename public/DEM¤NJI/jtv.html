@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<title>JioTV Web Player</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/shaka-player.ui.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/shaka-player/4.7.11/controls.min.css">
+
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:#000;width:100%;height:100%;overflow:hidden;font-family:system-ui,-apple-system,sans-serif;color:#eee}
+
+#app{display:grid;grid-template-columns:320px 1fr;width:100vw;height:100vh;height:100dvh}
+
+/* ── SIDEBAR ── */
+#sidebar{background:#111;border-right:1px solid #222;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.sidebar-header{padding:14px 16px;font-size:.95rem;font-weight:600;color:#4fc3f7;border-bottom:1px solid #222;letter-spacing:.3px;display:flex;align-items:center;gap:8px}
+.sidebar-header button{margin-left:auto;background:#2a2a2a;border:none;color:#eee;padding:4px 10px;border-radius:6px;font-size:.75rem;cursor:pointer}
+.sidebar-header button:hover{background:#3a3a3a}
+.search-box{padding:10px 12px;border-bottom:1px solid #222}
+.search-box input{width:100%;padding:9px 12px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:#eee;font-size:.85rem;outline:none}
+.search-box input:focus{border-color:#4fc3f7}
+.channel-list{flex:1;overflow-y:auto;padding:8px;scrollbar-width:thin;scrollbar-color:#333 transparent}
+.channel-list::-webkit-scrollbar{width:6px}
+.channel-list::-webkit-scrollbar-thumb{background:#333;border-radius:3px}
+
+.channel-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;cursor:pointer;transition:background .12s;margin-bottom:2px}
+.channel-item:hover{background:#1c1c1c}
+.channel-item.active{background:#1a3a4a;border-left:3px solid #4fc3f7;padding-left:7px}
+.channel-item img{width:38px;height:38px;border-radius:6px;object-fit:contain;background:#1a1a1a;flex-shrink:0}
+.channel-info{flex:1;min-width:0}
+.channel-name{font-size:.82rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.channel-category{font-size:.68rem;color:#777;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.loading-msg,.error-msg{padding:20px;font-size:.85rem;text-align:center}
+.loading-msg{color:#888}
+.error-msg{color:#ef5350}
+.error-msg button{margin-top:12px;background:#2a2a2a;border:none;color:#eee;padding:8px 16px;border-radius:6px;cursor:pointer;font-size:.8rem}
+.error-msg button:hover{background:#3a3a3a}
+
+/* ── PLAYER AREA ── */
+#playerArea{position:relative;background:#000;overflow:hidden;min-width:0}
+#player-container{position:absolute;inset:0;background:#000;overflow:hidden !important}
+#video{width:100%;height:100%;background:#000;object-fit:contain;object-position:center;transition:object-fit .15s ease}
+#video.fit-contain{object-fit:contain !important}
+#video.fit-cover{object-fit:cover !important;object-position:center center !important}
+#video.fit-stretch{object-fit:fill !important;object-position:center center !important}
+
+#player-container:fullscreen,#player-container:-webkit-full-screen{
+  position:fixed !important;inset:0 !important;width:100vw !important;
+  height:100vh !important;height:100dvh !important;padding:0 !important;
+  margin:0 !important;background:#000 !important;
+}
+#player-container:fullscreen video,#player-container:-webkit-full-screen video{
+  width:100vw !important;height:100vh !important;height:100dvh !important;
+  max-width:none !important;max-height:none !important;
+}
+
+/* ── FIT BUTTON ── */
+.video-fit-btn{
+  position:absolute;top:calc(10px + env(safe-area-inset-top));right:calc(10px + env(safe-area-inset-right));
+  z-index:1000;border:1px solid rgba(255,255,255,.28);background:rgba(0,0,0,.62);color:#fff;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:10px;padding:9px 12px;
+  min-width:105px;font-size:12px;font-weight:700;letter-spacing:.3px;cursor:pointer;
+  user-select:none;-webkit-tap-highlight-color:transparent;transition:opacity .25s ease,visibility .25s ease;
+}
+.video-fit-btn:active{transform:scale(.96)}
+.video-fit-btn.controls-hidden{opacity:0 !important;visibility:hidden !important;pointer-events:none !important}
+
+/* ── MOBILE MENU TOGGLE ── */
+#sidebarToggle{
+  display:none;position:fixed;top:calc(10px + env(safe-area-inset-top));left:calc(10px + env(safe-area-inset-left));
+  z-index:2000;width:42px;height:42px;border-radius:10px;border:1px solid rgba(255,255,255,.25);
+  background:rgba(0,0,0,.7);color:#fff;font-size:20px;cursor:pointer;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);align-items:center;justify-content:center;
+}
+
+/* ── PLACEHOLDER ── */
+.placeholder{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#555;text-align:center;padding:24px;z-index:1;pointer-events:none}
+.placeholder svg{width:64px;height:64px;margin-bottom:14px;opacity:.35}
+.placeholder p{font-size:.9rem}
+
+@media (max-width:768px){
+  #app{grid-template-columns:1fr}
+  #sidebar{position:fixed;top:0;left:0;bottom:0;width:82%;max-width:340px;z-index:1500;transform:translateX(-100%);transition:transform .25s ease;box-shadow:4px 0 24px rgba(0,0,0,.7)}
+  #sidebar.open{transform:translateX(0)}
+  #sidebarToggle{display:flex}
+  #playerArea{grid-column:1}
+}
+</style>
+</head>
+
+<body>
+
+<div id="app">
+  <button id="sidebarToggle" aria-label="Toggle channel list">☰</button>
+
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      📺 Channels
+      <button id="reloadChannelsBtn" title="Reload">⟳</button>
+    </div>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Search channels…" autocomplete="off">
+    </div>
+    <div class="channel-list" id="channelList">
+      <div class="loading-msg">Loading channels…</div>
+    </div>
+  </aside>
+
+  <main id="playerArea">
+    <div id="player-container">
+      <div class="placeholder" id="placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <rect x="2" y="4" width="20" height="16" rx="2"/>
+          <path d="M10 9l5 3-5 3V9z" fill="currentColor" stroke="none"/>
+        </svg>
+        <p>Select a channel to start watching</p>
+      </div>
+      <button id="videoFitBtn" class="video-fit-btn" type="button">FIT: CONTAIN</button>
+      <video id="video" autoplay playsinline preload="metadata"></video>
+    </div>
+  </main>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════════
+   CONFIGURATION
+   ══════════════════════════════════════════════════════════════ */
+
+/* Channel JSON — multiple candidates tried in order.
+   1) Same-origin relative path (works if this page is hosted on the
+      same domain as the JSON, e.g. jjtvxweb.pages.dev).
+   2) Direct URL (works if that server sends CORS headers).
+   3) Through the CORS proxy as a last resort.                       */
+const CHANNELS_CANDIDATES = [
+  '/jstr4web.json',
+  'https://jjtvxweb.pages.dev/jstr4web.json',
+];
+
+const CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
+
+const COOKIE_PRIMARY     = "https://allinonereborn2.online/jstrweb2/cookies.json";
+const COOKIE_FALLBACK    = "";
+const COOKIE_STAR_SPORTS = "https://allinonereborn2.online/jtv-fetch/jstarcookie/cookie.json";
+
+/* ══════════════════════════════════════════════════════════════
+   DOM REFS
+   ══════════════════════════════════════════════════════════════ */
+const videoEl       = document.getElementById('video');
+const container     = document.getElementById('player-container');
+const videoFitBtn   = document.getElementById('videoFitBtn');
+const channelListEl = document.getElementById('channelList');
+const searchInput   = document.getElementById('searchInput');
+const sidebar       = document.getElementById('sidebar');
+const sidebarToggle = document.getElementById('sidebarToggle');
+const placeholder   = document.getElementById('placeholder');
+const reloadBtn     = document.getElementById('reloadChannelsBtn');
+
+/* ══════════════════════════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════════════════════════ */
+let allChannels      = [];
+let filteredChannels = [];
+let currentChannel   = null;
+let shakaPlayer      = null;
+let shakaUI          = null;
+let activeCookie     = "";
+
+/* ══════════════════════════════════════════════════════════════
+   COOKIE HELPERS (verbatim from your original player)
+   ══════════════════════════════════════════════════════════════ */
+
+function extractStarCookie(data, channelId){
+  const results = [
+    ...(Array.isArray(data?.successful_results) ? data.successful_results : []),
+    ...(Array.isArray(data?.failed_results) ? data.failed_results : [])
+  ];
+  for(const item of results){
+    if(String(item?.channel_id) !== String(channelId)) continue;
+    const finalUrl = item?.error_details?.final_url || item?.final_url || "";
+    const match = finalUrl.match(/[?&]__hdnea__=([^&]+)/);
+    if(match) return "__hdnea__=" + match[1];
+    const rawMatch = finalUrl.match(/__hdnea__=([^&]+)/);
+    if(rawMatch) return "__hdnea__=" + rawMatch[1];
+  }
+  return "";
+}
+
+function isJioPlLiveUrl(url){
+  try{
+    return new URL(url, location.href).hostname.toLowerCase() === "jiotvpllive.cdn.jio.com";
+  }catch(e){ return false; }
+}
+
+/* Fetch through CORS proxy if direct fetch fails. */
+async function fetchWithFallback(url, options = {}){
+  try{
+    const res = await fetch(url, options);
+    if(!res.ok) throw new Error("HTTP " + res.status);
+    return await res;
+  }catch(e){
+    console.warn(`[fetch] direct failed for ${url}, trying proxy…`, e.message);
+    const proxied = CORS_PROXY + url;
+    const res = await fetch(proxied, options);
+    if(!res.ok) throw new Error("Proxy HTTP " + res.status);
+    return res;
+  }
+}
+
+async function fetchCookiesForChannel(channelData){
+  const streamUrls = [channelData.url, channelData.url1, channelData.url2, channelData.url3]
+    .filter(Boolean)
+    .map(u => u.replace('bpk-tv//','bpk-tv/'));
+
+  const hasJioPlLive = streamUrls.some(isJioPlLiveUrl);
+  const hasRegular   = streamUrls.some(u => !isJioPlLiveUrl(u));
+
+  let primaryCookie  = "";
+  let fallbackCookie = "";
+  let starCookie     = "";
+
+  if(hasJioPlLive){
+    try{
+      const res  = await fetchWithFallback(COOKIE_STAR_SPORTS, {cache: "no-store"});
+      const data = await res.json();
+      starCookie = extractStarCookie(data, channelData.id);
+      console.log("[cookie] star:", starCookie ? "✓" : "empty");
+    }catch(e){ console.warn("Star cookie failed:", e.message); }
+  }
+
+  if(hasRegular){
+    try{
+      const res  = await fetchWithFallback(COOKIE_PRIMARY, {cache: "no-store"});
+      const data = await res.json();
+      const entry = Array.isArray(data) ? data.find(i => i.cookie) : null;
+      if(entry?.cookie) primaryCookie = entry.cookie;
+      console.log("[cookie] primary:", primaryCookie ? "✓" : "empty");
+    }catch(e){ console.warn("Primary cookie failed:", e.message); }
+
+    if(!primaryCookie && COOKIE_FALLBACK){
+      try{
+        const res  = await fetchWithFallback(COOKIE_FALLBACK, {cache: "no-store"});
+        const data = await res.json();
+        if(data?.cookie) primaryCookie = data.cookie;
+      }catch(e){ console.warn("Fallback cookie failed:", e.message); }
+    }
+  }
+
+  return { streamUrls, primaryCookie, fallbackCookie, starCookie };
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CHANNEL LOADING — tries each candidate URL in turn
+   ══════════════════════════════════════════════════════════════ */
+
+async function loadChannels(){
+  channelListEl.innerHTML = '<div class="loading-msg">Loading channels…</div>';
+
+  let data = null;
+  let lastError = null;
+
+  /* 1) Try each direct candidate */
+  for(const url of CHANNELS_CANDIDATES){
+    try{
+      console.log("[channels] trying", url);
+      const res = await fetch(url, {
+        method: "GET",
+        headers: { "X-Requested-With": "XMLHttpRequest" },
+        cache: "no-store"
+      });
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      const text = await res.text();
+      console.log("[channels] got", text.length, "bytes from", url);
+      data = parseChannelJson(text);
+      if(data && data.length){
+        console.log("[channels] loaded", data.length, "channels from", url);
+        break;
+      }
+    }catch(e){
+      console.warn("[channels] direct failed for", url, "→", e.message);
+      lastError = e;
+    }
+  }
+
+  /* 2) If nothing worked, try via CORS proxy */
+  if(!data || !data.length){
+    const proxyTarget = CHANNELS_CANDIDATES[CHANNELS_CANDIDATES.length - 1];
+    const proxied = CORS_PROXY + proxyTarget;
+    try{
+      console.log("[channels] trying via proxy", proxied);
+      const res = await fetch(proxied, {cache: "no-store"});
+      if(!res.ok) throw new Error("Proxy HTTP " + res.status);
+      const text = await res.text();
+      console.log("[channels] got", text.length, "bytes via proxy");
+      data = parseChannelJson(text);
+    }catch(e){
+      console.warn("[channels] proxy failed:", e.message);
+      lastError = e;
+    }
+  }
+
+  if(!data || !data.length){
+    channelListEl.innerHTML = `
+      <div class="error-msg">
+        ⚠️ Could not load channel list.<br>
+        <span style="color:#888;font-size:.75rem">${escapeHtml(lastError?.message || 'unknown error')}</span><br>
+        <button onclick="loadChannels()">Retry</button>
+      </div>`;
+    return;
+  }
+
+  allChannels = data;
+  filteredChannels = allChannels.slice();
+  renderChannelList();
+
+  /* Deep link ?id=… */
+  const urlId = new URLSearchParams(location.search).get("id");
+  if(urlId){
+    const ch = allChannels.find(c => String(c.id) === String(urlId));
+    if(ch){
+      const el = channelListEl.querySelector(`[data-id="${ch.id}"]`);
+      selectChannel(ch, el);
+    }
+  }
+}
+
+/* Parse channel JSON — handles array, {channels:[…]}, trailing commas, etc. */
+function parseChannelJson(text){
+  let cleaned = text.trim();
+
+  /* Strip BOM */
+  if(cleaned.charCodeAt(0) === 0xFEFF) cleaned = cleaned.slice(1);
+
+  /* Try straight parse first */
+  try{
+    const parsed = JSON.parse(cleaned);
+    return Array.isArray(parsed) ? parsed : (parsed.channels || []);
+  }catch(_){}
+
+  /* Try wrapping in brackets if it's a comma-separated list of objects */
+  try{
+    const parsed = JSON.parse('[' + cleaned.replace(/,\s*$/, '') + ']');
+    if(Array.isArray(parsed)) return parsed;
+  }catch(_){}
+
+  /* Try removing trailing commas before ] or } */
+  try{
+    const fixed = cleaned
+      .replace(/,\s*([\]}])/g, '$1')
+      .replace(/[\u0000-\u001F]+/g, ' ');
+    const parsed = JSON.parse(fixed);
+    return Array.isArray(parsed) ? parsed : (parsed.channels || []);
+  }catch(e){
+    throw new Error("Invalid JSON: " + e.message);
+  }
+}
+
+function renderChannelList(){
+  if(!filteredChannels.length){
+    channelListEl.innerHTML = '<div class="loading-msg">No channels found.</div>';
+    return;
+  }
+
+  const frag = document.createDocumentFragment();
+  for(const ch of filteredChannels){
+    const div = document.createElement('div');
+    div.className = 'channel-item';
+    div.dataset.id = ch.id;
+    div.innerHTML = `
+      <img src="${escapeAttr(ch.logo || '')}" alt="" onerror="this.style.visibility='hidden'">
+      <div class="channel-info">
+        <div class="channel-name">${escapeHtml(ch.name || 'Unknown')}</div>
+        <div class="channel-category">${escapeHtml(ch.category || '')}</div>
+      </div>`;
+    div.addEventListener('click', () => selectChannel(ch, div));
+    frag.appendChild(div);
+  }
+  channelListEl.innerHTML = '';
+  channelListEl.appendChild(frag);
+
+  if(currentChannel){
+    const active = channelListEl.querySelector(`[data-id="${currentChannel.id}"]`);
+    if(active) active.classList.add('active');
+  }
+}
+
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+function escapeAttr(str){ return escapeHtml(str); }
+
+/* ══════════════════════════════════════════════════════════════
+   SEARCH
+   ══════════════════════════════════════════════════════════════ */
+searchInput.addEventListener('input', () => {
+  const q = searchInput.value.trim().toLowerCase();
+  filteredChannels = !q
+    ? allChannels.slice()
+    : allChannels.filter(ch =>
+        (ch.name && ch.name.toLowerCase().includes(q)) ||
+        (ch.category && ch.category.toLowerCase().includes(q))
+      );
+  renderChannelList();
+});
+
+reloadBtn.addEventListener('click', () => loadChannels());
+
+/* ══════════════════════════════════════════════════════════════
+   PLAYER INIT
+   ══════════════════════════════════════════════════════════════ */
+async function initPlayer(){
+  shaka.polyfill.installAll();
+  if(!shaka.Player.isBrowserSupported()){
+    placeholder.innerHTML = '<p>⚠️ Browser not supported by Shaka Player.</p>';
+    return false;
+  }
+
+  shakaPlayer = new shaka.Player();
+  await shakaPlayer.attach(videoEl);
+
+  shakaUI = new shaka.ui.Overlay(shakaPlayer, container, videoEl);
+
+  shakaPlayer.getNetworkingEngine().registerRequestFilter((type, request) => {
+    request.headers["Referer"]    = "https://www.jiotv.com/";
+    request.headers["User-Agent"] = "plaYtv/7.1.5";
+
+    if(activeCookie &&
+      (type === shaka.net.NetworkingEngine.RequestType.MANIFEST ||
+       type === shaka.net.NetworkingEngine.RequestType.SEGMENT)){
+      request.uris[0] = request.uris[0].split("?")[0] + "?" + activeCookie;
+    }
+  });
+
+  return true;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PLAYBACK
+   ══════════════════════════════════════════════════════════════ */
+
+async function selectChannel(channelData, el){
+  channelListEl.querySelectorAll('.channel-item')
+    .forEach(n => n.classList.remove('active'));
+  if(el) el.classList.add('active');
+
+  currentChannel = channelData;
+  if(window.innerWidth <= 768) sidebar.classList.remove('open');
+
+  await playChannel(channelData);
+}
+
+async function playChannel(channelData){
+  if(!shakaPlayer) return;
+
+  placeholder.style.display = 'none';
+
+  try { await shakaPlayer.unload(); } catch(_) {}
+
+  const { streamUrls, primaryCookie, fallbackCookie, starCookie } =
+    await fetchCookiesForChannel(channelData);
+
+  if(!streamUrls.length){
+    placeholder.style.display = 'flex';
+    placeholder.innerHTML = '<p>⚠️ No stream URL for this channel.</p>';
+    return;
+  }
+
+  /* DRM: support array + single-key formats */
+  const clearKeysConfig = {};
+  if(Array.isArray(channelData.keys) && channelData.keys.length > 0){
+    channelData.keys.forEach(k => {
+      if(k.keyId && k.key) clearKeysConfig[k.keyId] = k.key;
+    });
+  }else if(channelData.keyId && channelData.key){
+    clearKeysConfig[channelData.keyId] = channelData.key;
+  }
+
+  shakaPlayer.configure({
+    drm: { clearKeys: clearKeysConfig },
+    streaming: { lowLatencyMode: true }
+  });
+
+  let loaded = false;
+
+  outer:
+  for(let i = 0; i < streamUrls.length; i++){
+    const streamUrl   = streamUrls[i];
+    const isJioPlLive = isJioPlLiveUrl(streamUrl);
+
+    let cookieRounds = [];
+
+    if(isJioPlLive){
+      if(starCookie) cookieRounds.push(starCookie);
+    }else{
+      if(primaryCookie) cookieRounds.push(primaryCookie);
+      if(fallbackCookie && fallbackCookie !== primaryCookie) cookieRounds.push(fallbackCookie);
+      if(cookieRounds.length === 0) cookieRounds.push("");
+    }
+
+    for(let r = 0; r < cookieRounds.length; r++){
+      activeCookie = cookieRounds[r];
+      try{
+        console.log(`[play] trying url${i} cookie${r}`, streamUrl);
+        await shakaPlayer.load(streamUrl);
+        videoEl.play().catch(()=>{});
+        loaded = true;
+        console.log("[play] success");
+        break outer;
+      }catch(e){
+        console.warn(`[play] failed url${i} cookie${r}:`, e.code || e.message);
+      }
+    }
+  }
+
+  if(!loaded){
+    activeCookie = "";
+    placeholder.style.display = 'flex';
+    placeholder.innerHTML = '<p>⚠️ Could not load this channel.<br>Try another one.</p>';
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FIT MODES / FULLSCREEN
+   ══════════════════════════════════════════════════════════════ */
+const fitModes = [
+  { key: "contain", label: "FIT: CONTAIN",  hint: "Original / no crop" },
+  { key: "cover",   label: "FULL: COVER",   hint: "Fill screen / crop edges" },
+  { key: "stretch", label: "FULL: STRETCH", hint: "Fill screen / no black bars" }
+];
+let fitModeIndex = 0;
+
+async function enterPlayerFullscreen(){
+  try{
+    if(!document.fullscreenElement && !document.webkitFullscreenElement){
+      if(container.requestFullscreen) await container.requestFullscreen({navigationUI:"hide"});
+      else if(container.webkitRequestFullscreen) container.webkitRequestFullscreen();
+      else if(videoEl.webkitEnterFullscreen) videoEl.webkitEnterFullscreen();
+    }
+  }catch(e){}
+  try{
+    if(screen.orientation && screen.orientation.lock)
+      await screen.orientation.lock("landscape").catch(()=>{});
+  }catch(e){}
+}
+
+function applyFitMode(index, enterFullscreen = false){
+  fitModeIndex = (index + fitModes.length) % fitModes.length;
+  const mode = fitModes[fitModeIndex];
+  videoEl.classList.remove("fit-contain", "fit-cover", "fit-stretch");
+  videoEl.classList.add("fit-" + mode.key);
+  videoFitBtn.textContent = mode.label;
+  videoFitBtn.title = mode.hint;
+  void videoEl.offsetWidth;
+  if(enterFullscreen && mode.key !== "contain") enterPlayerFullscreen();
+}
+
+videoFitBtn.addEventListener("click", (ev) => {
+  ev.preventDefault(); ev.stopPropagation();
+  const next = fitModeIndex + 1;
+  const nextMode = fitModes[(next + fitModes.length) % fitModes.length];
+  applyFitMode(next, nextMode.key !== "contain");
+});
+
+const FIT_HIDE_DELAY = 3000;
+let fitHideTimer = null, fitStarted = false;
+function showFitButton(){
+  videoFitBtn.classList.remove('controls-hidden');
+  clearTimeout(fitHideTimer);
+  fitHideTimer = setTimeout(() => videoFitBtn.classList.add('controls-hidden'), FIT_HIDE_DELAY);
+}
+function startFitAutoHide(){
+  if(fitStarted) return;
+  fitStarted = true;
+  showFitButton();
+}
+container.addEventListener('pointerdown', showFitButton, {passive:true});
+container.addEventListener('touchstart',  showFitButton, {passive:true});
+videoFitBtn.addEventListener('pointerdown', ev => { ev.stopPropagation(); showFitButton(); }, {passive:true});
+videoFitBtn.addEventListener('touchstart',  ev => { ev.stopPropagation(); showFitButton(); }, {passive:true});
+videoEl.addEventListener('playing', () => startFitAutoHide());
+if(!videoEl.paused && videoEl.readyState >= 3) startFitAutoHide();
+applyFitMode(0);
+
+/* ══════════════════════════════════════════════════════════════
+   SIDEBAR TOGGLE
+   ══════════════════════════════════════════════════════════════ */
+sidebarToggle.addEventListener('click', (e) => {
+  e.stopPropagation();
+  sidebar.classList.toggle('open');
+});
+document.addEventListener('click', (e) => {
+  if(window.innerWidth <= 768 && sidebar.classList.contains('open') &&
+     !sidebar.contains(e.target) && e.target !== sidebarToggle){
+    sidebar.classList.remove('open');
+  }
+});
+
+/* ══════════════════════════════════════════════════════════════
+   BOOTSTRAP
+   ══════════════════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', async () => {
+  await initPlayer();
+  await loadChannels();
+});
+</script>
+
+</body>
+</html>
