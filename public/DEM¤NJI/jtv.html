@@ -4,259 +4,57 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<meta name="format-detection" content="telephone=no">
 <title>Channels</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body {
-  background: #0a0a0a;
-  color: #eee;
-  font-family: Arial, Helvetica, sans-serif;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-text-size-adjust: 100%;
-}
-
-/* ── HEADER ── */
-#header {
-  background: #111;
-  border-bottom: 1px solid #222;
-  padding: 14px 20px;
-  padding-top: calc(14px + env(safe-area-inset-top));
-  padding-left: calc(20px + env(safe-area-inset-left));
-  padding-right: calc(20px + env(safe-area-inset-right));
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  flex-wrap: wrap;
-}
-#header h1 {
-  font-size: 20px;
-  font-weight: bold;
-  color: #4fc3f7;
-  white-space: nowrap;
-}
-#searchWrap {
-  flex: 1;
-  min-width: 200px;
-  position: relative;
-}
-#search {
-  width: 100%;
-  padding: 12px 16px;
-  font-size: 16px;
-  background: #1a1a1a;
-  border: 1px solid #333;
-  color: #eee;
-  border-radius: 6px;
-  outline: none;
-  font-family: inherit;
-  -webkit-appearance: none;
-  appearance: none;
-}
-#search:focus {
-  border-color: #4fc3f7;
-  background: #202020;
-}
-#search::-webkit-search-cancel-button { -webkit-appearance: none; }
-
-/* ── SCROLL AREA ── */
-#wrap {
-  height: calc(100% - 73px);
-  height: calc(100vh - 73px);
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding: 14px;
-  padding-bottom: calc(20px + env(safe-area-inset-bottom));
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
-  scrollbar-color: #333 transparent;
-}
-#wrap::-webkit-scrollbar { width: 8px; }
-#wrap::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-#wrap::-webkit-scrollbar-track { background: transparent; }
-
-/* ── CARD GRID (flexbox: works on Chrome 38+) ── */
-#grid {
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: flex;
-  -webkit-flex-wrap: wrap;
-  flex-wrap: wrap;
-  margin: -6px;
-}
-
-.card {
-  box-sizing: border-box;
-  -webkit-box-sizing: border-box;
-  padding: 12px;
-  margin: 6px;
-  width: calc(50% - 12px);
-  background: #161616;
-  border: 2px solid transparent;
-  border-radius: 8px;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: flex;
-  -webkit-box-align: center;
-  -webkit-align-items: center;
-  align-items: center;
-  gap: 10px;
-  cursor: pointer;
-  outline: none;
-  min-height: 68px;
-  -webkit-transition: background .15s, border-color .15s, transform .1s;
-  transition: background .15s, border-color .15s, transform .1s;
-  text-align: left;
-}
-.card:hover {
-  background: #1e2a35;
-  border-color: #35506b;
-}
-.card:active {
-  -webkit-transform: scale(0.98);
-  transform: scale(0.98);
-}
-.card:focus {
-  background: #1e2a35;
-  border-color: #4fc3f7;
-  box-shadow: 0 0 0 2px rgba(79,195,247,0.35);
-}
-.card img {
-  width: 44px;
-  height: 44px;
-  border-radius: 6px;
-  -o-object-fit: contain;
-  object-fit: contain;
-  background: #222;
-  -webkit-flex-shrink: 0;
-  flex-shrink: 0;
-}
-.card-info {
-  -webkit-box-flex: 1;
-  -webkit-flex: 1;
-  flex: 1;
-  min-width: 0;
-}
-.card-name {
-  font-size: 14px;
-  font-weight: bold;
-  color: #fff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.card-cat {
-  font-size: 11px;
-  color: #888;
-  margin-top: 3px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* ── MESSAGES ── */
-.msg {
-  width: 100%;
-  padding: 60px 20px;
-  text-align: center;
-  font-size: 15px;
-  color: #888;
-}
+html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sans-serif; width: 100%; height: 100%; overflow: hidden; -webkit-user-select: none; user-select: none; }
+#header { background: #111; border-bottom: 1px solid #222; padding: 12px 20px; padding-top: calc(12px + env(safe-area-inset-top)); display: flex; align-items: center; gap: 16px; flex-wrap: wrap; flex-shrink: 0; }
+#header h1 { font-size: 20px; font-weight: bold; color: #4fc3f7; white-space: nowrap; margin: 0; }
+#searchWrap { flex: 1; min-width: 200px; }
+#search { width: 100%; padding: 12px 16px; font-size: 16px; background: #1a1a1a; border: 1px solid #333; color: #eee; border-radius: 6px; outline: none; font-family: inherit; -webkit-appearance: none; }
+#search:focus { border-color: #4fc3f7; background: #202020; }
+#epgStatus { font-size: 11px; color: #888; width: 100%; margin-top: 4px; display: none; }
+#epgStatus.visible { display: block; }
+#epgStatus.error { color: #ef5350; }
+#categories { background: #0e0e0e; border-bottom: 1px solid #222; padding: 10px 16px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; flex-shrink: 0; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+#categories::-webkit-scrollbar { display: none; }
+.cat-chip { display: inline-block; padding: 8px 16px; margin-right: 8px; background: #1a1a1a; border: 1px solid #2a2a2a; color: #ccc; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; white-space: nowrap; transition: background .15s, color .15s, border-color .15s; }
+.cat-chip:hover { background: #242424; color: #fff; }
+.cat-chip.active { background: #1a3a4a; border-color: #4fc3f7; color: #fff; }
+.cat-chip:focus { background: #1e2a35; border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79,195,247,0.35); }
+#wrap { height: calc(100vh - 130px); height: calc(100dvh - 130px); overflow-y: auto; overflow-x: hidden; padding: 14px; padding-bottom: calc(20px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling: touch; }
+#grid { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-flex-wrap: wrap; flex-wrap: wrap; margin: -6px; }
+.card { box-sizing: border-box; padding: 12px; margin: 6px; width: calc(100% - 12px); background: #161616; border: 2px solid transparent; border-radius: 10px; cursor: pointer; outline: none; transition: background .15s, border-color .15s; display: flex; flex-direction: column; gap: 10px; }
+.card:hover { background: #1a1e24; border-color: #2f4a5f; }
+.card:focus { background: #1a2a35; border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79,195,247,0.3); }
+.card-top { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.card-logo { width: 48px; height: 48px; border-radius: 8px; object-fit: contain; background: #222; flex-shrink: 0; }
+.card-meta { flex: 1; min-width: 0; }
+.card-name { font-size: 15px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card-cat { font-size: 11px; color: #7ab8d6; margin-top: 2px; text-transform: uppercase; letter-spacing: .5px; font-weight: bold; }
+.card-epg { padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 3px solid #4fc3f7; min-height: 50px; }
+.epg-now-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #888; margin-bottom: 4px; }
+.epg-now-label { display: inline-block; padding: 2px 6px; background: #66bb6a; color: #fff; border-radius: 3px; font-size: 10px; font-weight: bold; letter-spacing: .5px; }
+.epg-now-time { color: #aaa; font-size: 11px; }
+.epg-now-title { font-size: 13px; color: #ddd; font-weight: bold; line-height: 1.35; margin-bottom: 4px; }
+.epg-now-desc { font-size: 11px; color: #777; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.epg-empty { font-size: 12px; color: #555; font-style: italic; }
+.card-actions { display: flex; gap: 8px; justify-content: flex-end; }
+.card-btn { padding: 8px 14px; background: #1e5a78; border: 1px solid #4fc3f7; color: #fff; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; white-space: nowrap; }
+.card-btn:hover { background: #2a7ba0; }
+.card-btn:focus { box-shadow: 0 0 0 2px rgba(79,195,247,0.35); }
+.msg { width: 100%; padding: 60px 20px; text-align: center; font-size: 15px; color: #888; }
 .msg.err { color: #ef5350; }
-.msg button {
-  margin-top: 16px;
-  background: #2a2a2a;
-  border: none;
-  color: #eee;
-  padding: 12px 24px;
-  border-radius: 6px;
-  font-size: 15px;
-  cursor: pointer;
-  font-family: inherit;
-}
-.msg button:hover { background: #3a3a3a; }
-
-/* ── SPINNER ── */
-.spinner {
-  display: inline-block;
-  width: 28px;
-  height: 28px;
-  border: 3px solid #333;
-  border-top-color: #4fc3f7;
-  border-radius: 50%;
-  -webkit-animation: spin 0.8s linear infinite;
-  animation: spin 0.8s linear infinite;
-  margin-bottom: 14px;
-}
+.msg button { margin-top: 16px; background: #2a2a2a; border: none; color: #eee; padding: 12px 24px; border-radius: 6px; font-size: 15px; cursor: pointer; font-family: inherit; }
+.spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid #333; border-top-color: #4fc3f7; border-radius: 50%; -webkit-animation: spin 0.8s linear infinite; animation: spin 0.8s linear infinite; margin-bottom: 14px; }
 @-webkit-keyframes spin { to { -webkit-transform: rotate(360deg); } }
 @keyframes spin { to { transform: rotate(360deg); } }
-
-/* ══════════════════════════════════════════════════════════════
-   RESPONSIVE BREAKPOINTS
-   ══════════════════════════════════════════════════════════════ */
-
-/* Phones (portrait) — compact header, 2 columns */
-@media (max-width: 480px) {
-  #header { padding: 12px 14px; }
-  #header h1 { font-size: 17px; width: 100%; }
-  #searchWrap { min-width: 100%; }
-  #search { padding: 12px 14px; font-size: 16px; }
-  #wrap { padding: 10px; padding-bottom: calc(16px + env(safe-area-inset-bottom)); }
-  #grid { margin: -5px; }
-  .card { width: calc(50% - 10px); margin: 5px; padding: 10px; min-height: 62px; gap: 8px; }
-  .card img { width: 40px; height: 40px; }
-  .card-name { font-size: 13px; }
-  .card-cat { font-size: 10px; }
-}
-
-/* Small phones (very narrow) — 1 column */
-@media (max-width: 340px) {
-  .card { width: calc(100% - 10px); }
-}
-
-/* Tablets (portrait) — 3 columns */
-@media (min-width: 600px) {
-  .card { width: calc(33.333% - 12px); }
-}
-
-/* Tablets (landscape) / small laptops — 3 columns */
-@media (min-width: 800px) {
-  .card { width: calc(33.333% - 12px); }
-}
-
-/* Desktop — 4 columns */
-@media (min-width: 1100px) {
-  .card { width: calc(25% - 12px); }
-}
-
-/* Large desktop / TV (1280 / 1920) — 5 columns + larger everything */
-@media (min-width: 1400px) {
-  #header h1 { font-size: 24px; }
-  #search { font-size: 18px; padding: 14px 18px; }
-  #wrap { padding: 22px; }
-  .card { width: calc(20% - 12px); min-height: 84px; padding: 16px; gap: 14px; }
-  .card img { width: 56px; height: 56px; }
-  .card-name { font-size: 17px; }
-  .card-cat { font-size: 13px; }
-}
-
-/* TV — even bigger text and focus ring (assumes 1080p/4K) */
-@media (min-width: 1800px) {
-  #header h1 { font-size: 28px; }
-  .card-name { font-size: 19px; }
-  .card-cat { font-size: 14px; }
-  .card { min-height: 96px; }
-}
-
-/* Coarse pointer / touch — kill hover-only effects */
-@media (hover: none) {
-  .card:hover { background: #161616; border-color: transparent; }
-  .card:focus  { background: #1e2a35; border-color: #4fc3f7; }
-}
+@media (min-width: 600px) { .card { width: calc(50% - 12px); } }
+@media (min-width: 900px) { .card { width: calc(33.333% - 12px); } }
+@media (min-width: 1280px) { .card { width: calc(33.333% - 12px); padding: 14px; } .card-logo { width: 56px; height: 56px; } .card-name { font-size: 17px; } .epg-now-title { font-size: 14px; } }
+@media (min-width: 1700px) { .card { width: calc(25% - 12px); } .card-name { font-size: 18px; } }
+@media (max-width: 480px) { #header { padding: 10px 12px; padding-top: calc(10px + env(safe-area-inset-top)); } #header h1 { font-size: 16px; width: 100%; } #searchWrap { min-width: 100%; } #search { padding: 10px 12px; font-size: 15px; } #categories { padding: 8px 12px; } .cat-chip { padding: 7px 12px; font-size: 12px; } #wrap { padding: 10px; } .card { padding: 10px; gap: 8px; } .card-logo { width: 42px; height: 42px; } .card-name { font-size: 14px; } .epg-now-title { font-size: 12px; } .epg-now-desc { -webkit-line-clamp: 1; } .card-btn { padding: 7px 12px; font-size: 11px; } }
 </style>
 </head>
 <body>
@@ -264,33 +62,25 @@ html, body {
 <div id="header">
   <h1>📺 Channels</h1>
   <div id="searchWrap">
-    <input id="search" type="search" placeholder="Search channels…" autocomplete="off" spellcheck="false">
+    <input id="search" type="search" placeholder="Search channels…" autocomplete="off">
   </div>
+  <div id="epgStatus"></div>
 </div>
-
+<div id="categories"></div>
 <div id="wrap">
-  <div id="grid">
-    <div class="msg">
-      <div class="spinner"></div>
-      <div>Loading channels…</div>
-    </div>
-  </div>
+  <div id="grid"><div class="msg"><div class="spinner"></div><div>Loading channels…</div></div></div>
 </div>
 
 <script>
 /* ══════════════════════════════════════════════════════════════
-   ES5 SHIMS (Chrome 38+)
+   POLYFILLS
    ══════════════════════════════════════════════════════════════ */
 if (!Array.prototype.includes) {
   Array.prototype.includes = function(x){ return this.indexOf(x) !== -1; };
 }
-if (!Array.prototype.filter) {
-  Array.prototype.filter = function(fn) {
-    var out = [], i;
-    for (i = 0; i < this.length; i++) if (fn(this[i], i, this)) out.push(this[i]);
-    return out;
-  };
-}
+
+function safeLog() { try { console.log.apply(console, arguments); } catch (e) {} }
+function safeWarn() { try { console.warn.apply(console, arguments); } catch (e) {} }
 
 /* ══════════════════════════════════════════════════════════════
    XHR FETCH
@@ -317,14 +107,31 @@ function xhrFetch(url, opts) {
         });
       } else reject(new Error('HTTP ' + xhr.status));
     };
-    xhr.onerror   = function(){ reject(new Error('Network error')); };
-    xhr.ontimeout = function(){ reject(new Error('Timeout')); };
+    xhr.onerror = function(){ reject(new Error('Network error')); };
+    xhr.ontimeout = function(){ reject(new Error('Timeout after ' + xhr.timeout + 'ms')); };
     try { xhr.send(opts.body || null); } catch(e){ reject(e); }
   });
 }
 
+function xhrFetchBuffer(url, opts) {
+  opts = opts || {};
+  return new Promise(function(resolve, reject) {
+    var xhr = new XMLHttpRequest();
+    xhr.open(opts.method || 'GET', url, true);
+    xhr.responseType = 'arraybuffer';
+    xhr.timeout = opts.timeout || 120000;
+    xhr.onload = function() {
+      if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response);
+      else reject(new Error('HTTP ' + xhr.status));
+    };
+    xhr.onerror = function(){ reject(new Error('Network error')); };
+    xhr.ontimeout = function(){ reject(new Error('Timeout after ' + xhr.timeout + 'ms')); };
+    try { xhr.send(null); } catch(e){ reject(e); }
+  });
+}
+
 /* ══════════════════════════════════════════════════════════════
-   CONFIG
+   CONFIG — only Open-EPG (.gz)
    ══════════════════════════════════════════════════════════════ */
 var CHANNELS_CANDIDATES = [
   '/jstr4web.json',
@@ -332,13 +139,26 @@ var CHANNELS_CANDIDATES = [
 ];
 var CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
 
+var EPG_SOURCES = [
+  { url: 'https://www.open-epg.com/files/india.xml.gz', name: 'Open-EPG (.gz)', timeout: 180000 }
+];
+
 /* ══════════════════════════════════════════════════════════════
-   DOM
+   DOM + STATE
    ══════════════════════════════════════════════════════════════ */
-var gridEl   = document.getElementById('grid');
-var searchEl = document.getElementById('search');
+var gridEl       = document.getElementById('grid');
+var searchEl     = document.getElementById('search');
+var categoriesEl = document.getElementById('categories');
+var wrapEl       = document.getElementById('wrap');
+var epgStatusEl  = document.getElementById('epgStatus');
+
 var allChannels      = [];
 var filteredChannels = [];
+var selectedCategory = 'all';
+var searchQuery      = '';
+
+var epgMap    = null;
+var epgLoaded = false;
 
 /* ══════════════════════════════════════════════════════════════
    HELPERS
@@ -348,7 +168,318 @@ function escapeHtml(s) {
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
   });
 }
+function truncate(str, n) {
+  if (!str) return '';
+  return str.length > n ? str.substring(0, n - 1) + '…' : str;
+}
+function formatTimeOnly(date) {
+  var h = date.getHours(); var m = date.getMinutes();
+  var ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if (h === 0) h = 12;
+  return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ampm;
+}
+function parseEPGDate(dateStr) {
+  if (!dateStr) return null;
+  var parts = String(dateStr).trim().split(' ');
+  var datetime = parts[0];
+  var tz = parts[1] || '+0000';
+  var year   = parseInt(datetime.slice(0, 4), 10);
+  var month  = parseInt(datetime.slice(4, 6), 10) - 1;
+  var day    = parseInt(datetime.slice(6, 8), 10);
+  var hour   = parseInt(datetime.slice(8, 10), 10);
+  var minute = parseInt(datetime.slice(10, 12), 10);
+  var second = parseInt(datetime.slice(12, 14), 10);
+  if (isNaN(year)) return null;
+  var date = new Date(Date.UTC(year, month, day, hour, minute, second));
+  var tzSign  = tz.charAt(0);
+  var tzHours = parseInt(tz.slice(1, 3), 10) || 0;
+  var tzMins  = parseInt(tz.slice(3, 5), 10) || 0;
+  var offset  = (tzHours * 3600 + tzMins * 60) * 1000;
+  if (tzSign === '-') offset = -offset;
+  date.setTime(date.getTime() - offset);
+  return date;
+}
+function normalizeChannelName(name) {
+  if (!name) return '';
+  var cleaned = String(name).toLowerCase()
+    .replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+  cleaned = cleaned.replace(/\b(hd|sd|fhd|4k|plus|movies|music|news|tv|channel)\b/g, '').trim();
+  return cleaned;
+}
+function bytesToUtf8String(bytes) {
+  if (typeof TextDecoder !== 'undefined') {
+    try { return new TextDecoder('utf-8').decode(bytes); } catch (e) {}
+  }
+  var result = '', i = 0;
+  while (i < bytes.length) {
+    var b = bytes[i++];
+    if (b < 0x80) result += String.fromCharCode(b);
+    else if (b < 0xE0) result += String.fromCharCode(((b & 0x1F) << 6) | (bytes[i++] & 0x3F));
+    else if (b < 0xF0) result += String.fromCharCode(((b & 0x0F) << 12) | ((bytes[i++] & 0x3F) << 6) | (bytes[i++] & 0x3F));
+    else {
+      var cp = ((b & 0x07) << 18) | ((bytes[i++] & 0x3F) << 12) | ((bytes[i++] & 0x3F) << 6) | (bytes[i++] & 0x3F);
+      cp -= 0x10000;
+      result += String.fromCharCode(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF));
+    }
+  }
+  return result;
+}
 
+function setEpgStatus(text, isError) {
+  if (!epgStatusEl) return;
+  if (!text) { epgStatusEl.classList.remove('visible'); epgStatusEl.textContent = ''; return; }
+  epgStatusEl.textContent = text;
+  epgStatusEl.classList.add('visible');
+  if (isError) epgStatusEl.classList.add('error');
+  else epgStatusEl.classList.remove('error');
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CHUNKED PAKO DECOMPRESSION
+   ══════════════════════════════════════════════════════════════ */
+function chunkedUngzip(bytes) {
+  return new Promise(function(resolve, reject) {
+    if (typeof pako === 'undefined') { reject(new Error('pako not loaded')); return; }
+    try {
+      var inflator = new pako.Inflate({ to: 'string' });
+      var chunks = [];
+      var totalChars = 0;
+      var startTime = Date.now();
+
+      inflator.onData = function(chunk) {
+        chunks.push(chunk);
+        totalChars += chunk.length;
+      };
+      inflator.onEnd = function(status) {
+        if (status === 0) {
+          safeLog('[pako] done — ' + totalChars + ' chars in ' + (Date.now() - startTime) + 'ms');
+          resolve(chunks.join(''));
+        } else {
+          reject(new Error('inflate failed status ' + status));
+        }
+      };
+
+      var offset = 0;
+      var CHUNK = 65536;
+
+      function pushNext() {
+        if (offset >= bytes.length) return;
+        var end = Math.min(offset + CHUNK, bytes.length);
+        var chunk = bytes.subarray(offset, end);
+        var isFinal = end >= bytes.length;
+        try { inflator.push(chunk, isFinal); }
+        catch (e) { reject(e); return; }
+        offset = end;
+        if (!isFinal) setTimeout(pushNext, 0);
+      }
+
+      pushNext();
+    } catch (e) { reject(e); }
+  });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PROCESS XML TEXT
+   ══════════════════════════════════════════════════════════════ */
+function processXmlText(xmlText, label) {
+  if (!xmlText || xmlText.length < 500) {
+    throw new Error('XML too small (' + (xmlText ? xmlText.length : 0) + ' chars)');
+  }
+  if (xmlText.indexOf('<tv') === -1 && xmlText.indexOf('<?xml') === -1) {
+    throw new Error('Not XMLTV content (first 80 chars: ' + xmlText.substring(0, 80) + ')');
+  }
+
+  var xmlDoc = new DOMParser().parseFromString(xmlText, 'text/xml');
+  if (xmlDoc.getElementsByTagName('parsererror').length > 0) {
+    throw new Error('XML parse error');
+  }
+
+  var channelIdToName = {};
+  var channelNodes = xmlDoc.getElementsByTagName('channel');
+  for (var c = 0; c < channelNodes.length; c++) {
+    var chNode = channelNodes[c];
+    var id = chNode.getAttribute('id');
+    if (!id) continue;
+    var dnNode = chNode.getElementsByTagName('display-name')[0];
+    var dn = dnNode ? dnNode.textContent : '';
+    if (!dn) continue;
+    dn = dn.replace(/\s*(HD|SD|FHD|4K|Plus|India|IN)\s*$/i, '').trim();
+    channelIdToName[id] = dn;
+  }
+  safeLog('[epg] ' + label + ' → ' + Object.keys(channelIdToName).length + ' channels');
+
+  var tempMap = {};
+  var progNodes = xmlDoc.getElementsByTagName('programme');
+  for (var p = 0; p < progNodes.length; p++) {
+    var prog = progNodes[p];
+    var chId = prog.getAttribute('channel');
+    var chName = channelIdToName[chId];
+    if (!chName) continue;
+
+    var startStr = prog.getAttribute('start');
+    var stopStr  = prog.getAttribute('stop');
+    if (!startStr) continue;
+    var start = parseEPGDate(startStr);
+    if (!start) continue;
+    var end = stopStr ? parseEPGDate(stopStr) : new Date(start.getTime() + 3600000);
+    if (!end) continue;
+
+    var titleNode = prog.getElementsByTagName('title')[0];
+    var descNode  = prog.getElementsByTagName('desc')[0];
+
+    var key = normalizeChannelName(chName);
+    if (!key) continue;
+    if (!tempMap[key]) tempMap[key] = [];
+    tempMap[key].push({
+      title: titleNode ? titleNode.textContent : 'No title',
+      description: descNode ? descNode.textContent : '',
+      start: start, end: end
+    });
+  }
+
+  for (var k in tempMap) {
+    if (tempMap.hasOwnProperty(k)) tempMap[k].sort(function(a,b){ return a.start - b.start; });
+  }
+
+  safeLog('[epg] ' + label + ' → ' + progNodes.length + ' programmes, ' +
+          Object.keys(tempMap).length + ' channel keys');
+  return tempMap;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   FETCH + PARSE ONE SOURCE
+   ══════════════════════════════════════════════════════════════ */
+function fetchAndParseSingleEPG(source) {
+  if (typeof pako === 'undefined') {
+    safeWarn('[epg] pako missing');
+    return Promise.resolve(null);
+  }
+
+  var url     = source.url;
+  var name    = source.name;
+  var timeout = source.timeout || 60000;
+
+  safeLog('[epg] ====== ' + name + ' ======');
+  safeLog('[epg] fetching ' + url + ' (timeout ' + (timeout/1000) + 's)');
+  var t0 = Date.now();
+
+  return xhrFetchBuffer(url, { timeout: timeout })
+    .then(function(buf) {
+      if (!buf) throw new Error('Empty response');
+      var bytes = new Uint8Array(buf);
+      safeLog('[epg] ' + name + ' downloaded ' + bytes.length + ' bytes in ' + (Date.now()-t0) + 'ms');
+
+      if (bytes.length < 500) throw new Error('Too small (' + bytes.length + 'B)');
+
+      var hex = '';
+      for (var i = 0; i < Math.min(16, bytes.length); i++) {
+        hex += (bytes[i] < 16 ? '0' : '') + bytes[i].toString(16) + ' ';
+      }
+      safeLog('[epg] ' + name + ' first bytes: ' + hex.trim());
+
+      var isGzip = bytes[0] === 0x1f && bytes[1] === 0x8b;
+
+      if (isGzip) {
+        safeLog('[epg] ' + name + ' → gzipped, decompressing in chunks…');
+        return chunkedUngzip(bytes).then(function(xmlText) {
+          return processXmlText(xmlText, name);
+        });
+      } else {
+        safeLog('[epg] ' + name + ' → not gzipped, decoding as UTF-8');
+        return processXmlText(bytesToUtf8String(bytes), name);
+      }
+    })
+    .catch(function(e) {
+      safeWarn('[epg] ' + name + ' FAILED: ' + e.message);
+      safeLog('[epg] ' + name + ' — retrying via proxy');
+      return xhrFetchBuffer(CORS_PROXY + url, { timeout: 180000 })
+        .then(function(buf) {
+          var bytes = new Uint8Array(buf);
+          safeLog('[epg] ' + name + ' (via proxy) downloaded ' + bytes.length + ' bytes');
+          if (bytes.length < 500) throw new Error('Too small via proxy');
+          if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+            return chunkedUngzip(bytes).then(function(x){ return processXmlText(x, name + ' (proxy)'); });
+          }
+          return processXmlText(bytesToUtf8String(bytes), name + ' (proxy)');
+        })
+        .catch(function(e2) {
+          safeWarn('[epg] ' + name + ' proxy also failed: ' + e2.message);
+          return null;
+        });
+    });
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SEQUENTIAL EPG LOADER
+   ══════════════════════════════════════════════════════════════ */
+function loadAllEPG() {
+  var mergedMap = {};
+  var idx = 0;
+
+  function loadNext() {
+    if (idx >= EPG_SOURCES.length) {
+      epgLoaded = true;
+      epgMap = mergedMap;
+      safeLog('[epg] ✓ ALL DONE — ' + Object.keys(mergedMap).length + ' channels');
+      setEpgStatus('Guide ready (' + Object.keys(mergedMap).length + ' channels)');
+      setTimeout(function(){ setEpgStatus(''); }, 4000);
+      refreshAllCardsEpg();
+      return;
+    }
+
+    var source = EPG_SOURCES[idx];
+    idx++;
+    setEpgStatus('Guide ' + idx + '/' + EPG_SOURCES.length + ': ' + source.name + '…');
+
+    fetchAndParseSingleEPG(source).then(function(map) {
+      if (map && Object.keys(map).length) {
+        for (var chName in map) {
+          if (!map.hasOwnProperty(chName)) continue;
+          if (!mergedMap[chName]) mergedMap[chName] = [];
+          mergedMap[chName] = mergedMap[chName].concat(map[chName]);
+        }
+        for (var key in mergedMap) {
+          if (!mergedMap.hasOwnProperty(key)) continue;
+          mergedMap[key].sort(function(a,b){ return a.start - b.start; });
+        }
+        if (!epgLoaded) {
+          epgLoaded = true;
+          epgMap = mergedMap;
+          safeLog('[epg] ✓ source ready — ' + Object.keys(mergedMap).length + ' channels');
+        }
+        refreshAllCardsEpg();
+      }
+      loadNext();
+    });
+  }
+
+  loadNext();
+}
+
+function findEPGForChannel(channelName) {
+  if (!epgLoaded || !epgMap) return null;
+  var norm = normalizeChannelName(channelName);
+  if (!norm) return null;
+  if (epgMap[norm]) return epgMap[norm];
+  for (var k in epgMap) {
+    if (!epgMap.hasOwnProperty(k)) continue;
+    if (k.indexOf(norm) !== -1 || norm.indexOf(k) !== -1) return epgMap[k];
+  }
+  return null;
+}
+
+function getCurrentProgram(programmes) {
+  if (!programmes || !programmes.length) return null;
+  var now = Date.now();
+  for (var i = 0; i < programmes.length; i++) {
+    if (programmes[i].start.getTime() <= now && programmes[i].end.getTime() > now) return programmes[i];
+  }
+  return null;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   CHANNELS
+   ══════════════════════════════════════════════════════════════ */
 function parseChannelJson(text) {
   var c = String(text).trim();
   if (c.charCodeAt(0) === 0xFEFF) c = c.slice(1);
@@ -361,41 +492,28 @@ function parseChannelJson(text) {
     var p2 = JSON.parse('[' + c.replace(/,\s*$/, '') + ']');
     if (Array.isArray(p2)) return p2;
   } catch(e){}
-  try {
-    var p3 = JSON.parse(c.replace(/,\s*([\]}])/g, '$1'));
-    if (Array.isArray(p3)) return p3;
-    if (p3 && Array.isArray(p3.channels)) return p3.channels;
-  } catch(e){}
   throw new Error('Invalid JSON');
 }
 
 function fetchChannelsFrom(idx) {
   if (idx >= CHANNELS_CANDIDATES.length) return Promise.reject(new Error('All failed'));
   var url = CHANNELS_CANDIDATES[idx];
-  console.log('[channels] try', url);
   return xhrFetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }, timeout: 20000 })
     .then(function(r){ return r.text(); })
     .then(function(t){
       var p = parseChannelJson(t);
       if (p && p.length) return p;
-      throw new Error('Empty list');
+      throw new Error('Empty');
     })
-    .catch(function(e){
-      console.warn('[channels] fail', url, e.message);
-      return fetchChannelsFrom(idx + 1);
-    });
+    .catch(function(){ return fetchChannelsFrom(idx + 1); });
 }
 
-/* ══════════════════════════════════════════════════════════════
-   LOAD + RENDER
-   ══════════════════════════════════════════════════════════════ */
 function loadChannels() {
   gridEl.innerHTML = '<div class="msg"><div class="spinner"></div><div>Loading channels…</div></div>';
   var last = CHANNELS_CANDIDATES[CHANNELS_CANDIDATES.length - 1];
 
   fetchChannelsFrom(0)
     .catch(function() {
-      console.log('[channels] trying proxy');
       return xhrFetch(CORS_PROXY + last, { timeout: 25000 })
         .then(function(r){ return r.text(); })
         .then(function(t){ return parseChannelJson(t); });
@@ -404,17 +522,14 @@ function loadChannels() {
       if (!chs || !chs.length) throw new Error('No channels');
       allChannels = chs;
       filteredChannels = allChannels.slice();
-      render();
-      /* Auto-focus first card only if pointer is not touch (PC/TV) */
-      if (!isTouchDevice()) {
-        var first = gridEl.querySelector('.card');
-        if (first) first.focus();
-      }
+      renderCategories();
+      renderGrid();
+      loadAllEPG();
     })
     .catch(function(e) {
       gridEl.innerHTML =
-        '<div class="msg err">⚠️ Could not load channels.' +
-        '<div style="color:#888;font-size:12px;margin-top:10px;word-break:break-all">' +
+        '<div class="msg err">⚠️ Could not load channels.<br>' +
+        '<div style="color:#888;font-size:12px;margin-top:10px">' +
         escapeHtml(e.message || '') + '</div>' +
         '<button id="retry">Retry</button></div>';
       var rb = document.getElementById('retry');
@@ -422,51 +537,154 @@ function loadChannels() {
     });
 }
 
-function render() {
+/* ══════════════════════════════════════════════════════════════
+   CATEGORIES
+   ══════════════════════════════════════════════════════════════ */
+function renderCategories() {
+  var set = {};
+  for (var i = 0; i < allChannels.length; i++) {
+    var cat = allChannels[i].category || allChannels[i].group || 'Other';
+    set[cat] = true;
+  }
+  var cats = ['all'];
+  for (var k in set) if (set.hasOwnProperty(k)) cats.push(k);
+  cats.sort(function(a,b){
+    if (a === 'all') return -1;
+    if (b === 'all') return 1;
+    return a.toLowerCase().localeCompare(b.toLowerCase());
+  });
+
+  var html = '';
+  for (var j = 0; j < cats.length; j++) {
+    var label = cats[j] === 'all' ? 'All' : cats[j];
+    var activeCls = cats[j] === selectedCategory ? ' active' : '';
+    html += '<button class="cat-chip' + activeCls + '" data-cat="' +
+            escapeHtml(cats[j]) + '" type="button">' + escapeHtml(label) + '</button>';
+  }
+  categoriesEl.innerHTML = html;
+
+  var chips = categoriesEl.querySelectorAll('.cat-chip');
+  for (var c = 0; c < chips.length; c++) {
+    (function(chip) {
+      chip.addEventListener('click', function() {
+        selectedCategory = chip.getAttribute('data-cat');
+        renderCategories();
+        applyFilters();
+        wrapEl.scrollTop = 0;
+      });
+    })(chips[c]);
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   GRID
+   ══════════════════════════════════════════════════════════════ */
+function applyFilters() {
+  filteredChannels = allChannels.filter(function(ch) {
+    var chCat = ch.category || ch.group || 'Other';
+    if (selectedCategory !== 'all' && chCat !== selectedCategory) return false;
+    if (searchQuery) {
+      var name = (ch.name || '').toLowerCase();
+      var cat  = chCat.toLowerCase();
+      if (name.indexOf(searchQuery) === -1 && cat.indexOf(searchQuery) === -1) return false;
+    }
+    return true;
+  });
+  renderGrid();
+}
+
+function renderGrid() {
   if (!filteredChannels.length) {
     gridEl.innerHTML = '<div class="msg">No channels found.</div>';
     return;
   }
   var html = '';
-  for (var i = 0; i < filteredChannels.length; i++) {
-    var ch = filteredChannels[i];
-    html +=
-      '<div class="card" tabindex="0" data-idx="' + i + '" data-id="' + escapeHtml(ch.id) + '">' +
-        '<img src="' + escapeHtml(ch.logo || '') + '" alt="" onerror="this.style.visibility=\'hidden\'">' +
-        '<div class="card-info">' +
-          '<div class="card-name">' + escapeHtml(ch.name || 'Unknown') + '</div>' +
-          '<div class="card-cat">' + escapeHtml(ch.category || '') + '</div>' +
-        '</div>' +
-      '</div>';
-  }
+  for (var i = 0; i < filteredChannels.length; i++) html += buildCardHtml(filteredChannels[i], i);
   gridEl.innerHTML = html;
 
   var cards = gridEl.querySelectorAll('.card');
   for (var j = 0; j < cards.length; j++) {
-    (function(el, idx) {
-      /* Tap / click */
-      el.addEventListener('click', function(e) {
-        e.preventDefault();
-        openChannel(idx);
+    (function(card, idx) {
+      var ch = filteredChannels[idx];
+      if (!ch) return;
+      card.addEventListener('click', function(e) {
+        if (e.target.closest && e.target.closest('.card-btn')) return;
+        openPlayer(ch);
       });
-      /* Enter / OK on TV remote */
-      el.addEventListener('keydown', function(ev) {
-        if (ev.keyCode === 13) { ev.preventDefault(); openChannel(idx); }
+      card.addEventListener('keydown', function(ev) {
+        if (ev.keyCode === 13) {
+          var tgt = ev.target;
+          if (tgt && tgt.classList && tgt.classList.contains('card-btn')) return;
+          ev.preventDefault();
+          openPlayer(ch);
+        }
       });
-      /* Show overlay metadata on hover (desktop) */
-      el.addEventListener('mouseenter', function() {
-        el.setAttribute('data-hover', '1');
-      });
+      var playBtn = card.querySelector('.card-btn');
+      if (playBtn) playBtn.addEventListener('click', function(e){ e.stopPropagation(); openPlayer(ch); });
     })(cards[j], j);
   }
 }
 
-/* ══════════════════════════════════════════════════════════════
-   OPEN CHANNEL
-   ══════════════════════════════════════════════════════════════ */
-function openChannel(idx) {
-  var ch = filteredChannels[idx];
-  if (!ch) return;
+function buildCardHtml(ch, idx) {
+  var epgHtml = buildEpgBlockHtml(ch);
+  var cat = ch.category || ch.group || 'Other';
+  return '<div class="card" tabindex="0" data-idx="' + idx + '">' +
+    '<div class="card-top">' +
+      '<img class="card-logo" src="' + escapeHtml(ch.logo || '') + '" alt="" ' +
+        'onerror="this.style.visibility=\'hidden\'">' +
+      '<div class="card-meta">' +
+        '<div class="card-name">' + escapeHtml(ch.name || 'Unknown') + '</div>' +
+        '<div class="card-cat">' + escapeHtml(cat) + '</div>' +
+      '</div>' +
+    '</div>' +
+    epgHtml +
+    '<div class="card-actions"><button class="card-btn" type="button">▶ Watch</button></div>' +
+  '</div>';
+}
+
+function buildEpgBlockHtml(ch) {
+  if (!epgLoaded) return '<div class="card-epg"><div class="epg-empty">Loading guide…</div></div>';
+  var progs = findEPGForChannel(ch.name);
+  var current = getCurrentProgram(progs);
+  if (!current) return '<div class="card-epg"><div class="epg-empty">No guide data</div></div>';
+  return '<div class="card-epg">' +
+    '<div class="epg-now-row"><span class="epg-now-label">NOW</span>' +
+      '<span class="epg-now-time">' +
+        formatTimeOnly(current.start) + ' - ' + formatTimeOnly(current.end) +
+      '</span></div>' +
+    '<div class="epg-now-title">' + escapeHtml(current.title || 'No Title') + '</div>' +
+    (current.description ? '<div class="epg-now-desc">' +
+      escapeHtml(truncate(current.description, 120)) + '</div>' : '') +
+  '</div>';
+}
+
+function refreshAllCardsEpg() {
+  var cards = gridEl.querySelectorAll('.card');
+  for (var i = 0; i < cards.length; i++) {
+    var card = cards[i];
+    var idx = parseInt(card.getAttribute('data-idx'), 10);
+    if (isNaN(idx) || !filteredChannels[idx]) continue;
+    var ch = filteredChannels[idx];
+    var epgBox = card.querySelector('.card-epg');
+    if (!epgBox) continue;
+    var progs = findEPGForChannel(ch.name);
+    var current = getCurrentProgram(progs);
+    if (current) {
+      epgBox.innerHTML =
+        '<div class="epg-now-row"><span class="epg-now-label">NOW</span>' +
+          '<span class="epg-now-time">' +
+            formatTimeOnly(current.start) + ' - ' + formatTimeOnly(current.end) +
+          '</span></div>' +
+        '<div class="epg-now-title">' + escapeHtml(current.title || 'No Title') + '</div>' +
+        (current.description ? '<div class="epg-now-desc">' +
+          escapeHtml(truncate(current.description, 120)) + '</div>' : '');
+    } else {
+      epgBox.innerHTML = '<div class="epg-empty">No guide data</div>';
+    }
+  }
+}
+
+function openPlayer(ch) {
   try {
     sessionStorage.setItem('currentChannel', JSON.stringify(ch));
     sessionStorage.setItem('allChannels', JSON.stringify(allChannels));
@@ -474,115 +692,65 @@ function openChannel(idx) {
   window.location.href = 'jplayer.html?id=' + encodeURIComponent(ch.id);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   DEVICE DETECTION
-   ══════════════════════════════════════════════════════════════ */
-function isTouchDevice() {
-  return ('ontouchstart' in window) ||
-         (navigator.maxTouchPoints > 0) ||
-         (navigator.msMaxTouchPoints > 0);
-}
-
-/* ══════════════════════════════════════════════════════════════
-   SEARCH
-   ══════════════════════════════════════════════════════════════ */
 var searchTimer = null;
 searchEl.addEventListener('input', function() {
-  /* Debounce so TV on-screen keyboards don't re-render on each key */
   clearTimeout(searchTimer);
   searchTimer = setTimeout(function() {
-    var q = searchEl.value.trim().toLowerCase();
-    filteredChannels = !q ? allChannels.slice() : allChannels.filter(function(ch) {
-      return (ch.name && ch.name.toLowerCase().indexOf(q) !== -1) ||
-             (ch.category && ch.category.toLowerCase().indexOf(q) !== -1);
-    });
-    render();
+    searchQuery = searchEl.value.trim().toLowerCase();
+    applyFilters();
+    wrapEl.scrollTop = 0;
   }, 120);
 });
-
-/* ══════════════════════════════════════════════════════════════
-   REMOTE / KEYBOARD NAVIGATION
-   ══════════════════════════════════════════════════════════════ */
-function getColumnCount() {
-  var card = gridEl.querySelector('.card');
-  if (!card) return 1;
-  var cardW = card.offsetWidth;
-  if (!cardW) return 1;
-  var gridW = gridEl.offsetWidth;
-  return Math.max(1, Math.round(gridW / cardW));
-}
 
 document.addEventListener('keydown', function(e) {
   var k = e.keyCode;
   var focused = document.activeElement;
 
-  /* Esc / Backspace → clear search or exit */
-  if (k === 27 || k === 8) {
-    if (document.activeElement === searchEl) return; /* let search handle it */
-    if (k === 8) return; /* don't hijack backspace in inputs */
-  }
-
-  /* TV back keys */
-  if (k === 461 || k === 10009 || k === 10033) {
-    e.preventDefault();
-    window.history.back();
+  if (focused && focused.classList && focused.classList.contains('cat-chip')) {
+    var chips = categoriesEl.querySelectorAll('.cat-chip');
+    var cidx = Array.prototype.indexOf.call(chips, focused);
+    if (k === 37 && cidx > 0) { chips[cidx - 1].focus(); e.preventDefault(); }
+    else if (k === 39 && cidx < chips.length - 1) { chips[cidx + 1].focus(); e.preventDefault(); }
+    else if (k === 40) { var f = gridEl.querySelector('.card'); if (f) { f.focus(); e.preventDefault(); } }
     return;
   }
-
-  /* Search box focused */
   if (focused === searchEl) {
-    if (k === 40) { /* Down → enter grid */
-      var first = gridEl.querySelector('.card');
-      if (first) { first.focus(); e.preventDefault(); }
-    }
+    if (k === 40) { var f2 = gridEl.querySelector('.card'); if (f2) { f2.focus(); e.preventDefault(); } }
     return;
   }
-
-  /* Card focused */
   if (focused && focused.classList && focused.classList.contains('card')) {
-    var idx   = parseInt(focused.getAttribute('data-idx'), 10);
     var cards = gridEl.querySelectorAll('.card');
-    var cols  = getColumnCount();
-
-    if (k === 37) {              /* LEFT */
-      if (idx > 0) { cards[idx - 1].focus(); e.preventDefault(); }
-    } else if (k === 39) {       /* RIGHT */
-      if (idx < cards.length - 1) { cards[idx + 1].focus(); e.preventDefault(); }
-    } else if (k === 38) {       /* UP */
-      if (idx - cols >= 0) { cards[idx - cols].focus(); e.preventDefault(); }
-      else if (searchEl) { searchEl.focus(); e.preventDefault(); }
-    } else if (k === 40) {       /* DOWN */
-      if (idx + cols < cards.length) { cards[idx + cols].focus(); e.preventDefault(); }
-    } else if (k === 13) {       /* ENTER */
-      e.preventDefault();
-      openChannel(idx);
+    var cardIdx = Array.prototype.indexOf.call(cards, focused);
+    var colCount = 1;
+    if (cards.length > 0) {
+      var firstRect = cards[0].getBoundingClientRect();
+      var rowPerCard = 1;
+      for (var ci = 1; ci < cards.length; ci++) {
+        if (Math.abs(cards[ci].getBoundingClientRect().top - firstRect.top) < 4) rowPerCard++;
+        else break;
+      }
+      colCount = rowPerCard;
     }
+    if (k === 37) { if (cardIdx > 0) { cards[cardIdx - 1].focus(); e.preventDefault(); } }
+    else if (k === 39) { if (cardIdx < cards.length - 1) { cards[cardIdx + 1].focus(); e.preventDefault(); } }
+    else if (k === 38) {
+      if (cardIdx - colCount >= 0) { cards[cardIdx - colCount].focus(); e.preventDefault(); }
+      else {
+        var activeChip = categoriesEl.querySelector('.cat-chip.active') || categoriesEl.querySelector('.cat-chip');
+        if (activeChip) { activeChip.focus(); e.preventDefault(); }
+      }
+    }
+    else if (k === 40) { if (cardIdx + colCount < cards.length) { cards[cardIdx + colCount].focus(); e.preventDefault(); } }
+    else if (k === 13) { e.preventDefault(); var ch = filteredChannels[cardIdx]; if (ch) openPlayer(ch); }
     return;
   }
-
-  /* Nothing focused → move into grid */
   if (k === 40 || k === 39) {
-    var f = gridEl.querySelector('.card');
-    if (f) { f.focus(); e.preventDefault(); }
+    var anyChip = categoriesEl.querySelector('.cat-chip');
+    if (anyChip) { anyChip.focus(); e.preventDefault(); }
   }
 });
 
-/* ══════════════════════════════════════════════════════════════
-   BOOT
-   ══════════════════════════════════════════════════════════════ */
-function boot() {
-  loadChannels();
-
-  /* Re-render on orientation change / resize so keyboard column count
-     stays accurate and grid reflows */
-  var resizeTimer = null;
-  window.addEventListener('resize', function() {
-    clearTimeout(resizeTimer);
-    resizeTimer = setTimeout(function() {
-      /* nothing to do — CSS handles layout; just refresh column cache */
-    }, 200);
-  });
-}
+function boot() { loadChannels(); }
 
 if (document.readyState === 'complete' || document.readyState === 'interactive') {
   setTimeout(boot, 0);
