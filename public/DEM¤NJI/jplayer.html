@@ -7,184 +7,158 @@
 <meta name="format-detection" content="telephone=no">
 <title>Player</title>
 
-<!-- Shaka Player 2.5.5 UI build from jsDelivr (Chrome 38+ / Tizen 2015-17) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@2.5.5/dist/controls.css">
 <script src="https://cdn.jsdelivr.net/npm/shaka-player@2.5.5/dist/shaka-player.ui.min.js"></script>
 
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body {
-  background: #000;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  font-family: Arial, Helvetica, sans-serif;
-  color: #eee;
-  -webkit-user-select: none;
-  user-select: none;
-  -webkit-text-size-adjust: 100%;
+  background: #000; width: 100%; height: 100%; overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif; color: #eee;
+  -webkit-user-select: none; user-select: none; -webkit-text-size-adjust: 100%;
 }
 
-#playerWrapper {
-  position: fixed;
-  top: 0; left: 0; right: 0; bottom: 0;
-  background: #000;
-  overflow: hidden;
-}
-
-#videoContainer {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  width: 100%;
-  height: 100%;
-  background: #000;
-  overflow: hidden;
-}
+#playerWrapper { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #000; overflow: hidden; }
+#videoContainer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
 
 #video {
-  width: 100%;
-  height: 100%;
-  background: #000;
-  -o-object-fit: contain;
-  object-fit: contain;
-  -o-object-position: center center;
-  object-position: center center;
+  width: 100%; height: 100%; background: #000;
+  -o-object-fit: contain; object-fit: contain;
+  -o-object-position: center center; object-position: center center;
   display: block;
 }
 #video.fit-contain { -o-object-fit: contain !important; object-fit: contain !important; }
 #video.fit-cover   { -o-object-fit: cover   !important; object-fit: cover   !important; }
 #video.fit-stretch { -o-object-fit: fill    !important; object-fit: fill    !important; }
 
-/* ── CUSTOM TOP BAR (synced with Shaka controls) ── */
+/* ── CUSTOM TOP BAR ── */
 #topBar {
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  z-index: 10;
+  position: absolute; top: 0; left: 0; right: 0; z-index: 10;
   padding: 12px 16px;
   padding-top: calc(12px + env(safe-area-inset-top));
   padding-left: calc(16px + env(safe-area-inset-left));
   padding-right: calc(16px + env(safe-area-inset-right));
-  background: linear-gradient(rgba(0,0,0,0.82), rgba(0,0,0,0));
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: flex;
-  -webkit-box-align: center;
-  -webkit-align-items: center;
-  align-items: center;
+  background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0));
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  -webkit-box-align: center; -webkit-align-items: center; align-items: center;
   gap: 12px;
   -webkit-transition: opacity .3s ease, visibility .3s ease;
   transition: opacity .3s ease, visibility .3s ease;
   pointer-events: none;
 }
-#topBar.hidden {
-  opacity: 0;
-  visibility: hidden;
-}
+#topBar.hidden { opacity: 0; visibility: hidden; }
 
 .top-btn {
   pointer-events: auto;
   background: rgba(255,255,255,0.14);
   border: 1px solid rgba(255,255,255,0.28);
-  color: #fff;
-  border-radius: 8px;
-  padding: 10px 16px;
-  min-height: 44px;
-  font-size: 14px;
-  font-weight: bold;
-  cursor: pointer;
-  outline: none;
-  font-family: inherit;
-  -webkit-appearance: none;
-  appearance: none;
+  color: #fff; border-radius: 8px;
+  padding: 10px 16px; min-height: 44px;
+  font-size: 14px; font-weight: bold;
+  cursor: pointer; outline: none;
+  font-family: inherit; -webkit-appearance: none; appearance: none;
   white-space: nowrap;
   -webkit-transition: background .15s, border-color .15s;
   transition: background .15s, border-color .15s;
+  -webkit-flex-shrink: 0; flex-shrink: 0;
 }
 .top-btn:hover  { background: rgba(255,255,255,0.22); }
 .top-btn:active { background: rgba(255,255,255,0.28); }
-.top-btn:focus  {
-  background: rgba(30,90,120,0.9);
-  border-color: #4fc3f7;
-  box-shadow: 0 0 0 2px rgba(79,195,247,0.4);
-}
+.top-btn:focus  { background: rgba(30,90,120,0.9); border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79,195,247,0.4); }
 
-#title {
-  -webkit-box-flex: 1;
-  -webkit-flex: 1;
-  flex: 1;
+/* ── TITLE + PROGRAMME INFO (inline) ── */
+#titleWrap {
+  -webkit-box-flex: 1; -webkit-flex: 1; flex: 1;
   min-width: 0;
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  -webkit-flex-wrap: wrap; flex-wrap: wrap;
+  -webkit-box-align: center; -webkit-align-items: center; align-items: center;
+  -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+}
+#title {
   font-size: 16px;
   font-weight: bold;
+  color: #fff;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  text-align: center;
+  max-width: 100%;
+  min-width: 0;
+}
+#programInfo {
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  -webkit-box-align: center; -webkit-align-items: center; align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: #cce0ee;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  min-width: 0;
+  padding: 3px 10px;
+  background: rgba(0, 0, 0, 0.55);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+}
+#programInfo.hidden { display: none; }
+#programInfo .prog-dot {
+  color: #66bb6a;
+  font-size: 10px;
+  -webkit-animation: livePulse 2s infinite;
+  animation: livePulse 2s infinite;
+  -webkit-flex-shrink: 0;
+  flex-shrink: 0;
+}
+@-webkit-keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+@keyframes livePulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+#programInfo .prog-text {
+  font-weight: bold;
   color: #fff;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
-  pointer-events: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+#programInfo .prog-time {
+  color: #9bbdd0;
+  font-size: 11px;
+  -webkit-flex-shrink: 0;
+  flex-shrink: 0;
 }
 
 /* ── PLACEHOLDER ── */
 #placeholder {
-  position: absolute;
-  top: 0; left: 0; right: 0; bottom: 0;
-  z-index: 50;
-  display: -webkit-box;
-  display: -webkit-flex;
-  display: flex;
-  -webkit-box-orient: vertical;
-  -webkit-flex-direction: column;
-  flex-direction: column;
-  -webkit-box-align: center;
-  -webkit-align-items: center;
-  align-items: center;
-  -webkit-box-pack: center;
-  -webkit-justify-content: center;
-  justify-content: center;
-  background: #000;
-  color: #888;
-  text-align: center;
-  padding: 24px;
-  font-size: 15px;
-  line-height: 1.6;
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 50;
+  display: -webkit-box; display: -webkit-flex; display: flex;
+  -webkit-box-orient: vertical; -webkit-flex-direction: column; flex-direction: column;
+  -webkit-box-align: center; -webkit-align-items: center; align-items: center;
+  -webkit-box-pack: center; -webkit-justify-content: center; justify-content: center;
+  background: #000; color: #888; text-align: center;
+  padding: 24px; font-size: 15px; line-height: 1.6;
 }
 #placeholder.hidden { display: none; }
-#placeholder .ph-actions {
-  margin-top: 22px;
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
+#placeholder .ph-actions { margin-top: 22px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
 #placeholder button {
-  background: #2a2a2a;
-  border: none;
-  color: #eee;
-  padding: 12px 22px;
-  min-height: 44px;
-  border-radius: 8px;
-  font-size: 15px;
-  cursor: pointer;
-  font-family: inherit;
-  outline: none;
+  background: #2a2a2a; border: none; color: #eee;
+  padding: 12px 22px; min-height: 44px; border-radius: 8px;
+  font-size: 15px; cursor: pointer; font-family: inherit; outline: none;
 }
 #placeholder button:hover { background: #3a3a3a; }
 #placeholder button:focus { background: #1e5a78; box-shadow: 0 0 0 2px rgba(79,195,247,0.4); }
 
 .spinner {
-  display: inline-block;
-  width: 34px; height: 34px;
-  border: 3px solid #333;
-  border-top-color: #4fc3f7;
-  border-radius: 50%;
-  -webkit-animation: spin 0.8s linear infinite;
-  animation: spin 0.8s linear infinite;
+  display: inline-block; width: 34px; height: 34px;
+  border: 3px solid #333; border-top-color: #4fc3f7; border-radius: 50%;
+  -webkit-animation: spin 0.8s linear infinite; animation: spin 0.8s linear infinite;
   margin-bottom: 16px;
 }
 @-webkit-keyframes spin { to { -webkit-transform: rotate(360deg); } }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ── SHAKA UI OVERRIDES (TV-friendly sizes) ── */
 .shaka-controls-container { font-size: 14px; }
 .shaka-bottom-controls {
   padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
@@ -197,32 +171,31 @@ html, body {
   .shaka-controls-container { font-size: 18px; }
   .shaka-seek-bar-container { height: 8px; }
 }
-@media (min-width: 1800px) {
-  .shaka-controls-container { font-size: 22px; }
-}
+@media (min-width: 1800px) { .shaka-controls-container { font-size: 22px; } }
 
-/* ── RESPONSIVE ── */
 @media (max-width: 480px) {
   #topBar { gap: 8px; padding: 10px 12px; padding-top: calc(10px + env(safe-area-inset-top)); }
   #title { display: none; }
+  #programInfo { font-size: 12px; padding: 3px 8px; }
+  #programInfo .prog-time { font-size: 10px; }
   .top-btn { padding: 10px 12px; min-height: 42px; font-size: 13px; }
 }
-@media (min-width: 481px) and (max-width: 900px) {
-  #title { font-size: 15px; }
-  .top-btn { padding: 10px 14px; }
-}
+@media (min-width: 481px) and (max-width: 900px) { #title { font-size: 15px; } .top-btn { padding: 10px 14px; } #programInfo { font-size: 12px; } }
 @media (min-width: 1280px) {
   #topBar { padding: 20px 28px; gap: 18px; }
   #title { font-size: 22px; }
+  #programInfo { font-size: 15px; padding: 4px 12px; }
   .top-btn { padding: 14px 22px; min-height: 54px; font-size: 17px; border-radius: 10px; }
 }
 @media (min-width: 1800px) {
   #title { font-size: 26px; }
+  #programInfo { font-size: 17px; }
   .top-btn { padding: 16px 26px; min-height: 60px; font-size: 19px; }
 }
 @media (max-height: 480px) and (orientation: landscape) {
   #topBar { padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); }
   #title { font-size: 13px; }
+  #programInfo { font-size: 11px; }
   .top-btn { padding: 8px 12px; min-height: 38px; font-size: 12px; }
 }
 </style>
@@ -236,7 +209,10 @@ html, body {
 
     <div id="topBar">
       <button id="backBtn" class="top-btn" type="button" tabindex="0">◄ Back</button>
-      <div id="title">…</div>
+      <div id="titleWrap">
+        <span id="title">…</span>
+        <span id="programInfo" class="hidden"></span>
+      </div>
       <button id="fitBtn" class="top-btn" type="button" tabindex="0">FIT: CONTAIN</button>
     </div>
   </div>
@@ -252,16 +228,10 @@ html, body {
 </div>
 
 <script>
-/* ══════════════════════════════════════════════════════════════
-   ES5 SHIMS (Chrome 38+)
-   ══════════════════════════════════════════════════════════════ */
 if (!Array.prototype.includes) {
   Array.prototype.includes = function(x){ return this.indexOf(x) !== -1; };
 }
 
-/* ══════════════════════════════════════════════════════════════
-   XHR FETCH
-   ══════════════════════════════════════════════════════════════ */
 function xhrFetch(url, opts) {
   opts = opts || {};
   return new Promise(function(resolve, reject) {
@@ -284,15 +254,12 @@ function xhrFetch(url, opts) {
         });
       } else reject(new Error('HTTP ' + xhr.status));
     };
-    xhr.onerror   = function(){ reject(new Error('Network error')); };
+    xhr.onerror = function(){ reject(new Error('Network error')); };
     xhr.ontimeout = function(){ reject(new Error('Timeout')); };
     try { xhr.send(opts.body || null); } catch(e){ reject(e); }
   });
 }
 
-/* ══════════════════════════════════════════════════════════════
-   CONFIG
-   ══════════════════════════════════════════════════════════════ */
 var CHANNELS_CANDIDATES = [
   '/jstr4web.json',
   'https://jjtvxweb.pages.dev/jstr4web.json'
@@ -303,14 +270,11 @@ var COOKIE_PRIMARY     = "https://allinonereborn2.online/jstrweb2/cookies.json";
 var COOKIE_FALLBACK    = "";
 var COOKIE_STAR_SPORTS = "https://allinonereborn2.online/jtv-fetch/jstarcookie/cookie.json";
 
-/* ══════════════════════════════════════════════════════════════
-   DOM
-   ══════════════════════════════════════════════════════════════ */
 var videoEl        = document.getElementById('video');
 var videoContainer = document.getElementById('videoContainer');
-var playerWrapper  = document.getElementById('playerWrapper');
 var topBar         = document.getElementById('topBar');
 var titleEl        = document.getElementById('title');
+var programInfoEl  = document.getElementById('programInfo');
 var backBtn        = document.getElementById('backBtn');
 var fitBtn         = document.getElementById('fitBtn');
 var placeholder    = document.getElementById('placeholder');
@@ -320,31 +284,28 @@ var phActions      = document.getElementById('phActions');
 var phBackBtn      = document.getElementById('phBackBtn');
 var phRetryBtn     = document.getElementById('phRetryBtn');
 
-/* ══════════════════════════════════════════════════════════════
-   STATE
-   ══════════════════════════════════════════════════════════════ */
 var shakaPlayer    = null;
 var shakaUI        = null;
 var activeCookie   = '';
 var currentChannel = null;
 var isLoading      = false;
+var channelPrograms = null;
+var programUpdateTimer = null;
 
-/* ══════════════════════════════════════════════════════════════
-   DEVICE DETECTION
-   ══════════════════════════════════════════════════════════════ */
-function isTouchDevice() {
-  return ('ontouchstart' in window) ||
-         (navigator.maxTouchPoints > 0) ||
-         (navigator.msMaxTouchPoints > 0);
-}
-
-/* ══════════════════════════════════════════════════════════════
-   HELPERS
-   ══════════════════════════════════════════════════════════════ */
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
   });
+}
+
+function formatTimeOnly(date) {
+  if (!date) return '';
+  if (!(date instanceof Date)) date = new Date(date);
+  var h = date.getHours();
+  var m = date.getMinutes();
+  var ampm = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if (h === 0) h = 12;
+  return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ampm;
 }
 
 function getQueryParam(name) {
@@ -383,23 +344,77 @@ function hidePlaceholder() {
 }
 
 /* ══════════════════════════════════════════════════════════════
+   PROGRAMME INFO — read from sessionStorage, update display
+   ══════════════════════════════════════════════════════════════ */
+function loadChannelPrograms() {
+  try {
+    var raw = sessionStorage.getItem('channelPrograms');
+    if (!raw) { channelPrograms = null; return; }
+    channelPrograms = JSON.parse(raw);
+    if (!channelPrograms || !channelPrograms.length) { channelPrograms = null; return; }
+
+    for (var i = 0; i < channelPrograms.length; i++) {
+      if (typeof channelPrograms[i].start === 'string') channelPrograms[i].start = new Date(channelPrograms[i].start);
+      if (typeof channelPrograms[i].end   === 'string') channelPrograms[i].end   = new Date(channelPrograms[i].end);
+    }
+  } catch (e) {
+    channelPrograms = null;
+  }
+}
+
+function updateProgramInfo() {
+  if (!programInfoEl) return;
+  if (!channelPrograms || !channelPrograms.length) {
+    programInfoEl.classList.add('hidden');
+    programInfoEl.innerHTML = '';
+    return;
+  }
+
+  var now = Date.now();
+  var current = null;
+  for (var i = 0; i < channelPrograms.length; i++) {
+    var p = channelPrograms[i];
+    var startMs = p.start instanceof Date ? p.start.getTime() : new Date(p.start).getTime();
+    var endMs   = p.end   instanceof Date ? p.end.getTime()   : new Date(p.end).getTime();
+    if (startMs <= now && endMs > now) { current = p; break; }
+  }
+
+  if (!current) {
+    programInfoEl.classList.add('hidden');
+    programInfoEl.innerHTML = '';
+    return;
+  }
+
+  var startDate = current.start instanceof Date ? current.start : new Date(current.start);
+  var endDate   = current.end   instanceof Date ? current.end   : new Date(current.end);
+
+  programInfoEl.innerHTML =
+    '<span class="prog-dot">●</span>' +
+    '<span class="prog-text">' + escapeHtml(current.title || 'No Title') + '</span>' +
+    '<span class="prog-time">' + formatTimeOnly(startDate) + ' - ' + formatTimeOnly(endDate) + '</span>';
+  programInfoEl.classList.remove('hidden');
+}
+
+function startProgramInfoTimer() {
+  if (programUpdateTimer) clearInterval(programUpdateTimer);
+  updateProgramInfo();
+  programUpdateTimer = setInterval(updateProgramInfo, 60000);
+}
+
+/* ══════════════════════════════════════════════════════════════
    COOKIE HELPERS
    ══════════════════════════════════════════════════════════════ */
 function extractStarCookie(data, channelId) {
   var results = [];
-  if (data && Array.isArray(data.successful_results)) {
-    results = results.concat(data.successful_results);
-  }
-  if (data && Array.isArray(data.failed_results)) {
-    results = results.concat(data.failed_results);
-  }
+  if (data && Array.isArray(data.successful_results)) results = results.concat(data.successful_results);
+  if (data && Array.isArray(data.failed_results))  results = results.concat(data.failed_results);
+
   for (var i = 0; i < results.length; i++) {
     var item = results[i];
     if (!item) continue;
     if (String(item.channel_id) !== String(channelId)) continue;
 
-    var finalUrl = (item.error_details && item.error_details.final_url) ||
-                   item.final_url || '';
+    var finalUrl = (item.error_details && item.error_details.final_url) || item.final_url || '';
     var match = finalUrl.match(/[?&]__hdnea__=([^&]+)/);
     if (match) return '__hdnea__=' + match[1];
     var raw = finalUrl.match(/__hdnea__=([^&]+)/);
@@ -419,9 +434,7 @@ function fetchCookiesForChannel(channelData) {
     else hasRegular = true;
   }
 
-  var primaryCookie  = '';
-  var fallbackCookie = '';
-  var starCookie     = '';
+  var primaryCookie = '', fallbackCookie = '', starCookie = '';
   var tasks = [];
 
   if (hasJio) {
@@ -457,27 +470,17 @@ function fetchCookiesForChannel(channelData) {
       tasks.push(
         fetchWithFallback(COOKIE_FALLBACK, { cache: 'no-store' })
           .then(function(r){ return r.json(); })
-          .then(function(data){
-            if (data && data.cookie) fallbackCookie = data.cookie;
-          })
+          .then(function(data){ if (data && data.cookie) fallbackCookie = data.cookie; })
           .catch(function(e){ console.warn('Fallback cookie failed:', e.message); })
       );
     }
   }
 
   return Promise.all(tasks).then(function() {
-    return {
-      streamUrls:     streamUrls,
-      primaryCookie:  primaryCookie,
-      fallbackCookie: fallbackCookie,
-      starCookie:     starCookie
-    };
+    return { streamUrls: streamUrls, primaryCookie: primaryCookie, fallbackCookie: fallbackCookie, starCookie: starCookie };
   });
 }
 
-/* ══════════════════════════════════════════════════════════════
-   CHANNEL JSON FALLBACK
-   ══════════════════════════════════════════════════════════════ */
 function parseChannelJson(text) {
   var c = String(text).trim();
   if (c.charCodeAt(0) === 0xFEFF) c = c.slice(1);
@@ -522,27 +525,20 @@ function findChannelById(id) {
     });
 }
 
-/* ══════════════════════════════════════════════════════════════
-   PLAYER INIT — with Shaka UI
-   ══════════════════════════════════════════════════════════════ */
 function initPlayer() {
   if (typeof shaka === 'undefined' || !shaka.Player) {
     showPlaceholder('⚠️ Player failed to load.<br>Check your internet connection.', true, false);
     return false;
   }
-  try {
-    if (shaka.polyfill && shaka.polyfill.installAll) shaka.polyfill.installAll();
-  } catch (e) {}
+  try { if (shaka.polyfill && shaka.polyfill.installAll) shaka.polyfill.installAll(); } catch (e) {}
 
   if (!shaka.Player.isBrowserSupported()) {
     showPlaceholder('⚠️ This browser is not supported by the player.', true, false);
     return false;
   }
 
-  /* Shaka 2.x: pass the video element to the constructor */
   shakaPlayer = new shaka.Player(videoEl);
 
-  /* Request filter — inject headers + activeCookie as query string */
   shakaPlayer.getNetworkingEngine().registerRequestFilter(function(type, request) {
     request.headers['Referer']    = 'https://www.jiotv.com/';
     request.headers['User-Agent'] = 'plaYtv/7.1.5';
@@ -550,36 +546,25 @@ function initPlayer() {
     if (activeCookie &&
         (type === shaka.net.NetworkingEngine.RequestType.MANIFEST ||
          type === shaka.net.NetworkingEngine.RequestType.SEGMENT)) {
-      request.uris[0] = request.uris[0].split('?')[0] + '?' + activeCookie;
+      var url = request.uris[0];
+      url = url.replace(/([?&])__hdnea__=[^&]*/g, '$1');
+      url = url.replace(/[?&]+$/, '');
+      var sep = url.indexOf('?') === -1 ? '?' : '&';
+      request.uris[0] = url + sep + activeCookie;
     }
   });
 
-  /* ── Attach Shaka UI controls (with quality selector) ── */
   try {
     var uiConfig = {
       addSeekBar: true,
       addBigPlayButton: true,
       controlPanelElements: [
-        'play_pause',
-        'time_and_duration',
-        'spacer',
-        'mute',
-        'volume',
-        'quality',
-        'captions',
-        'playback_rate',
-        'picture_in_picture',
-        'fullscreen',
-        'overflow_menu'
+        'play_pause', 'time_and_duration', 'spacer',
+        'mute', 'volume', 'quality', 'captions',
+        'playback_rate', 'picture_in_picture', 'fullscreen', 'overflow_menu'
       ],
-      overflowMenuButtons: [
-        'quality',
-        'captions',
-        'playback_rate',
-        'picture_in_picture'
-      ]
+      overflowMenuButtons: ['quality', 'captions', 'playback_rate', 'picture_in_picture']
     };
-
     shakaUI = new shaka.ui.Overlay(shakaPlayer, videoContainer, videoEl, uiConfig);
     console.log('[shaka-ui] Overlay attached');
   } catch (e) {
@@ -587,55 +572,36 @@ function initPlayer() {
     videoEl.setAttribute('controls', 'controls');
   }
 
-  /* Sync our custom top bar with Shaka's own controls visibility */
   syncTopBarWithShakaControls();
-
   return true;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SYNC TOP BAR ↔ SHAKA CONTROLS (polling — works on old Tizen)
-   Old Chromium (Tizen 2015-17) doesn't fire MutationObserver
-   reliably on class changes, so we poll every 200 ms instead.
-   ══════════════════════════════════════════════════════════════ */
 function syncTopBarWithShakaControls() {
   var lastState = null;
-  var attempts  = 0;
+  var attempts = 0;
 
   function checkForContainer() {
     attempts++;
     var ctrl = videoContainer.querySelector('.shaka-controls-container');
-
     if (!ctrl) {
-      /* Retry for ~6 seconds while Shaka UI builds its DOM */
-      if (attempts < 30) {
-        setTimeout(checkForContainer, 200);
-      } else {
-        console.warn('[shaka-ui] controls container never appeared');
-      }
+      if (attempts < 30) setTimeout(checkForContainer, 200);
+      else console.warn('[shaka-ui] controls container never appeared');
       return;
     }
 
-    console.log('[shaka-ui] controls container found — polling for visibility');
-
-    /* Poll every 200 ms */
+    console.log('[shaka-ui] controls container found — polling');
     setInterval(function() {
       var isHidden = ctrl.classList.contains('shaka-hidden') ||
                      ctrl.offsetParent === null ||
                      window.getComputedStyle(ctrl).visibility === 'hidden' ||
                      parseFloat(window.getComputedStyle(ctrl).opacity) === 0;
-
       if (isHidden !== lastState) {
         lastState = isHidden;
-        if (isHidden) {
-          topBar.classList.add('hidden');
-        } else {
-          topBar.classList.remove('hidden');
-        }
+        if (isHidden) topBar.classList.add('hidden');
+        else topBar.classList.remove('hidden');
       }
     }, 200);
 
-    /* Apply the initial state right away */
     var initialHidden = ctrl.classList.contains('shaka-hidden');
     lastState = initialHidden;
     if (initialHidden) topBar.classList.add('hidden');
@@ -644,9 +610,6 @@ function syncTopBarWithShakaControls() {
   checkForContainer();
 }
 
-/* ══════════════════════════════════════════════════════════════
-   PLAY CHANNEL
-   ══════════════════════════════════════════════════════════════ */
 function playChannel(channelData) {
   if (!shakaPlayer || isLoading) return;
   isLoading = true;
@@ -658,10 +621,10 @@ function playChannel(channelData) {
   shakaPlayer.unload().catch(function(){}).then(function() {
     return fetchCookiesForChannel(channelData);
   }).then(function(cookies) {
-    var streamUrls     = cookies.streamUrls;
-    var primaryCookie  = cookies.primaryCookie;
+    var streamUrls = cookies.streamUrls;
+    var primaryCookie = cookies.primaryCookie;
     var fallbackCookie = cookies.fallbackCookie;
-    var starCookie     = cookies.starCookie;
+    var starCookie = cookies.starCookie;
 
     if (!streamUrls.length) {
       isLoading = false;
@@ -669,7 +632,6 @@ function playChannel(channelData) {
       return;
     }
 
-    /* DRM: support array + single-key formats */
     var clearKeysConfig = {};
     if (Array.isArray(channelData.keys) && channelData.keys.length > 0) {
       for (var i = 0; i < channelData.keys.length; i++) {
@@ -740,9 +702,6 @@ function playChannel(channelData) {
   });
 }
 
-/* ══════════════════════════════════════════════════════════════
-   FIT MODES
-   ══════════════════════════════════════════════════════════════ */
 var fitModes = [
   { key: 'contain', label: 'FIT: CONTAIN' },
   { key: 'cover',   label: 'FULL: COVER' },
@@ -759,9 +718,6 @@ function applyFitMode(index) {
 fitBtn.addEventListener('click', function(e){ e.preventDefault(); applyFitMode(fitModeIndex + 1); });
 applyFitMode(0);
 
-/* ══════════════════════════════════════════════════════════════
-   BACK / NAVIGATION
-   ══════════════════════════════════════════════════════════════ */
 function goBack() {
   try {
     if (history.length > 1) history.back();
@@ -781,7 +737,6 @@ phRetryBtn.addEventListener('click', function(e) {
 document.addEventListener('keydown', function(e) {
   var k = e.keyCode;
   if (k === 8 || k === 27 || k === 461 || k === 10009 || k === 10033) {
-    /* Don't hijack Esc/Backspace when a Shaka menu is open */
     if (document.querySelector('.shaka-overflow-menu:not(.shaka-hidden)') ||
         document.querySelector('.shaka-settings-menu:not(.shaka-hidden)')) {
       return;
@@ -791,20 +746,34 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
-/* ══════════════════════════════════════════════════════════════
-   VIDEO EVENTS
-   ══════════════════════════════════════════════════════════════ */
 videoEl.addEventListener('playing', function() {
   hidePlaceholder();
   isLoading = false;
 });
-videoEl.addEventListener('error', function(e) {
-  console.warn('video error:', e);
+videoEl.addEventListener('error', function(e){ console.warn('video error:', e); });
+
+document.addEventListener('keydown', function(e) {
+  var k = e.keyCode;
+  var focused = document.activeElement;
+  var inTopBar = (focused === backBtn || focused === fitBtn);
+
+  if (k === 37) {
+    if (focused === fitBtn) { backBtn.focus(); e.preventDefault(); }
+    else if (!inTopBar)     { backBtn.focus(); e.preventDefault(); }
+  } else if (k === 39) {
+    if (focused === backBtn) { fitBtn.focus(); e.preventDefault(); }
+    else if (!inTopBar)      { fitBtn.focus(); e.preventDefault(); }
+  } else if (k === 40 && inTopBar) {
+    focused.blur(); e.preventDefault();
+  } else if (k === 38 && !inTopBar) {
+    backBtn.focus(); e.preventDefault();
+  } else if (k === 13 && inTopBar) {
+    e.preventDefault();
+    if (focused === backBtn) goBack();
+    else if (focused === fitBtn) applyFitMode(fitModeIndex + 1);
+  }
 });
 
-/* ══════════════════════════════════════════════════════════════
-   BOOTSTRAP
-   ══════════════════════════════════════════════════════════════ */
 function boot() {
   var channelId = getQueryParam('id');
   if (!channelId) {
@@ -813,6 +782,9 @@ function boot() {
   }
 
   if (!initPlayer()) return;
+
+  loadChannelPrograms();
+  startProgramInfoTimer();
 
   var ch = null;
   try {
@@ -826,11 +798,14 @@ function boot() {
     return;
   }
 
+  channelPrograms = null;
+  programInfoEl.classList.add('hidden');
+
   console.log('[boot] sessionStorage empty → fetching JSON for id', channelId);
   showPlaceholder('Looking up channel…', false, true);
 
   findChannelById(channelId)
-    .then(function(found) { playChannel(found); })
+    .then(function(found){ playChannel(found); })
     .catch(function(e) {
       showPlaceholder('⚠️ Channel not found.<br>' +
         '<div style="color:#888;font-size:12px;margin-top:8px">' +
