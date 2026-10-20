@@ -138,10 +138,35 @@ var EPG_SOURCES = [
   { url: 'https://www.open-epg.com/files/india.xml.gz', name: 'Open-EPG',   timeout: 180000 }
 ];
 
-/* Cache TTL and prune window */
-var CACHE_TTL_MS       = 60 * 60 * 1000;        /* 1 hour */
-var PRUNE_BEFORE_MS    = 2 * 60 * 60 * 1000;    /* keep 2h back */
-var PRUNE_AFTER_MS     = 8 * 60 * 60 * 1000;    /* keep 8h forward */
+var CACHE_KEY       = 'epg-v4-alias';
+var CACHE_TTL_MS    = 60 * 60 * 1000;
+var PRUNE_BEFORE_MS = 3 * 60 * 60 * 1000;
+var PRUNE_AFTER_MS  = 10 * 60 * 60 * 1000;
+
+/* Noise suffixes (safe to strip for partial match) */
+var NOISE_SUFFIXES = { 'tv': 1, 'india': 1, 'in': 1, 'asia': 1, 'channel': 1, 'network': 1, 'hd': 1, 'sd': 1 };
+
+/* ── MANUAL ALIAS MAP ──
+   Maps your channel's normalized name → likely EPG normalized name.
+   Add more entries here as you discover mismatches. */
+var CHANNEL_ALIASES = {
+  'sonic': 'sonic nickelodeon',
+  'nick hindi': 'nick',
+  'nickelodeon jr': 'nick jr',
+  'nickelodeon junior': 'nick jr',
+  'nick jr': 'nick jr',
+  'nick hd': 'nick hd',
+  'nick hd plus': 'nick hd',
+  'star plus': 'star plus',
+  'star movies': 'star movies',
+  'star sports': 'star sports',
+  'sony entertainment': 'sony entertainment television',
+  'colors': 'colors tv',
+  'colors infinity': 'colors infinity',
+  'sun tv': 'sun tv',
+  'sun music': 'sun music'
+  /* Add more as needed */
+};
 
 var gridEl       = document.getElementById('grid');
 var searchEl     = document.getElementById('search');
@@ -157,6 +182,7 @@ var searchQuery      = '';
 var epgById   = null;
 var epgByName = null;
 var epgLoaded = false;
+var epgNameTokensCache = null;
 
 /* ══════════════════════════════════════════════════════════════
    HELPERS
@@ -197,13 +223,16 @@ function parseEPGDate(dateStr) {
   date.setTime(date.getTime() - offset);
   return date;
 }
+
 function normalizeChannelName(name) {
   if (!name) return '';
   var cleaned = String(name).toLowerCase()
-    .replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
-  cleaned = cleaned.replace(/\b(hd|sd|fhd|4k|plus|movies|music|news|tv|channel)\b/g, '').trim();
-  return cleaned;
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return cleaned.replace(/\b(hd|sd|fhd|uhd|4k|hdr|hevc)\b/g, '').replace(/\s+/g, ' ').trim();
 }
+
 function decodeEntities(str) {
   return String(str).replace(/&(#x?[0-9a-fA-F]+|amp|lt|gt|quot|apos|nbsp);/g, function(m, ent) {
     if (ent === 'amp')  return '&';
@@ -221,6 +250,7 @@ function decodeEntities(str) {
     return m;
   });
 }
+
 function bytesToUtf8String(bytes) {
   if (typeof TextDecoder !== 'undefined') {
     try { return new TextDecoder('utf-8').decode(bytes); } catch (e) {}
@@ -294,9 +324,6 @@ function cacheSet(key, value) {
   }).catch(function() { return false; });
 }
 
-/* ══════════════════════════════════════════════════════════════
-   EPG SERIALIZATION (compact arrays for storage)
-   ══════════════════════════════════════════════════════════════ */
 function serializeEpg(data) {
   function serList(list) {
     var out = [];
@@ -330,8 +357,7 @@ function deserializeEpg(s) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   STREAMING EPG PARSE (regex on decompressed chunks)
-   — avoids one giant DOMParser call that freezes the TV
+   STREAMING EPG PARSE
    ══════════════════════════════════════════════════════════════ */
 function parseEpgStreaming(bytes, label) {
   return new Promise(function(resolve, reject) {
@@ -339,11 +365,9 @@ function parseEpgStreaming(bytes, label) {
 
     var isGzip = bytes.length > 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
     if (!isGzip) {
-      /* Raw XML — just parse whole string */
       try {
         var txt = bytesToUtf8String(bytes);
-        var res = parseXmlRegex(txt, label);
-        resolve(res);
+        resolve(parseXmlRegex(txt, label));
       } catch (e) { reject(e); }
       return;
     }
@@ -426,7 +450,6 @@ function parseEpgStreaming(bytes, label) {
     inflator.onEnd = function(status) {
       if (status !== 0) { reject(new Error('inflate status ' + status)); return; }
 
-      /* Post-pass: fill byName for channels that appeared after programmes */
       for (var id in byId) {
         if (!byId.hasOwnProperty(id)) continue;
         var nm = channelIdToName[id];
@@ -440,6 +463,15 @@ function parseEpgStreaming(bytes, label) {
 
       safeLog('[epg] ' + label + ' → ' + progCount + ' programmes (pruned), ' +
               Object.keys(byId).length + ' ids, ' + Object.keys(byName).length + ' names');
+
+      /* Log first 10 EPG names for debugging */
+      var samples = [];
+      var n = 0;
+      for (var sk in byName) {
+        if (byName.hasOwnProperty(sk) && n < 10) { samples.push('"' + sk + '"'); n++; }
+      }
+      safeLog('[epg] sample EPG channel names: ' + samples.join(', '));
+
       resolve({ byId: byId, byName: byName });
     };
 
@@ -458,7 +490,6 @@ function parseEpgStreaming(bytes, label) {
   });
 }
 
-/* Fallback regex parse for raw XML (not gzipped) */
 function parseXmlRegex(xmlText, label) {
   var now = Date.now();
   var CUT_BEFORE = now - PRUNE_BEFORE_MS;
@@ -514,7 +545,7 @@ function parseXmlRegex(xmlText, label) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   FETCH ONE SOURCE + PARSE
+   FETCH ONE SOURCE
    ══════════════════════════════════════════════════════════════ */
 function fetchAndParseSingleEPG(source) {
   if (typeof pako === 'undefined') { safeWarn('[epg] pako missing'); return Promise.resolve(null); }
@@ -548,21 +579,21 @@ function fetchAndParseSingleEPG(source) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   EPG LOADER — cache-first with background refresh
+   EPG LOADER
    ══════════════════════════════════════════════════════════════ */
 function applyEpgData(data) {
   epgById = data.byId;
   epgByName = data.byName;
+  epgNameTokensCache = null;
   epgLoaded = true;
   refreshAllCardsEpg();
 }
 
 function loadAllEPG() {
-  return cacheGet('epg').then(function(cached) {
+  return cacheGet(CACHE_KEY).then(function(cached) {
     var cacheAge = cached && cached.cachedAt ? (Date.now() - cached.cachedAt) : Infinity;
     var hasFreshCache = cached && cached.data && cacheAge < CACHE_TTL_MS;
 
-    /* Show cached data instantly (even if stale — better than nothing) */
     if (cached && cached.data) {
       try {
         var restored = deserializeEpg(cached.data);
@@ -578,12 +609,11 @@ function loadAllEPG() {
       return;
     }
 
-    /* Fetch fresh in background */
     safeLog('[epg] refreshing from network…');
     return loadAllEPGFromNetwork().then(function(data) {
       if (!data) return;
       applyEpgData(data);
-      cacheSet('epg', { data: serializeEpg(data), cachedAt: Date.now() });
+      cacheSet(CACHE_KEY, { data: serializeEpg(data), cachedAt: Date.now() });
       setEpgStatus('Guide ready (' + Object.keys(data.byId).length + ' channels)');
       setTimeout(function(){ setEpgStatus(''); }, 3000);
     });
@@ -620,9 +650,8 @@ function loadAllEPGFromNetwork() {
             if (!mergedByName[nm]) mergedByName[nm] = [];
             mergedByName[nm] = mergedByName[nm].concat(result.byName[nm]);
           }
-          /* First source success → render immediately so UI updates */
           if (!epgLoaded) applyEpgData({ byId: mergedById, byName: mergedByName });
-          else { epgById = mergedById; epgByName = mergedByName; refreshAllCardsEpg(); }
+          else { epgById = mergedById; epgByName = mergedByName; epgNameTokensCache = null; refreshAllCardsEpg(); }
         }
         loadNext();
       });
@@ -632,25 +661,146 @@ function loadAllEPGFromNetwork() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   LOOKUP
+   ALIAS-AWARE MATCHING
    ══════════════════════════════════════════════════════════════ */
+function getEpgTokensCache() {
+  if (epgNameTokensCache) return epgNameTokensCache;
+  epgNameTokensCache = {};
+  if (!epgByName) return epgNameTokensCache;
+  for (var k in epgByName) {
+    if (epgByName.hasOwnProperty(k)) {
+      epgNameTokensCache[k] = k.split(/\s+/).filter(Boolean);
+    }
+  }
+  return epgNameTokensCache;
+}
+
+/* Levenshtein similarity (normalized 0..1) */
+function similarity(a, b) {
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  var longer = a.length > b.length ? a : b;
+  var shorter = a.length > b.length ? b : a;
+  var longerLen = longer.length;
+  if (longerLen === 0) return 1;
+
+  var editDistance = levenshtein(longer, shorter);
+  return (longerLen - editDistance) / longerLen;
+}
+function levenshtein(a, b) {
+  var tmp, i, j, la = a.length, lb = b.length, al = [];
+  if (!la) return lb;
+  if (!lb) return la;
+  for (i = 0; i <= la; i++) al[i] = i;
+  for (i = 1; i <= lb; i++) {
+    tmp = i;
+    for (j = 1; j <= la; j++) {
+      var cost = (b.charAt(i - 1) === a.charAt(j - 1)) ? 0 : 1;
+      var val = Math.min(al[j] + 1, tmp + 1, al[j - 1] + cost);
+      al[j - 1] = tmp;
+      tmp = val;
+    }
+    al[la] = tmp;
+  }
+  return al[la];
+}
+
 function findEPGForChannel(channel) {
   if (!epgLoaded || !channel) return null;
 
+  /* 1. Exact raw ID match */
   if (channel.id != null && epgById) {
     var idKey = String(channel.id);
     if (epgById[idKey] && epgById[idKey].length) return epgById[idKey];
   }
-  if (epgByName) {
-    var norm = normalizeChannelName(channel.name);
-    if (norm && epgByName[norm]) return epgByName[norm];
-    if (norm) {
-      for (var k in epgByName) {
-        if (!epgByName.hasOwnProperty(k)) continue;
-        if (k.indexOf(norm) !== -1 || norm.indexOf(k) !== -1) return epgByName[k];
+
+  if (!epgByName) return null;
+
+  /* 2. Exact normalized name match */
+  var norm = normalizeChannelName(channel.name);
+  if (!norm) return null;
+  if (epgByName[norm]) return epgByName[norm];
+
+  /* 3. Alias map */
+  var alias = CHANNEL_ALIASES[norm];
+  if (alias) {
+    var aliasNorm = normalizeChannelName(alias);
+    if (epgByName[aliasNorm]) return epgByName[aliasNorm];
+  }
+
+  /* 4. Safe token-based partial match */
+  var chTokens = norm.split(/\s+/).filter(Boolean);
+  if (!chTokens.length) return null;
+
+  var tokenCache = getEpgTokensCache();
+
+  var bestKey = null;
+  var bestScore = 0;
+  var bestExtra = 0;
+  var bestCount = 0;
+
+  for (var k in epgByName) {
+    if (!epgByName.hasOwnProperty(k)) continue;
+    var epgTokens = tokenCache[k];
+    if (!epgTokens || !epgTokens.length) continue;
+
+    var shorter, longer;
+    if (chTokens.length <= epgTokens.length) { shorter = chTokens; longer = epgTokens; }
+    else { shorter = epgTokens; longer = chTokens; }
+
+    var allContained = true;
+    for (var i = 0; i < shorter.length; i++) {
+      if (longer.indexOf(shorter[i]) === -1) { allContained = false; break; }
+    }
+    if (!allContained) continue;
+
+    var extra = longer.length - shorter.length;
+    var score;
+
+    if (shorter.length >= 2) {
+      score = shorter.length;
+    } else if (shorter.length === 1) {
+      if (shorter[0].length < 4) continue;
+      var extraTokens = [];
+      for (var j = 0; j < longer.length; j++) {
+        if (shorter.indexOf(longer[j]) === -1) extraTokens.push(longer[j]);
       }
+      if (!extraTokens.length) continue;
+      var allNoise = true;
+      for (var n = 0; n < extraTokens.length; n++) {
+        if (!NOISE_SUFFIXES[extraTokens[n]]) { allNoise = false; break; }
+      }
+      if (!allNoise) continue;
+      score = 1;
+    } else {
+      continue;
+    }
+
+    if (score > bestScore || (score === bestScore && extra < bestExtra)) {
+      bestScore = score;
+      bestExtra = extra;
+      bestKey = k;
+      bestCount = 1;
+    } else if (score === bestScore && extra === bestExtra) {
+      bestCount++;
     }
   }
+
+  if (bestKey && bestCount === 1) return epgByName[bestKey];
+
+  /* 5. Fuzzy similarity fallback (last resort) */
+  var bestFuzzyKey = null;
+  var bestFuzzyScore = 0;
+  for (var fk in epgByName) {
+    if (!epgByName.hasOwnProperty(fk)) continue;
+    var sim = similarity(norm, fk);
+    if (sim > 0.75 && sim > bestFuzzyScore) {
+      bestFuzzyScore = sim;
+      bestFuzzyKey = fk;
+    }
+  }
+  if (bestFuzzyKey) return epgByName[bestFuzzyKey];
+
   return null;
 }
 
@@ -711,7 +861,6 @@ function loadChannels() {
       renderCategories();
       renderGrid();
 
-      /* Defer EPG load so the channel grid is interactive first */
       setTimeout(function() {
         loadAllEPG().catch(function(e){ safeWarn('[epg] init failed:', e.message); });
       }, 300);
@@ -875,7 +1024,7 @@ function refreshAllCardsEpg() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   OPEN PLAYER — localStorage so it works in a new tab
+   OPEN PLAYER — localStorage (works across tabs)
    ══════════════════════════════════════════════════════════════ */
 function openPlayer(ch) {
   try {
