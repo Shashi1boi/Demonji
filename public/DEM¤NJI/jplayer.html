@@ -31,7 +31,6 @@ html, body {
 #video.fit-cover   { -o-object-fit: cover   !important; object-fit: cover   !important; }
 #video.fit-stretch { -o-object-fit: fill    !important; object-fit: fill    !important; }
 
-/* ── CUSTOM TOP BAR ── */
 #topBar {
   position: absolute; top: 0; left: 0; right: 0; z-index: 10;
   padding: 12px 16px;
@@ -66,7 +65,6 @@ html, body {
 .top-btn:active { background: rgba(255,255,255,0.28); }
 .top-btn:focus  { background: rgba(30,90,120,0.9); border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79,195,247,0.4); }
 
-/* ── TITLE + PROGRAMME INFO (inline) ── */
 #titleWrap {
   -webkit-box-flex: 1; -webkit-flex: 1; flex: 1;
   min-width: 0;
@@ -130,7 +128,6 @@ html, body {
   flex-shrink: 0;
 }
 
-/* ── PLACEHOLDER ── */
 #placeholder {
   position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 50;
   display: -webkit-box; display: -webkit-flex; display: flex;
@@ -344,11 +341,11 @@ function hidePlaceholder() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   PROGRAMME INFO — read from sessionStorage, update display
+   PROGRAMME INFO — reads from localStorage (works in new tab)
    ══════════════════════════════════════════════════════════════ */
 function loadChannelPrograms() {
   try {
-    var raw = sessionStorage.getItem('channelPrograms');
+    var raw = localStorage.getItem('channelPrograms');
     if (!raw) { channelPrograms = null; return; }
     channelPrograms = JSON.parse(raw);
     if (!channelPrograms || !channelPrograms.length) { channelPrograms = null; return; }
@@ -788,12 +785,12 @@ function boot() {
 
   var ch = null;
   try {
-    var raw = sessionStorage.getItem('currentChannel');
+    var raw = localStorage.getItem('currentChannel');
     if (raw) ch = JSON.parse(raw);
   } catch (e) { ch = null; }
 
   if (ch && String(ch.id) === String(channelId)) {
-    console.log('[boot] channel from sessionStorage:', ch.name);
+    console.log('[boot] channel from localStorage:', ch.name);
     playChannel(ch);
     return;
   }
@@ -801,7 +798,7 @@ function boot() {
   channelPrograms = null;
   programInfoEl.classList.add('hidden');
 
-  console.log('[boot] sessionStorage empty → fetching JSON for id', channelId);
+  console.log('[boot] localStorage empty → fetching JSON for id', channelId);
   showPlaceholder('Looking up channel…', false, true);
 
   findChannelById(channelId)
