@@ -125,7 +125,7 @@ function xhrFetchBuffer(url, opts) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   CONFIG — TSEPG first, Open-EPG second
+   CONFIG
    ══════════════════════════════════════════════════════════════ */
 var CHANNELS_CANDIDATES = [
   '/jstr4web.json',
@@ -134,9 +134,14 @@ var CHANNELS_CANDIDATES = [
 var CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
 
 var EPG_SOURCES = [
-  { url: 'https://avkb.short.gy/tsepg.xml.gz',            name: 'AVKB TSEPG', timeout: 180000 },
-  { url: 'https://www.open-epg.com/files/india.xml.gz',   name: 'Open-EPG',   timeout: 180000 }
+  { url: 'https://avkb.short.gy/tsepg.xml.gz',          name: 'AVKB TSEPG', timeout: 180000 },
+  { url: 'https://www.open-epg.com/files/india.xml.gz', name: 'Open-EPG',   timeout: 180000 }
 ];
+
+/* Cache TTL and prune window */
+var CACHE_TTL_MS       = 60 * 60 * 1000;        /* 1 hour */
+var PRUNE_BEFORE_MS    = 2 * 60 * 60 * 1000;    /* keep 2h back */
+var PRUNE_AFTER_MS     = 8 * 60 * 60 * 1000;    /* keep 8h forward */
 
 var gridEl       = document.getElementById('grid');
 var searchEl     = document.getElementById('search');
@@ -153,6 +158,9 @@ var epgById   = null;
 var epgByName = null;
 var epgLoaded = false;
 
+/* ══════════════════════════════════════════════════════════════
+   HELPERS
+   ══════════════════════════════════════════════════════════════ */
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, function(c){
     return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
@@ -196,6 +204,23 @@ function normalizeChannelName(name) {
   cleaned = cleaned.replace(/\b(hd|sd|fhd|4k|plus|movies|music|news|tv|channel)\b/g, '').trim();
   return cleaned;
 }
+function decodeEntities(str) {
+  return String(str).replace(/&(#x?[0-9a-fA-F]+|amp|lt|gt|quot|apos|nbsp);/g, function(m, ent) {
+    if (ent === 'amp')  return '&';
+    if (ent === 'lt')   return '<';
+    if (ent === 'gt')   return '>';
+    if (ent === 'quot') return '"';
+    if (ent === 'apos') return "'";
+    if (ent === 'nbsp') return ' ';
+    if (ent.charAt(0) === '#') {
+      if (ent.charAt(1) === 'x' || ent.charAt(1) === 'X') {
+        return String.fromCharCode(parseInt(ent.substring(2), 16));
+      }
+      return String.fromCharCode(parseInt(ent.substring(1), 10));
+    }
+    return m;
+  });
+}
 function bytesToUtf8String(bytes) {
   if (typeof TextDecoder !== 'undefined') {
     try { return new TextDecoder('utf-8').decode(bytes); } catch (e) {}
@@ -224,99 +249,255 @@ function setEpgStatus(text, isError) {
   else epgStatusEl.classList.remove('error');
 }
 
-function chunkedUngzip(bytes) {
-  return new Promise(function(resolve, reject) {
-    if (typeof pako === 'undefined') { reject(new Error('pako not loaded')); return; }
+/* ══════════════════════════════════════════════════════════════
+   INDEXEDDB CACHE
+   ══════════════════════════════════════════════════════════════ */
+var dbPromise = null;
+function getDB() {
+  if (dbPromise) return dbPromise;
+  dbPromise = new Promise(function(resolve, reject) {
     try {
-      var inflator = new pako.Inflate({ to: 'string' });
-      var chunks = [];
-      var totalChars = 0;
-      var startTime = Date.now();
+      if (!window.indexedDB) { reject(new Error('no indexedDB')); return; }
+      var req = indexedDB.open('jioepg-db', 1);
+      req.onupgradeneeded = function() {
+        var db = req.result;
+        if (!db.objectStoreNames.contains('cache')) db.createObjectStore('cache');
+      };
+      req.onsuccess = function() { resolve(req.result); };
+      req.onerror = function() { reject(req.error); };
+    } catch (e) { reject(e); }
+  });
+  return dbPromise;
+}
+function cacheGet(key) {
+  return getDB().then(function(db) {
+    return new Promise(function(resolve) {
+      try {
+        var tx = db.transaction('cache', 'readonly');
+        var req = tx.objectStore('cache').get(key);
+        req.onsuccess = function() { resolve(req.result || null); };
+        req.onerror = function() { resolve(null); };
+      } catch (e) { resolve(null); }
+    });
+  }).catch(function() { return null; });
+}
+function cacheSet(key, value) {
+  return getDB().then(function(db) {
+    return new Promise(function(resolve) {
+      try {
+        var tx = db.transaction('cache', 'write');
+        var req = tx.objectStore('cache').put(value, key);
+        req.onsuccess = function() { resolve(true); };
+        req.onerror = function() { resolve(false); };
+      } catch (e) { resolve(false); }
+    });
+  }).catch(function() { return false; });
+}
 
-      inflator.onData = function(chunk) { chunks.push(chunk); totalChars += chunk.length; };
-      inflator.onEnd = function(status) {
-        if (status === 0) {
-          safeLog('[pako] done — ' + totalChars + ' chars in ' + (Date.now() - startTime) + 'ms');
-          resolve(chunks.join(''));
-        } else reject(new Error('inflate failed status ' + status));
+/* ══════════════════════════════════════════════════════════════
+   EPG SERIALIZATION (compact arrays for storage)
+   ══════════════════════════════════════════════════════════════ */
+function serializeEpg(data) {
+  function serList(list) {
+    var out = [];
+    for (var i = 0; i < list.length; i++) {
+      out.push([list[i].title, list[i].description || '', list[i].start.getTime(), list[i].end.getTime()]);
+    }
+    return out;
+  }
+  var sById = {}, sByName = {};
+  for (var id in data.byId) if (data.byId.hasOwnProperty(id)) sById[id] = serList(data.byId[id]);
+  for (var nm in data.byName) if (data.byName.hasOwnProperty(nm)) sByName[nm] = serList(data.byName[nm]);
+  return { byId: sById, byName: sByName };
+}
+function deserializeEpg(s) {
+  function desList(list) {
+    var out = [];
+    for (var i = 0; i < list.length; i++) {
+      out.push({
+        title: list[i][0],
+        description: list[i][1],
+        start: new Date(list[i][2]),
+        end: new Date(list[i][3])
+      });
+    }
+    return out;
+  }
+  var dById = {}, dByName = {};
+  for (var id in s.byId) if (s.byId.hasOwnProperty(id)) dById[id] = desList(s.byId[id]);
+  for (var nm in s.byName) if (s.byName.hasOwnProperty(nm)) dByName[nm] = desList(s.byName[nm]);
+  return { byId: dById, byName: dByName };
+}
+
+/* ══════════════════════════════════════════════════════════════
+   STREAMING EPG PARSE (regex on decompressed chunks)
+   — avoids one giant DOMParser call that freezes the TV
+   ══════════════════════════════════════════════════════════════ */
+function parseEpgStreaming(bytes, label) {
+  return new Promise(function(resolve, reject) {
+    if (typeof pako === 'undefined') { reject(new Error('pako missing')); return; }
+
+    var isGzip = bytes.length > 2 && bytes[0] === 0x1f && bytes[1] === 0x8b;
+    if (!isGzip) {
+      /* Raw XML — just parse whole string */
+      try {
+        var txt = bytesToUtf8String(bytes);
+        var res = parseXmlRegex(txt, label);
+        resolve(res);
+      } catch (e) { reject(e); }
+      return;
+    }
+
+    var inflator = new pako.Inflate({ to: 'string' });
+    var buffer = '';
+    var channelIdToName = {};
+    var byId = {};
+    var byName = {};
+    var progCount = 0;
+    var now = Date.now();
+    var CUT_BEFORE = now - PRUNE_BEFORE_MS;
+    var CUT_AFTER  = now + PRUNE_AFTER_MS;
+
+    function processChannel(block) {
+      var idM = block.match(/\bid\s*=\s*"([^"]*)"/i);
+      var dnM = block.match(/<display-name\b[^>]*>([\s\S]*?)<\/display-name>/i);
+      if (idM && dnM) {
+        channelIdToName[idM[1]] = decodeEntities(dnM[1].trim());
+      }
+    }
+    function processProgramme(block) {
+      var startM = block.match(/\bstart\s*=\s*"([^"]*)"/i);
+      var stopM  = block.match(/\bstop\s*=\s*"([^"]*)"/i);
+      var chM    = block.match(/\bchannel\s*=\s*"([^"]*)"/i);
+      if (!startM || !stopM || !chM) return;
+
+      var startDate = parseEPGDate(startM[1]);
+      var endDate   = parseEPGDate(stopM[1]);
+      if (!startDate || !endDate) return;
+
+      if (endDate.getTime() < CUT_BEFORE) return;
+      if (startDate.getTime() > CUT_AFTER)  return;
+
+      var titleM = block.match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
+      var descM  = block.match(/<desc\b[^>]*>([\s\S]*?)<\/desc>/i);
+
+      var entry = {
+        title: titleM ? decodeEntities(titleM[1].trim()) : 'No title',
+        description: descM ? decodeEntities(descM[1].trim()) : '',
+        start: startDate,
+        end: endDate
       };
 
-      var offset = 0;
-      var CHUNK = 65536;
-      function pushNext() {
-        if (offset >= bytes.length) return;
-        var end = Math.min(offset + CHUNK, bytes.length);
-        var chunk = bytes.subarray(offset, end);
-        var isFinal = end >= bytes.length;
-        try { inflator.push(chunk, isFinal); } catch (e) { reject(e); return; }
-        offset = end;
-        if (!isFinal) setTimeout(pushNext, 0);
+      var chId = chM[1];
+      if (!byId[chId]) byId[chId] = [];
+      byId[chId].push(entry);
+      progCount++;
+
+      var chName = channelIdToName[chId];
+      if (chName) {
+        var normKey = normalizeChannelName(chName);
+        if (normKey) {
+          if (!byName[normKey]) byName[normKey] = [];
+          byName[normKey].push(entry);
+        }
       }
-      pushNext();
-    } catch (e) { reject(e); }
+    }
+    function drainBuffer() {
+      var chEnd = buffer.indexOf('</channel>');
+      while (chEnd !== -1) {
+        var chStart = buffer.lastIndexOf('<channel', chEnd);
+        if (chStart === -1) break;
+        processChannel(buffer.substring(chStart, chEnd + 10));
+        buffer = buffer.substring(chEnd + 10);
+        chEnd = buffer.indexOf('</channel>');
+      }
+      var progEnd = buffer.indexOf('</programme>');
+      while (progEnd !== -1) {
+        var progStart = buffer.lastIndexOf('<programme', progEnd);
+        if (progStart === -1) break;
+        processProgramme(buffer.substring(progStart, progEnd + 12));
+        buffer = buffer.substring(progEnd + 12);
+        progEnd = buffer.indexOf('</programme>');
+      }
+      if (buffer.length > 500000) buffer = buffer.substring(buffer.length - 200000);
+    }
+
+    inflator.onData = function(chunk) { buffer += chunk; drainBuffer(); };
+    inflator.onEnd = function(status) {
+      if (status !== 0) { reject(new Error('inflate status ' + status)); return; }
+
+      /* Post-pass: fill byName for channels that appeared after programmes */
+      for (var id in byId) {
+        if (!byId.hasOwnProperty(id)) continue;
+        var nm = channelIdToName[id];
+        if (!nm) continue;
+        var normKey = normalizeChannelName(nm);
+        if (normKey && !byName[normKey]) byName[normKey] = byId[id];
+      }
+
+      for (var k1 in byId) { if (byId.hasOwnProperty(k1)) byId[k1].sort(function(a,b){ return a.start - b.start; }); }
+      for (var k2 in byName) { if (byName.hasOwnProperty(k2)) byName[k2].sort(function(a,b){ return a.start - b.start; }); }
+
+      safeLog('[epg] ' + label + ' → ' + progCount + ' programmes (pruned), ' +
+              Object.keys(byId).length + ' ids, ' + Object.keys(byName).length + ' names');
+      resolve({ byId: byId, byName: byName });
+    };
+
+    var offset = 0;
+    var CHUNK = 65536;
+    function pushNext() {
+      if (offset >= bytes.length) return;
+      var end = Math.min(offset + CHUNK, bytes.length);
+      var isFinal = end >= bytes.length;
+      try { inflator.push(bytes.subarray(offset, end), isFinal); }
+      catch (e) { reject(e); return; }
+      offset = end;
+      if (!isFinal) setTimeout(pushNext, 0);
+    }
+    pushNext();
   });
 }
 
-function processXmlText(xmlText, label) {
-  if (!xmlText || xmlText.length < 500) {
-    throw new Error('XML too small (' + (xmlText ? xmlText.length : 0) + ' chars)');
-  }
-  if (xmlText.indexOf('<tv') === -1 && xmlText.indexOf('<?xml') === -1) {
-    throw new Error('Not XMLTV content');
-  }
-
-  var xmlDoc = new DOMParser().parseFromString(xmlText, 'text/xml');
-  if (xmlDoc.getElementsByTagName('parsererror').length > 0) {
-    throw new Error('XML parse error');
-  }
-
+/* Fallback regex parse for raw XML (not gzipped) */
+function parseXmlRegex(xmlText, label) {
+  var now = Date.now();
+  var CUT_BEFORE = now - PRUNE_BEFORE_MS;
+  var CUT_AFTER  = now + PRUNE_AFTER_MS;
   var channelIdToName = {};
-  var channelNodes = xmlDoc.getElementsByTagName('channel');
-  for (var c = 0; c < channelNodes.length; c++) {
-    var chNode = channelNodes[c];
-    var id = chNode.getAttribute('id');
-    if (!id) continue;
-    var dnNode = chNode.getElementsByTagName('display-name')[0];
-    var dn = dnNode ? dnNode.textContent : '';
-    if (!dn) continue;
-    channelIdToName[id] = dn.trim();
-  }
-  safeLog('[epg] ' + label + ' → ' + Object.keys(channelIdToName).length + ' channel elements');
+  var byId = {}, byName = {};
+  var progCount = 0;
 
-  var sampleIds = Object.keys(channelIdToName).slice(0, 3);
-  for (var s = 0; s < sampleIds.length; s++) {
-    safeLog('[epg] sample channel: id="' + sampleIds[s] + '" name="' + channelIdToName[sampleIds[s]] + '"');
+  var chRe = /<channel\b([^>]*)>([\s\S]*?)<\/channel>/gi;
+  var m;
+  while ((m = chRe.exec(xmlText)) !== null) {
+    var idM = m[1].match(/\bid\s*=\s*"([^"]*)"/i);
+    var dnM = m[2].match(/<display-name\b[^>]*>([\s\S]*?)<\/display-name>/i);
+    if (idM && dnM) channelIdToName[idM[1]] = decodeEntities(dnM[1].trim());
   }
 
-  var byId   = {};
-  var byName = {};
-  var progNodes = xmlDoc.getElementsByTagName('programme');
+  var prRe = /<programme\b([^>]*)>([\s\S]*?)<\/programme>/gi;
+  while ((m = prRe.exec(xmlText)) !== null) {
+    var startM = m[1].match(/\bstart\s*=\s*"([^"]*)"/i);
+    var stopM  = m[1].match(/\bstop\s*=\s*"([^"]*)"/i);
+    var chM    = m[1].match(/\bchannel\s*=\s*"([^"]*)"/i);
+    if (!startM || !stopM || !chM) continue;
+    var startDate = parseEPGDate(startM[1]);
+    var endDate   = parseEPGDate(stopM[1]);
+    if (!startDate || !endDate) continue;
+    if (endDate.getTime() < CUT_BEFORE) continue;
+    if (startDate.getTime() > CUT_AFTER)  continue;
 
-  for (var p = 0; p < progNodes.length; p++) {
-    var prog = progNodes[p];
-    var chId = prog.getAttribute('channel');
-    if (!chId) continue;
-
-    var startStr = prog.getAttribute('start');
-    var stopStr  = prog.getAttribute('stop');
-    if (!startStr) continue;
-    var start = parseEPGDate(startStr);
-    if (!start) continue;
-    var end = stopStr ? parseEPGDate(stopStr) : new Date(start.getTime() + 3600000);
-    if (!end) continue;
-
-    var titleNode = prog.getElementsByTagName('title')[0];
-    var descNode  = prog.getElementsByTagName('desc')[0];
-
+    var titleM = m[2].match(/<title\b[^>]*>([\s\S]*?)<\/title>/i);
+    var descM  = m[2].match(/<desc\b[^>]*>([\s\S]*?)<\/desc>/i);
     var entry = {
-      title: titleNode ? titleNode.textContent : 'No title',
-      description: descNode ? descNode.textContent : '',
-      start: start, end: end
+      title: titleM ? decodeEntities(titleM[1].trim()) : 'No title',
+      description: descM ? decodeEntities(descM[1].trim()) : '',
+      start: startDate, end: endDate
     };
-
+    var chId = chM[1];
     if (!byId[chId]) byId[chId] = [];
     byId[chId].push(entry);
-
+    progCount++;
     var chName = channelIdToName[chId];
     if (chName) {
       var normKey = normalizeChannelName(chName);
@@ -326,107 +507,133 @@ function processXmlText(xmlText, label) {
       }
     }
   }
-
-  for (var k1 in byId) { if (byId.hasOwnProperty(k1)) byId[k1].sort(function(a,b){ return a.start - b.start; }); }
-  for (var k2 in byName) { if (byName.hasOwnProperty(k2)) byName[k2].sort(function(a,b){ return a.start - b.start; }); }
-
-  safeLog('[epg] ' + label + ' → ' + progNodes.length + ' programmes, ' +
-          Object.keys(byId).length + ' id keys, ' +
-          Object.keys(byName).length + ' name keys');
-
+  for (var id in byId) if (byId.hasOwnProperty(id)) byId[id].sort(function(a,b){ return a.start - b.start; });
+  for (var nm in byName) if (byName.hasOwnProperty(nm)) byName[nm].sort(function(a,b){ return a.start - b.start; });
+  safeLog('[epg] ' + label + ' (regex-raw) → ' + progCount + ' programmes');
   return { byId: byId, byName: byName };
 }
 
+/* ══════════════════════════════════════════════════════════════
+   FETCH ONE SOURCE + PARSE
+   ══════════════════════════════════════════════════════════════ */
 function fetchAndParseSingleEPG(source) {
   if (typeof pako === 'undefined') { safeWarn('[epg] pako missing'); return Promise.resolve(null); }
 
   var url = source.url, name = source.name, timeout = source.timeout || 60000;
-  safeLog('[epg] fetching ' + url + ' (timeout ' + (timeout/1000) + 's)');
+  safeLog('[epg] fetching ' + url);
   var t0 = Date.now();
 
   return xhrFetchBuffer(url, { timeout: timeout })
     .then(function(buf) {
       if (!buf) throw new Error('Empty response');
       var bytes = new Uint8Array(buf);
-      safeLog('[epg] ' + name + ' downloaded ' + bytes.length + ' bytes in ' + (Date.now()-t0) + 'ms');
+      safeLog('[epg] ' + name + ' downloaded ' + bytes.length + 'B in ' + (Date.now()-t0) + 'ms');
       if (bytes.length < 500) throw new Error('Too small');
-
-      var isGzip = bytes[0] === 0x1f && bytes[1] === 0x8b;
-      if (isGzip) {
-        safeLog('[epg] ' + name + ' → gzipped, decompressing…');
-        return chunkedUngzip(bytes).then(function(xmlText) {
-          return processXmlText(xmlText, name);
-        });
-      }
-      return processXmlText(bytesToUtf8String(bytes), name);
+      return parseEpgStreaming(bytes, name);
     })
     .catch(function(e) {
-      safeWarn('[epg] ' + name + ' FAILED: ' + e.message + ' — trying proxy');
+      safeWarn('[epg] ' + name + ' direct failed: ' + e.message + ' → proxy');
       return xhrFetchBuffer(CORS_PROXY + url, { timeout: 180000 })
         .then(function(buf) {
           var bytes = new Uint8Array(buf);
-          safeLog('[epg] ' + name + ' (proxy) ' + bytes.length + ' bytes');
+          safeLog('[epg] ' + name + ' (proxy) ' + bytes.length + 'B');
           if (bytes.length < 500) throw new Error('Too small via proxy');
-          if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
-            return chunkedUngzip(bytes).then(function(x){ return processXmlText(x, name + ' (proxy)'); });
-          }
-          return processXmlText(bytesToUtf8String(bytes), name + ' (proxy)');
+          return parseEpgStreaming(bytes, name + ' (proxy)');
         })
         .catch(function(e2) {
-          safeWarn('[epg] ' + name + ' proxy also failed: ' + e2.message);
+          safeWarn('[epg] ' + name + ' proxy failed: ' + e2.message);
           return null;
         });
     });
 }
 
+/* ══════════════════════════════════════════════════════════════
+   EPG LOADER — cache-first with background refresh
+   ══════════════════════════════════════════════════════════════ */
+function applyEpgData(data) {
+  epgById = data.byId;
+  epgByName = data.byName;
+  epgLoaded = true;
+  refreshAllCardsEpg();
+}
+
 function loadAllEPG() {
+  return cacheGet('epg').then(function(cached) {
+    var cacheAge = cached && cached.cachedAt ? (Date.now() - cached.cachedAt) : Infinity;
+    var hasFreshCache = cached && cached.data && cacheAge < CACHE_TTL_MS;
+
+    /* Show cached data instantly (even if stale — better than nothing) */
+    if (cached && cached.data) {
+      try {
+        var restored = deserializeEpg(cached.data);
+        applyEpgData(restored);
+        safeLog('[epg] showing cached data (age ' + Math.round(cacheAge/1000) + 's)');
+        setEpgStatus('Guide ready (cached)');
+        setTimeout(function(){ setEpgStatus(''); }, 2500);
+      } catch (e) { safeWarn('[epg] cache deserialize failed:', e.message); }
+    }
+
+    if (hasFreshCache) {
+      safeLog('[epg] cache fresh — no network refresh');
+      return;
+    }
+
+    /* Fetch fresh in background */
+    safeLog('[epg] refreshing from network…');
+    return loadAllEPGFromNetwork().then(function(data) {
+      if (!data) return;
+      applyEpgData(data);
+      cacheSet('epg', { data: serializeEpg(data), cachedAt: Date.now() });
+      setEpgStatus('Guide ready (' + Object.keys(data.byId).length + ' channels)');
+      setTimeout(function(){ setEpgStatus(''); }, 3000);
+    });
+  });
+}
+
+function loadAllEPGFromNetwork() {
   var mergedById = {};
   var mergedByName = {};
   var idx = 0;
 
-  function loadNext() {
-    if (idx >= EPG_SOURCES.length) {
-      epgById = mergedById;
-      epgByName = mergedByName;
-      epgLoaded = true;
-      safeLog('[epg] ✓ ALL DONE — ' +
-              Object.keys(mergedById).length + ' id keys, ' +
-              Object.keys(mergedByName).length + ' name keys');
-      setEpgStatus('Guide ready (' + Object.keys(mergedById).length + ' channels)');
-      setTimeout(function(){ setEpgStatus(''); }, 4000);
-      refreshAllCardsEpg();
-      return;
-    }
-
-    var source = EPG_SOURCES[idx]; idx++;
-    setEpgStatus('Guide ' + idx + '/' + EPG_SOURCES.length + ': ' + source.name + '…');
-
-    fetchAndParseSingleEPG(source).then(function(result) {
-      if (result) {
-        for (var id in result.byId) {
-          if (!result.byId.hasOwnProperty(id)) continue;
-          if (!mergedById[id]) mergedById[id] = [];
-          mergedById[id] = mergedById[id].concat(result.byId[id]);
-        }
-        for (var nm in result.byName) {
-          if (!result.byName.hasOwnProperty(nm)) continue;
-          if (!mergedByName[nm]) mergedByName[nm] = [];
-          mergedByName[nm] = mergedByName[nm].concat(result.byName[nm]);
-        }
-        if (!epgLoaded) {
-          epgById = mergedById;
-          epgByName = mergedByName;
-          epgLoaded = true;
-        }
-        refreshAllCardsEpg();
+  return new Promise(function(resolve) {
+    function loadNext() {
+      if (idx >= EPG_SOURCES.length) {
+        safeLog('[epg] ✓ network done — ' +
+                Object.keys(mergedById).length + ' ids, ' +
+                Object.keys(mergedByName).length + ' names');
+        resolve({ byId: mergedById, byName: mergedByName });
+        return;
       }
-      loadNext();
-    });
-  }
 
-  loadNext();
+      var source = EPG_SOURCES[idx]; idx++;
+      setEpgStatus('Loading guide ' + idx + '/' + EPG_SOURCES.length + '…');
+
+      fetchAndParseSingleEPG(source).then(function(result) {
+        if (result) {
+          for (var id in result.byId) {
+            if (!result.byId.hasOwnProperty(id)) continue;
+            if (!mergedById[id]) mergedById[id] = [];
+            mergedById[id] = mergedById[id].concat(result.byId[id]);
+          }
+          for (var nm in result.byName) {
+            if (!result.byName.hasOwnProperty(nm)) continue;
+            if (!mergedByName[nm]) mergedByName[nm] = [];
+            mergedByName[nm] = mergedByName[nm].concat(result.byName[nm]);
+          }
+          /* First source success → render immediately so UI updates */
+          if (!epgLoaded) applyEpgData({ byId: mergedById, byName: mergedByName });
+          else { epgById = mergedById; epgByName = mergedByName; refreshAllCardsEpg(); }
+        }
+        loadNext();
+      });
+    }
+    loadNext();
+  });
 }
 
+/* ══════════════════════════════════════════════════════════════
+   LOOKUP
+   ══════════════════════════════════════════════════════════════ */
 function findEPGForChannel(channel) {
   if (!epgLoaded || !channel) return null;
 
@@ -434,11 +641,9 @@ function findEPGForChannel(channel) {
     var idKey = String(channel.id);
     if (epgById[idKey] && epgById[idKey].length) return epgById[idKey];
   }
-
   if (epgByName) {
     var norm = normalizeChannelName(channel.name);
     if (norm && epgByName[norm]) return epgByName[norm];
-
     if (norm) {
       for (var k in epgByName) {
         if (!epgByName.hasOwnProperty(k)) continue;
@@ -446,7 +651,6 @@ function findEPGForChannel(channel) {
       }
     }
   }
-
   return null;
 }
 
@@ -459,6 +663,9 @@ function getCurrentProgram(programmes) {
   return null;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   CHANNELS
+   ══════════════════════════════════════════════════════════════ */
 function parseChannelJson(text) {
   var c = String(text).trim();
   if (c.charCodeAt(0) === 0xFEFF) c = c.slice(1);
@@ -501,14 +708,13 @@ function loadChannels() {
       if (!chs || !chs.length) throw new Error('No channels');
       allChannels = chs;
       filteredChannels = allChannels.slice();
-
-      for (var d = 0; d < Math.min(3, allChannels.length); d++) {
-        safeLog('[channels] sample: id="' + allChannels[d].id + '" name="' + allChannels[d].name + '"');
-      }
-
       renderCategories();
       renderGrid();
-      loadAllEPG();
+
+      /* Defer EPG load so the channel grid is interactive first */
+      setTimeout(function() {
+        loadAllEPG().catch(function(e){ safeWarn('[epg] init failed:', e.message); });
+      }, 300);
     })
     .catch(function(e) {
       gridEl.innerHTML =
@@ -521,6 +727,9 @@ function loadChannels() {
     });
 }
 
+/* ══════════════════════════════════════════════════════════════
+   CATEGORIES
+   ══════════════════════════════════════════════════════════════ */
 function renderCategories() {
   var set = {};
   for (var i = 0; i < allChannels.length; i++) {
@@ -557,6 +766,9 @@ function renderCategories() {
   }
 }
 
+/* ══════════════════════════════════════════════════════════════
+   GRID
+   ══════════════════════════════════════════════════════════════ */
 function applyFilters() {
   filteredChannels = allChannels.filter(function(ch) {
     var chCat = ch.category || ch.group || 'Other';
@@ -662,11 +874,13 @@ function refreshAllCardsEpg() {
   }
 }
 
-/* Save channel + current programme schedule to sessionStorage */
+/* ══════════════════════════════════════════════════════════════
+   OPEN PLAYER — localStorage so it works in a new tab
+   ══════════════════════════════════════════════════════════════ */
 function openPlayer(ch) {
   try {
-    sessionStorage.setItem('currentChannel', JSON.stringify(ch));
-    sessionStorage.setItem('allChannels', JSON.stringify(allChannels));
+    localStorage.setItem('currentChannel', JSON.stringify(ch));
+    localStorage.setItem('allChannels', JSON.stringify(allChannels));
 
     var progs = findEPGForChannel(ch);
     if (progs && progs.length) {
@@ -679,12 +893,19 @@ function openPlayer(ch) {
           end:   progs[i].end.toISOString()
         });
       }
-      sessionStorage.setItem('channelPrograms', JSON.stringify(serializable));
+      localStorage.setItem('channelPrograms', JSON.stringify(serializable));
     } else {
-      sessionStorage.removeItem('channelPrograms');
+      localStorage.removeItem('channelPrograms');
     }
   } catch (e) {}
-  window.location.href = 'jplayer.html?id=' + encodeURIComponent(ch.id);
+
+  var playerUrl = 'jplayer.html?id=' + encodeURIComponent(ch.id);
+  try {
+    var win = window.open(playerUrl, '_blank');
+    if (!win) window.location.href = playerUrl;
+  } catch (e) {
+    window.location.href = playerUrl;
+  }
 }
 
 var searchTimer = null;
