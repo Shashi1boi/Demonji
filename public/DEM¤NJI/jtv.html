@@ -17,7 +17,7 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
 #epgStatus { font-size: 11px; color: #888; width: 100%; margin-top: 4px; display: none; }
 #epgStatus.visible { display: block; }
 #epgStatus.error { color: #ef5350; }
-#categories { background: #0e0e0e; border-bottom: 1px solid #222; padding: 10px 16px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; flex-shrink: 0; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+#categories { background: #0e0e0e; border-bottom: 1px solid #222; padding: 10px 16px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; flex-shrink: 0; scrollbar-width: none; }
 #categories::-webkit-scrollbar { display: none; }
 .cat-chip { display: inline-block; padding: 8px 16px; margin-right: 8px; background: #1a1a1a; border: 1px solid #2a2a2a; color: #ccc; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; white-space: nowrap; transition: background .15s, color .15s, border-color .15s; }
 .cat-chip:hover { background: #242424; color: #fff; }
@@ -56,10 +56,12 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
 @keyframes spin { to { transform: rotate(360deg); } }
 
 /* Channel number overlay */
-#chNumOverlay { position: fixed; top: 25%; left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%); min-width: 180px; padding: 20px 40px; background: rgba(10,20,28,0.95); border: 3px solid #4fc3f7; border-radius: 18px; text-align: center; z-index: 2000; pointer-events: none; display: none; box-shadow: 0 8px 32px rgba(0,0,0,0.7); }
+#chNumOverlay { position: fixed; top: 22%; left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%); min-width: 200px; padding: 20px 40px 16px; background: rgba(10,20,28,0.96); border: 3px solid #4fc3f7; border-radius: 18px; text-align: center; z-index: 2000; pointer-events: none; display: none; box-shadow: 0 8px 32px rgba(0,0,0,0.7); }
 #chNumOverlay.visible { display: block; }
 #chNumOverlay .num-label { font-size: 12px; color: #7ab8d6; letter-spacing: 2px; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; }
 #chNumOverlay .num-value { font-size: 72px; color: #fff; font-weight: bold; line-height: 1; letter-spacing: 4px; text-shadow: 0 2px 10px rgba(79,195,247,0.6); }
+#chNumOverlay .num-hint { font-size: 12px; color: #8ab8d0; margin-top: 10px; letter-spacing: 0.5px; padding-top: 10px; border-top: 1px solid #2a3a48; }
+#chNumOverlay .num-hint b { color: #4fc3f7; }
 
 /* Details modal */
 #detailModal { position: fixed; inset: 0; top:0;left:0;right:0;bottom:0; background: rgba(0,0,0,0.88); z-index: 1500; display: flex; align-items: center; justify-content: center; padding: 16px; }
@@ -93,7 +95,6 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
 .btn-cancel { background: #2a2a2a; color: #ddd; border: 1px solid #333 !important; }
 .btn-cancel:hover, .btn-cancel:focus { background: #3a3a3a; border-color: #4fc3f7 !important; }
 
-/* Toast */
 #toast { position: fixed; bottom: 30px; left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%); background: rgba(30,30,30,0.95); color: #fff; padding: 12px 22px; border-radius: 8px; border: 1px solid #4fc3f7; font-size: 14px; z-index: 2500; opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; }
 #toast.visible { opacity: 1; }
 #toast.error { border-color: #ef5350; color: #ffc7c7; }
@@ -122,6 +123,7 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
 <div id="chNumOverlay">
   <div class="num-label">Channel</div>
   <div class="num-value" id="chNumValue"></div>
+  <div class="num-hint">Press <b>OK</b> to watch &nbsp;·&nbsp; <b>Back</b> to cancel</div>
 </div>
 
 <div id="detailModal" class="hidden">
@@ -146,9 +148,6 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
 <div id="toast"></div>
 
 <script>
-/* ══════════════════════════════════════════════════════════════
-   Promise polyfill for Tizen 2.3 (Samsung 2015)
-   ══════════════════════════════════════════════════════════════ */
 if (typeof Promise === 'undefined') {
   (function(){
     function P(e){
@@ -186,9 +185,7 @@ function xhrFetch(url, opts) {
     xhr.timeout = opts.timeout || 20000;
     if (opts.headers) {
       for (var k in opts.headers) {
-        if (opts.headers.hasOwnProperty(k)) {
-          try { xhr.setRequestHeader(k, opts.headers[k]); } catch(e){}
-        }
+        if (opts.headers.hasOwnProperty(k)) { try { xhr.setRequestHeader(k, opts.headers[k]); } catch(e){} }
       }
     }
     xhr.onload = function() {
@@ -203,7 +200,6 @@ function xhrFetch(url, opts) {
     try { xhr.send(opts.body || null); } catch(e){ reject(e); }
   });
 }
-
 function xhrFetchBuffer(url, opts) {
   opts = opts || {};
   return new Promise(function(resolve, reject) {
@@ -221,7 +217,6 @@ function xhrFetchBuffer(url, opts) {
   });
 }
 
-/* ══════════════════════════════════════════════════════════════ CONFIG */
 var CHANNELS_CANDIDATES = ['/jstr4web.json', 'https://jjtvxweb.pages.dev/jstr4web.json'];
 var CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
 var EPG_SOURCES = [
@@ -252,20 +247,15 @@ var toastEl = document.getElementById('toast');
 var allChannels = [];
 var selectedCategory = 'all';
 var searchQuery = '';
-var cardMap = {};     // channelId -> { el, epg, ch, lastEpg }
+var cardMap = {};
 var currentDetailChannel = null;
 var chNumBuffer = '';
 var chNumTimer = null;
 var toastTimer = null;
 
-/* ══════════════════════════════════════════════════════════════
-   EPG storage — number-based for speed
-   programme = { t: title, d: desc, s: startMs, e: endMs, ic: iconUrl }
-   ══════════════════════════════════════════════════════════════ */
 var epgByChannelId = {};
 var epgLoaded = false;
 
-/* ══════════════════════════════════════════════════════════════ Utilities */
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function truncate(s, n) { if (!s) return ''; return s.length > n ? s.substring(0, n - 1) + '…' : s; }
 function formatTimeOnly(ms) {
@@ -339,16 +329,12 @@ function bytesToUtf8String(bytes) {
   return result;
 }
 
-/* ══════════════════════════════════════════════════════════════ Decompression — chunked + rAF */
 function chunkedUngzip(bytes) {
   return new Promise(function(resolve, reject) {
     if (typeof pako === 'undefined') { reject(new Error('pako not loaded')); return; }
     try {
       var inflator = new pako.Inflate({ to: 'string' });
-      var chunks = [];
-      var totalChars = 0;
-      var startTime = Date.now();
-
+      var chunks = [], totalChars = 0, startTime = Date.now();
       inflator.onData = function(chunk) { chunks.push(chunk); totalChars += chunk.length; };
       inflator.onEnd = function(status) {
         if (status === 0) {
@@ -356,9 +342,7 @@ function chunkedUngzip(bytes) {
           resolve(chunks.join(''));
         } else reject(new Error('inflate failed status ' + status));
       };
-
-      var offset = 0;
-      var CHUNK = 65536;
+      var offset = 0, CHUNK = 65536;
       function pushNext() {
         if (offset >= bytes.length) return;
         var end = Math.min(offset + CHUNK, bytes.length);
@@ -373,19 +357,13 @@ function chunkedUngzip(bytes) {
   });
 }
 
-/* ══════════════════════════════════════════════════════════════
-   XMLTV parsing — store as compact numbers
-   ══════════════════════════════════════════════════════════════ */
 function processXmlText(xmlText, label) {
   if (!xmlText || xmlText.length < 500) throw new Error('XML too small');
   if (xmlText.indexOf('<tv') === -1 && xmlText.indexOf('<?xml') === -1) throw new Error('Not XMLTV');
-
   var xmlDoc = new DOMParser().parseFromString(xmlText, 'text/xml');
   if (xmlDoc.getElementsByTagName('parsererror').length > 0) throw new Error('XML parse error');
 
-  /* Channel icons map */
-  var channelIcons = {};
-  var channelIdToName = {};
+  var channelIcons = {}, channelIdToName = {};
   var channelNodes = xmlDoc.getElementsByTagName('channel');
   for (var c = 0; c < channelNodes.length; c++) {
     var chNode = channelNodes[c];
@@ -397,15 +375,12 @@ function processXmlText(xmlText, label) {
     if (iconNode) channelIcons[id] = iconNode.getAttribute('src') || '';
   }
 
-  var byId = {};
-  var byName = {};
+  var byId = {}, byName = {};
   var progNodes = xmlDoc.getElementsByTagName('programme');
-
   for (var p = 0; p < progNodes.length; p++) {
     var prog = progNodes[p];
     var chId = prog.getAttribute('channel');
     if (!chId) continue;
-
     var startStr = prog.getAttribute('start');
     var stopStr  = prog.getAttribute('stop');
     if (!startStr) continue;
@@ -417,18 +392,14 @@ function processXmlText(xmlText, label) {
     var titleNode = prog.getElementsByTagName('title')[0];
     var descNode  = prog.getElementsByTagName('desc')[0];
     var iconNode  = prog.getElementsByTagName('icon')[0];
-
     var desc = descNode ? descNode.textContent.trim() : '';
     if (desc.length > 300) desc = desc.substring(0, 300);
 
     var entry = {
       t: titleNode ? titleNode.textContent.trim() : 'No title',
-      d: desc,
-      s: startMs,
-      e: endMs,
+      d: desc, s: startMs, e: endMs,
       ic: iconNode ? (iconNode.getAttribute('src') || '') : ''
     };
-
     if (!byId[chId]) byId[chId] = [];
     byId[chId].push(entry);
 
@@ -441,22 +412,17 @@ function processXmlText(xmlText, label) {
       }
     }
   }
-
   for (var k1 in byId) if (byId.hasOwnProperty(k1)) byId[k1].sort(function(a,b){ return a.s - b.s; });
   for (var k2 in byName) if (byName.hasOwnProperty(k2)) byName[k2].sort(function(a,b){ return a.s - b.s; });
-
-  safeLog('[epg] ' + label + ' → ' + progNodes.length + ' programmes, ' + Object.keys(byId).length + ' ids, ' + Object.keys(byName).length + ' names');
-
+  safeLog('[epg] ' + label + ' → ' + progNodes.length + ' programmes, ' + Object.keys(byId).length + ' ids');
   return { byId: byId, byName: byName, channelIcons: channelIcons };
 }
 
 function fetchAndParseSingleEPG(source) {
   if (typeof pako === 'undefined') { safeWarn('[epg] pako missing'); return Promise.resolve(null); }
-
   var url = source.url, name = source.name, timeout = source.timeout || 60000;
   safeLog('[epg] fetching ' + url);
   var t0 = Date.now();
-
   return xhrFetchBuffer(url, { timeout: timeout })
     .then(function(buf) {
       if (!buf) throw new Error('Empty response');
@@ -483,7 +449,6 @@ function fetchAndParseSingleEPG(source) {
     });
 }
 
-/* ══════════════════════════════════════════════════════════════ Cache */
 function loadCache() {
   try {
     var raw = localStorage.getItem(EPG_CACHE_KEY);
@@ -492,24 +457,17 @@ function loadCache() {
     if (!c || !c.data) return false;
     var fresh = (Date.now() - c.fetchedAt) < EPG_CACHE_TTL_MS;
     var n = 0;
-    for (var id in c.data) {
-      if (!c.data.hasOwnProperty(id)) continue;
-      epgByChannelId[id] = c.data[id]; // already in compact format
-      n++;
-    }
+    for (var id in c.data) { if (c.data.hasOwnProperty(id)) { epgByChannelId[id] = c.data[id]; n++; } }
     epgLoaded = n > 0;
-    safeLog('[cache] restored ' + n + ' channels (fresh=' + fresh + ')');
     return fresh && epgLoaded;
   } catch (e) { return false; }
 }
 function saveCache() {
   try {
     localStorage.setItem(EPG_CACHE_KEY, JSON.stringify({ fetchedAt: Date.now(), data: epgByChannelId }));
-    safeLog('[cache] saved');
   } catch (e) { safeWarn('[cache] save failed: ' + e.message); }
 }
 
-/* ══════════════════════════════════════════════════════════════ Merge */
 function mergeSource(result) {
   if (!result) return;
   var byId = result.byId;
@@ -525,8 +483,6 @@ function mergeSource(result) {
     }
     if (added) existing.sort(function(a,b){ return a.s - b.s; });
   }
-
-  /* Also match by name for channels that don't have numeric id */
   var byName = result.byName;
   for (var i2 = 0; i2 < allChannels.length; i2++) {
     var ch = allChannels[i2];
@@ -545,7 +501,6 @@ function mergeSource(result) {
   }
 }
 
-/* ══════════════════════════════════════════════════════════════ Load all EPG */
 function loadAllEPG() {
   var idx = 0;
   function next() {
@@ -559,7 +514,6 @@ function loadAllEPG() {
     }
     var src = EPG_SOURCES[idx]; idx++;
     setEpgStatus('Guide ' + idx + '/' + EPG_SOURCES.length + ': ' + src.name + '…');
-
     fetchAndParseSingleEPG(src).then(function(result) {
       if (result) {
         mergeSource(result);
@@ -572,21 +526,16 @@ function loadAllEPG() {
   next();
 }
 
-/* ══════════════════════════════════════════════════════════════ EPG lookups */
 function getCurrentProgram(progs) {
   if (!progs || !progs.length) return null;
   var now = Date.now();
-  for (var i = 0; i < progs.length; i++) {
-    if (progs[i].s <= now && progs[i].e > now) return progs[i];
-  }
+  for (var i = 0; i < progs.length; i++) if (progs[i].s <= now && progs[i].e > now) return progs[i];
   return null;
 }
 function getNextProgram(progs, afterMs) {
   if (!progs || !progs.length) return null;
   var ref = afterMs || Date.now();
-  for (var i = 0; i < progs.length; i++) {
-    if (progs[i].s > ref) return progs[i];
-  }
+  for (var i = 0; i < progs.length; i++) if (progs[i].s > ref) return progs[i];
   return null;
 }
 function getChannelNumber(ch) {
@@ -600,54 +549,42 @@ function getChannelNumber(ch) {
   return null;
 }
 
-/* ══════════════════════════════════════════════════════════════ Card EPG HTML */
 function buildEpgBlockHtml(ch) {
   if (!epgLoaded) return '<div class="card-epg"><div class="epg-empty">Loading guide…</div></div>';
   var progs = epgByChannelId[String(ch.id)];
   var current = getCurrentProgram(progs);
   var next = getNextProgram(progs, current ? current.s : Date.now());
-
-  if (!current && !next) {
-    return '<div class="card-epg"><div class="epg-empty">No guide data</div></div>';
-  }
-
+  if (!current && !next) return '<div class="card-epg"><div class="epg-empty">No guide data</div></div>';
   var html = '<div class="card-epg">';
   if (current) {
     html += '<div class="epg-now-row"><span class="epg-now-label">NOW</span>' +
             '<span class="epg-now-time">' + formatRange(current.s, current.e) + '</span></div>' +
             '<div class="epg-now-title">' + escapeHtml(current.t || 'No Title') + '</div>' +
             (current.d ? '<div class="epg-now-desc">' + escapeHtml(truncate(current.d, 120)) + '</div>' : '');
-    if (next) {
-      html += '<div class="epg-next-mini">Next: <b>' + escapeHtml(truncate(next.t, 40)) + '</b> at ' + formatTimeOnly(next.s) + '</div>';
-    }
+    if (next) html += '<div class="epg-next-mini">Next: <b>' + escapeHtml(truncate(next.t, 40)) + '</b> at ' + formatTimeOnly(next.s) + '</div>';
   } else {
     html += '<div class="epg-now-row"><span class="epg-now-label next">NEXT</span>' +
             '<span class="epg-now-time">' + formatTimeOnly(next.s) + '</span></div>' +
             '<div class="epg-now-title">' + escapeHtml(next.t || 'No Title') + '</div>' +
             (next.d ? '<div class="epg-now-desc">' + escapeHtml(truncate(next.d, 120)) + '</div>' : '');
   }
-  html += '</div>';
-  return html;
+  return html + '</div>';
 }
 
-/* ══════════════════════════════════════════════════════════════ Update single card EPG */
 function updateCardEpg(id) {
   var entry = cardMap[id];
   if (!entry) return;
-  if (entry.el.classList.contains('hidden')) return; // skip hidden
+  if (entry.el.classList.contains('hidden')) return;
   var html = buildEpgBlockHtml(entry.ch);
   if (html !== entry.lastEpg) {
     entry.epg.innerHTML = html;
     entry.lastEpg = html;
   }
 }
-
-/* Update all cards in rAF batches */
 function refreshAllCardsEpg() {
   var ids = Object.keys(cardMap);
   if (!ids.length) return;
-  var i = 0;
-  var BATCH = 20;
+  var i = 0, BATCH = 20;
   function step() {
     var end = Math.min(i + BATCH, ids.length);
     for (; i < end; i++) updateCardEpg(ids[i]);
@@ -656,34 +593,21 @@ function refreshAllCardsEpg() {
   rAF(step);
 }
 
-/* ══════════════════════════════════════════════════════════════ Channel JSON */
 function parseChannelJson(text) {
   var c = String(text).trim();
   if (c.charCodeAt(0) === 0xFEFF) c = c.slice(1);
-  try {
-    var p = JSON.parse(c);
-    if (Array.isArray(p)) return p;
-    if (p && Array.isArray(p.channels)) return p.channels;
-  } catch(e){}
-  try {
-    var p2 = JSON.parse('[' + c.replace(/,\s*$/, '') + ']');
-    if (Array.isArray(p2)) return p2;
-  } catch(e){}
+  try { var p = JSON.parse(c); if (Array.isArray(p)) return p; if (p && Array.isArray(p.channels)) return p.channels; } catch(e){}
+  try { var p2 = JSON.parse('[' + c.replace(/,\s*$/, '') + ']'); if (Array.isArray(p2)) return p2; } catch(e){}
   throw new Error('Invalid JSON');
 }
 function fetchChannelsFrom(idx) {
   if (idx >= CHANNELS_CANDIDATES.length) return Promise.reject(new Error('All failed'));
   return xhrFetch(CHANNELS_CANDIDATES[idx], { headers: { 'X-Requested-With': 'XMLHttpRequest' }, timeout: 20000 })
     .then(function(r){ return r.text(); })
-    .then(function(t){
-      var p = parseChannelJson(t);
-      if (p && p.length) return p;
-      throw new Error('Empty');
-    })
+    .then(function(t){ var p = parseChannelJson(t); if (p && p.length) return p; throw new Error('Empty'); })
     .catch(function(){ return fetchChannelsFrom(idx + 1); });
 }
 
-/* ══════════════════════════════════════════════════════════════ Render cards */
 function buildCardHtml(ch, idx) {
   var cat = ch.category || ch.group || 'Other';
   var num = getChannelNumber(ch);
@@ -705,18 +629,13 @@ function renderAllCards(onDone) {
   var batch = 25;
   var i = 0;
   gridEl.innerHTML = '';
-
   function step() {
     var end = Math.min(i + batch, allChannels.length);
     var html = '';
     for (; i < end; i++) html += buildCardHtml(allChannels[i], i);
     gridEl.insertAdjacentHTML('beforeend', html);
-    if (i < allChannels.length) {
-      rAF(step);
-    } else {
-      buildCardMap();
-      if (onDone) onDone();
-    }
+    if (i < allChannels.length) rAF(step);
+    else { buildCardMap(); if (onDone) onDone(); }
   }
   if (!allChannels.length) { if (onDone) onDone(); return; }
   rAF(step);
@@ -732,7 +651,6 @@ function buildCardMap() {
     if (!ch) continue;
     var epgBox = card.querySelector('.card-epg');
     cardMap[String(ch.id)] = { el: card, epg: epgBox, ch: ch, lastEpg: '' };
-
     (function(cardEl, channel) {
       cardEl.addEventListener('click', function(e) {
         if (e.target.closest && e.target.closest('.card-btn')) return;
@@ -755,11 +673,8 @@ function buildCardMap() {
   }
 }
 
-/* ══════════════════════════════════════════════════════════════ Filter */
 function applyFilter() {
-  var q = searchQuery;
-  var cat = selectedCategory;
-  var visibleCount = 0;
+  var q = searchQuery, cat = selectedCategory;
   for (var i = 0; i < allChannels.length; i++) {
     var ch = allChannels[i];
     var chCat = ch.category || ch.group || 'Other';
@@ -772,30 +687,18 @@ function applyFilter() {
     }
     var entry = cardMap[String(ch.id)];
     if (entry) {
-      if (match) { entry.el.classList.remove('hidden'); visibleCount++; }
+      if (match) entry.el.classList.remove('hidden');
       else entry.el.classList.add('hidden');
     }
   }
-  if (visibleCount === 0 && allChannels.length) {
-    // show empty message but keep cards
-  }
 }
 
-/* ══════════════════════════════════════════════════════════════ Categories */
 function renderCategories() {
   var set = {};
-  for (var i = 0; i < allChannels.length; i++) {
-    var cat = allChannels[i].category || allChannels[i].group || 'Other';
-    set[cat] = true;
-  }
+  for (var i = 0; i < allChannels.length; i++) { var cat = allChannels[i].category || allChannels[i].group || 'Other'; set[cat] = true; }
   var cats = ['all'];
   for (var k in set) if (set.hasOwnProperty(k)) cats.push(k);
-  cats.sort(function(a,b){
-    if (a === 'all') return -1;
-    if (b === 'all') return 1;
-    return a.toLowerCase().localeCompare(b.toLowerCase());
-  });
-
+  cats.sort(function(a,b){ if(a==='all')return -1; if(b==='all')return 1; return a.toLowerCase().localeCompare(b.toLowerCase()); });
   var html = '';
   for (var j = 0; j < cats.length; j++) {
     var label = cats[j] === 'all' ? 'All' : cats[j];
@@ -803,7 +706,6 @@ function renderCategories() {
     html += '<button class="cat-chip' + activeCls + '" data-cat="' + escapeHtml(cats[j]) + '" type="button">' + escapeHtml(label) + '</button>';
   }
   categoriesEl.innerHTML = html;
-
   var chips = categoriesEl.querySelectorAll('.cat-chip');
   for (var c = 0; c < chips.length; c++) {
     (function(chip) {
@@ -817,10 +719,8 @@ function renderCategories() {
   }
 }
 
-/* ══════════════════════════════════════════════════════════════ Details modal */
 function openDetails(ch) {
   currentDetailChannel = ch;
-
   var num = getChannelNumber(ch);
   dNum.textContent = num !== null ? 'CH ' + num : '';
   dName.textContent = ch.name || 'Unknown';
@@ -831,16 +731,13 @@ function openDetails(ch) {
   var progs = epgByChannelId[String(ch.id)] || [];
   var current = getCurrentProgram(progs);
   var next = getNextProgram(progs, current ? current.s : Date.now());
-
   var body = '';
 
   if (current) {
     body += '<div class="detail-show now">' +
       '<div class="show-label">● NOW · ' + formatRange(current.s, current.e) + '</div>' +
       '<div class="show-title">' + escapeHtml(current.t || 'No Title') + '</div>';
-    if (current.ic) {
-      body += '<div class="show-image"><img src="' + escapeHtml(current.ic) + '" alt="" onerror="this.parentNode.style.display=\'none\'"></div>';
-    }
+    if (current.ic) body += '<div class="show-image"><img src="' + escapeHtml(current.ic) + '" alt="" onerror="this.parentNode.style.display=\'none\'"></div>';
     if (current.d) body += '<div class="show-desc">' + escapeHtml(current.d) + '</div>';
     body += '</div>';
   } else if (epgLoaded) {
@@ -853,9 +750,7 @@ function openDetails(ch) {
     body += '<div class="detail-show next">' +
       '<div class="show-label">○ NEXT · ' + formatRange(next.s, next.e) + '</div>' +
       '<div class="show-title">' + escapeHtml(next.t || 'No Title') + '</div>';
-    if (next.ic) {
-      body += '<div class="show-image"><img src="' + escapeHtml(next.ic) + '" alt="" onerror="this.parentNode.style.display=\'none\'"></div>';
-    }
+    if (next.ic) body += '<div class="show-image"><img src="' + escapeHtml(next.ic) + '" alt="" onerror="this.parentNode.style.display=\'none\'"></div>';
     if (next.d) body += '<div class="show-desc">' + escapeHtml(next.d) + '</div>';
     body += '</div>';
   } else if (epgLoaded) {
@@ -866,42 +761,39 @@ function openDetails(ch) {
   detailModal.classList.remove('hidden');
   dWatch.focus();
 }
-
 function closeDetails() {
   detailModal.classList.add('hidden');
   currentDetailChannel = null;
 }
 
-/* ══════════════════════════════════════════════════════════════ Player open */
 function openPlayer(ch) {
   try {
     localStorage.setItem('currentChannel', JSON.stringify(ch));
     localStorage.setItem('allChannels', JSON.stringify(allChannels));
-
     var progs = epgByChannelId[String(ch.id)];
     if (progs && progs.length) {
       var serializable = [];
       for (var i = 0; i < progs.length; i++) {
         serializable.push({
-          title: progs[i].t,
-          description: progs[i].d,
-          start: progs[i].s,
-          end: progs[i].e,
-          icon: progs[i].ic || ''
+          title: progs[i].t, description: progs[i].d,
+          start: progs[i].s, end: progs[i].e, icon: progs[i].ic || ''
         });
       }
       localStorage.setItem('channelPrograms', JSON.stringify(serializable));
-    } else {
-      localStorage.removeItem('channelPrograms');
-    }
+    } else localStorage.removeItem('channelPrograms');
   } catch (e) {}
 
   var url = 'jplayer.html?id=' + encodeURIComponent(ch.id);
-  try { var w = window.open(url, '_blank'); if (!w) window.location.href = url; }
-  catch (e) { window.location.href = url; }
+  try {
+    var w = window.open(url, '_blank');
+    if (!w) window.location.href = url;
+  } catch (e) { window.location.href = url; }
 }
 
-/* ══════════════════════════════════════════════════════════════ Channel number typing */
+/* ══════════════════════════════════════════════════════════════
+   Channel number typing — REQUIRES ENTER to commit (gesture-safe
+   for window.open new tab). Timeout just cancels silently.
+   ══════════════════════════════════════════════════════════════ */
 function showChNumOverlay() {
   chNumValue.textContent = chNumBuffer || '—';
   chNumOverlay.classList.add('visible');
@@ -910,16 +802,20 @@ function hideChNumOverlay() {
   chNumOverlay.classList.remove('visible');
 }
 function handleChNumDigit(digit) {
+  if (chNumBuffer.length >= 4) chNumBuffer = '';   /* max 4 digits */
   chNumBuffer += digit;
   showChNumOverlay();
+  /* Auto-cancel after 6s of inactivity (does NOT auto-commit) */
   clearTimeout(chNumTimer);
   chNumTimer = setTimeout(function() {
-    tryPlayByNumber();
-  }, 1500);
+    chNumBuffer = '';
+    hideChNumOverlay();
+  }, 6000);
 }
-function tryPlayByNumber() {
+function commitChNum() {
   var num = chNumBuffer;
   chNumBuffer = '';
+  clearTimeout(chNumTimer);
   hideChNumOverlay();
   if (!num) return;
 
@@ -935,12 +831,15 @@ function tryPlayByNumber() {
     showToast('Channel ' + num + ' not found', true);
   }
 }
+function cancelChNum() {
+  chNumBuffer = '';
+  clearTimeout(chNumTimer);
+  hideChNumOverlay();
+}
 
-/* ══════════════════════════════════════════════════════════════ Main load */
 function loadChannels() {
   gridEl.innerHTML = '<div class="msg"><div class="spinner"></div><div>Loading channels…</div></div>';
   var last = CHANNELS_CANDIDATES[CHANNELS_CANDIDATES.length - 1];
-
   fetchChannelsFrom(0)
     .catch(function() {
       return xhrFetch(CORS_PROXY + last, { timeout: 25000 })
@@ -951,9 +850,7 @@ function loadChannels() {
       if (!chs || !chs.length) throw new Error('No channels');
       allChannels = chs;
       renderCategories();
-
       var cacheFresh = loadCache();
-
       renderAllCards(function() {
         if (cacheFresh) {
           refreshAllCardsEpg();
@@ -965,17 +862,13 @@ function loadChannels() {
       });
     })
     .catch(function(e) {
-      gridEl.innerHTML =
-        '<div class="msg err">⚠️ Could not load channels.<br>' +
+      gridEl.innerHTML = '<div class="msg err">⚠️ Could not load channels.<br>' +
         '<div style="color:#888;font-size:12px;margin-top:10px">' +
-        escapeHtml(e.message || '') + '</div>' +
-        '<button id="retry">Retry</button></div>';
-      var rb = document.getElementById('retry');
-      if (rb) rb.onclick = loadChannels;
+        escapeHtml(e.message || '') + '</div><button id="retry">Retry</button></div>';
+      var rb = document.getElementById('retry'); if (rb) rb.onclick = loadChannels;
     });
 }
 
-/* ══════════════════════════════════════════════════════════════ Search */
 var searchTimer = null;
 searchEl.addEventListener('input', function() {
   clearTimeout(searchTimer);
@@ -986,13 +879,11 @@ searchEl.addEventListener('input', function() {
   }, 120);
 });
 
-/* ══════════════════════════════════════════════════════════════ Keyboard/remote */
 document.addEventListener('keydown', function(e) {
   var k = e.keyCode;
   var focused = document.activeElement;
   var inModal = !detailModal.classList.contains('hidden');
 
-  /* Modal handling first */
   if (inModal) {
     if (k === 27 || k === 8 || k === 10009) { e.preventDefault(); closeDetails(); return; }
     if (k === 13) {
@@ -1004,7 +895,7 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 
-  /* Channel number typing — only when not in input */
+  /* Channel number typing */
   var isNumKey = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
   if (isNumKey && focused !== searchEl) {
     e.preventDefault();
@@ -1012,20 +903,19 @@ document.addEventListener('keydown', function(e) {
     handleChNumDigit(digit);
     return;
   }
-  if (k === 13 && chNumBuffer) {
+  /* Enter → commit (gesture-safe for window.open) */
+  if ((k === 13) && chNumBuffer) {
     e.preventDefault();
-    tryPlayByNumber();
+    commitChNum();
     return;
   }
-  if (k === 27 && chNumBuffer) {
+  /* Escape / Back → cancel buffer */
+  if ((k === 27 || k === 8 || k === 10009) && chNumBuffer) {
     e.preventDefault();
-    chNumBuffer = '';
-    clearTimeout(chNumTimer);
-    hideChNumOverlay();
+    cancelChNum();
     return;
   }
 
-  /* Category chips */
   if (focused && focused.classList && focused.classList.contains('cat-chip')) {
     var chips = categoriesEl.querySelectorAll('.cat-chip:not(.hidden)');
     var cidx = Array.prototype.indexOf.call(chips, focused);
@@ -1038,7 +928,6 @@ document.addEventListener('keydown', function(e) {
     if (k === 40) { var vc2 = gridEl.querySelector('.card:not(.hidden)'); if (vc2) { vc2.focus(); e.preventDefault(); } }
     return;
   }
-  /* Card navigation */
   if (focused && focused.classList && focused.classList.contains('card')) {
     var visible = gridEl.querySelectorAll('.card:not(.hidden)');
     var cardIdx = Array.prototype.indexOf.call(visible, focused);
@@ -1075,13 +964,11 @@ document.addEventListener('keydown', function(e) {
   }
 });
 
-/* ══════════════════════════════════════════════════════════════ Modal events */
 dClose.addEventListener('click', function(e){ e.preventDefault(); closeDetails(); });
 dCancel.addEventListener('click', function(e){ e.preventDefault(); closeDetails(); });
 dWatch.addEventListener('click', function(e){ e.preventDefault(); if (currentDetailChannel) openPlayer(currentDetailChannel); });
 detailModal.addEventListener('click', function(e){ if (e.target === detailModal) closeDetails(); });
 
-/* ══════════════════════════════════════════════════════════════ Boot */
 function boot() { loadChannels(); }
 if (document.readyState === 'complete' || document.readyState === 'interactive') setTimeout(boot, 0);
 else document.addEventListener('DOMContentLoaded', boot);
