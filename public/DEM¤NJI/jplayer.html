@@ -7,7 +7,6 @@
 <meta name="format-detection" content="telephone=no">
 <title>Player</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@2.5.5/dist/controls.css">
 <script src="https://cdn.jsdelivr.net/npm/shaka-player@2.5.5/dist/shaka-player.ui.min.js"></script>
 
@@ -130,6 +129,7 @@ html, body { background: #000; width: 100%; height: 100%; overflow: hidden; font
     </div>
 
     <div id="tapToPlay" class="hidden"><div class="tap-play-inner"><div class="tap-play-icon">▶</div><div class="tap-play-text">Tap to play</div></div></div>
+
     <button id="unmuteBtn" class="hidden" type="button"><span class="unmute-icon">🔇</span><span class="unmute-text">Tap for sound</span></button>
   </div>
 
@@ -153,7 +153,6 @@ html, body { background: #000; width: 100%; height: 100%; overflow: hidden; font
 <script>
 if (!Array.prototype.includes) Array.prototype.includes = function(x){ return this.indexOf(x) !== -1; };
 if (!Element.prototype.closest) { Element.prototype.closest = function(sel) { var el = this; while (el) { if (el.matches && el.matches(sel)) return el; el = el.parentElement; } return null; }; }
-var rAF = window.requestAnimationFrame || function(cb){ return setTimeout(function(){ cb(Date.now()); }, 16); };
 
 function xhrFetch(url, opts) {
   opts = opts || {};
@@ -171,30 +170,13 @@ function xhrFetch(url, opts) {
     try { xhr.send(opts.body || null); } catch(e){ reject(e); }
   });
 }
-function xhrFetchBuffer(url, opts) {
-  opts = opts || {};
-  return new Promise(function(resolve, reject) {
-    var xhr = new XMLHttpRequest();
-    xhr.open(opts.method || 'GET', url, true);
-    xhr.responseType = 'arraybuffer';
-    xhr.timeout = opts.timeout || 120000;
-    xhr.onload = function() { if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response); else reject(new Error('HTTP ' + xhr.status)); };
-    xhr.onerror = function(){ reject(new Error('Network error')); };
-    xhr.ontimeout = function(){ reject(new Error('Timeout')); };
-    try { xhr.send(null); } catch(e){ reject(e); }
-  });
-}
 
 var CHANNELS_CANDIDATES = ['/jstr4web.json', 'https://jjtvxweb.pages.dev/jstr4web.json'];
 var CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
-var EPG_SOURCES = [
-  { url: 'https://avkb.short.gy/tsepg.xml.gz', name: 'AVKB TSEPG', timeout: 180000 },
-  { url: 'https://epgshare01.online/epgshare01/epg_ripper_IN4.xml.gz', name: 'Open-EPG', timeout: 180000 }
-];
 var EPG_CACHE_KEY = 'jtv_epg_cache_v5';
-var EPG_CACHE_TTL_MS = 60 * 60 * 1000;
 
 var COOKIE_PRIMARY     = "https://allinonereborn2.online/jstrweb2/cookies.json";
+var COOKIE_FALLBACK    = "";
 var COOKIE_STAR_SPORTS = "https://allinonereborn2.online/jtv-fetch/jstarcookie/cookie.json";
 
 var videoEl        = document.getElementById('video');
@@ -252,240 +234,12 @@ function getQueryParam(name) {
   return null;
 }
 function isJioPlLiveUrl(url) { try { var a = document.createElement('a'); a.href = url; return a.hostname.toLowerCase() === 'jiotvpllive.cdn.jio.com'; } catch (e) { return false; } }
-function fetchWithFallback(url, opts) { return xhrFetch(url, opts).catch(function(){ return xhrFetch(CORS_PROXY + url, opts); }); }
+function fetchWithFallback(url, opts) { return xhrFetch(url, opts).catch(function(e){ return xhrFetch(CORS_PROXY + url, opts); }); }
 function showPlaceholder(html, showActions, showSpinner) { placeholder.classList.remove('hidden'); phMsg.innerHTML = html; phSpinner.style.display = showSpinner ? 'inline-block' : 'none'; phActions.style.display = showActions ? 'flex' : 'none'; }
 function hidePlaceholder() { placeholder.classList.add('hidden'); }
 function showToast(msg, isError) { toastEl.textContent = msg; toastEl.classList.add('visible'); if (isError) toastEl.classList.add('error'); else toastEl.classList.remove('error'); clearTimeout(toastTimer); toastTimer = setTimeout(function(){ toastEl.classList.remove('visible'); }, 2500); }
-function getChannelNumber(ch) {
-  if (!ch) return null;
-  if (typeof ch.id === 'number') return ch.id;
-  if (typeof ch.id === 'string') { var n = parseInt(ch.id, 10); if (!isNaN(n) && String(n) === ch.id) return n; }
-  return null;
-}
+function getChannelNumber(ch) { if (!ch) return null; if (typeof ch.id === 'number') return ch.id; if (typeof ch.id === 'string') { var n = parseInt(ch.id, 10); if (!isNaN(n) && String(n) === ch.id) return n; } return null; }
 
-/* ══════════════════════════════════════════════════════════════ EPG parsing */
-function parseEPGDate(dateStr) {
-  if (!dateStr) return null;
-  var parts = String(dateStr).trim().split(' ');
-  var datetime = parts[0], tz = parts[1] || '+0000';
-  var year = parseInt(datetime.slice(0,4),10), month = parseInt(datetime.slice(4,6),10)-1,
-      day = parseInt(datetime.slice(6,8),10), hour = parseInt(datetime.slice(8,10),10),
-      minute = parseInt(datetime.slice(10,12),10), second = parseInt(datetime.slice(12,14),10);
-  if (isNaN(year)) return null;
-  var ms = Date.UTC(year, month, day, hour, minute, second);
-  var sign = tz.charAt(0) === '-' ? -1 : 1;
-  var tzh = parseInt(tz.slice(1,3),10)||0, tzm = parseInt(tz.slice(3,5),10)||0;
-  return ms - sign * (tzh*3600 + tzm*60) * 1000;
-}
-function normalizeChannelName(name) {
-  if (!name) return '';
-  var cleaned = String(name).toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
-  return cleaned.replace(/\b(hd|sd|fhd|4k|plus|movies|music|news|tv|channel)\b/g, '').trim();
-}
-function bytesToUtf8String(bytes) {
-  if (typeof TextDecoder !== 'undefined') { try { return new TextDecoder('utf-8').decode(bytes); } catch (e) {} }
-  var result = '', i = 0;
-  while (i < bytes.length) {
-    var b = bytes[i++];
-    if (b < 0x80) result += String.fromCharCode(b);
-    else if (b < 0xE0) result += String.fromCharCode(((b & 0x1F) << 6) | (bytes[i++] & 0x3F));
-    else if (b < 0xF0) result += String.fromCharCode(((b & 0x0F) << 12) | ((bytes[i++] & 0x3F) << 6) | (bytes[i++] & 0x3F));
-    else { var cp = ((b & 0x07) << 18) | ((bytes[i++] & 0x3F) << 12) | ((bytes[i++] & 0x3F) << 6) | (bytes[i++] & 0x3F); cp -= 0x10000; result += String.fromCharCode(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF)); }
-  }
-  return result;
-}
-function chunkedUngzip(bytes) {
-  return new Promise(function(resolve, reject) {
-    if (typeof pako === 'undefined') { reject(new Error('pako not loaded')); return; }
-    try {
-      var inflator = new pako.Inflate({ to: 'string' });
-      var chunks = [];
-      inflator.onData = function(chunk) { chunks.push(chunk); };
-      inflator.onEnd = function(status) { if (status === 0) resolve(chunks.join('')); else reject(new Error('inflate failed ' + status)); };
-      var offset = 0, CHUNK = 65536;
-      function pushNext() {
-        if (offset >= bytes.length) return;
-        var end = Math.min(offset + CHUNK, bytes.length);
-        var chunk = bytes.subarray(offset, end);
-        var isFinal = end >= bytes.length;
-        try { inflator.push(chunk, isFinal); } catch (e) { reject(e); return; }
-        offset = end;
-        if (!isFinal) rAF(pushNext);
-      }
-      pushNext();
-    } catch (e) { reject(e); }
-  });
-}
-function processXmlText(xmlText) {
-  if (!xmlText || xmlText.length < 500) throw new Error('XML too small');
-  var xmlDoc = new DOMParser().parseFromString(xmlText, 'text/xml');
-  if (xmlDoc.getElementsByTagName('parsererror').length > 0) throw new Error('XML parse error');
-  var channelIdToName = {};
-  var chNodes = xmlDoc.getElementsByTagName('channel');
-  for (var c = 0; c < chNodes.length; c++) {
-    var id = chNodes[c].getAttribute('id'); if (!id) continue;
-    var dn = chNodes[c].getElementsByTagName('display-name')[0];
-    if (dn) channelIdToName[id] = dn.textContent.trim();
-  }
-  var byId = {}, byName = {};
-  var progNodes = xmlDoc.getElementsByTagName('programme');
-  for (var p = 0; p < progNodes.length; p++) {
-    var prog = progNodes[p];
-    var chId = prog.getAttribute('channel'); if (!chId) continue;
-    var startStr = prog.getAttribute('start'), stopStr = prog.getAttribute('stop');
-    if (!startStr) continue;
-    var startMs = parseEPGDate(startStr); if (!startMs) continue;
-    var endMs = stopStr ? parseEPGDate(stopStr) : (startMs + 3600000); if (!endMs) continue;
-    var titleNode = prog.getElementsByTagName('title')[0];
-    var descNode = prog.getElementsByTagName('desc')[0];
-    var iconNode = prog.getElementsByTagName('icon')[0];
-    var desc = descNode ? descNode.textContent.trim() : '';
-    if (desc.length > 300) desc = desc.substring(0, 300);
-    var entry = { t: titleNode ? titleNode.textContent.trim() : 'No title', d: desc, s: startMs, e: endMs, ic: iconNode ? (iconNode.getAttribute('src') || '') : '' };
-    if (!byId[chId]) byId[chId] = [];
-    byId[chId].push(entry);
-    var nm = channelIdToName[chId];
-    if (nm) { var nk = normalizeChannelName(nm); if (nk) { if (!byName[nk]) byName[nk] = []; byName[nk].push(entry); } }
-  }
-  for (var k1 in byId) if (byId.hasOwnProperty(k1)) byId[k1].sort(function(a,b){ return a.s - b.s; });
-  for (var k2 in byName) if (byName.hasOwnProperty(k2)) byName[k2].sort(function(a,b){ return a.s - b.s; });
-  return { byId: byId, byName: byName };
-}
-function fetchAndParseSingleEPG(source) {
-  if (typeof pako === 'undefined') return Promise.resolve(null);
-  var url = source.url, timeout = source.timeout || 60000;
-  return xhrFetchBuffer(url, { timeout: timeout })
-    .then(function(buf) {
-      if (!buf) throw new Error('Empty');
-      var bytes = new Uint8Array(buf);
-      if (bytes.length < 500) throw new Error('Too small');
-      if (bytes[0] === 0x1f && bytes[1] === 0x8b) return chunkedUngzip(bytes).then(processXmlText);
-      return processXmlText(bytesToUtf8String(bytes));
-    })
-    .catch(function() {
-      return xhrFetchBuffer(CORS_PROXY + url, { timeout: 180000 }).then(function(buf) {
-        var bytes = new Uint8Array(buf);
-        if (bytes.length < 500) throw new Error('Too small via proxy');
-        if (bytes[0] === 0x1f && bytes[1] === 0x8b) return chunkedUngzip(bytes).then(processXmlText);
-        return processXmlText(bytesToUtf8String(bytes));
-      }).catch(function() { return null; });
-    });
-}
-
-/* ══════════════════════════════════════════════════════════════ Cache (fixed) */
-function readCacheForChannel(chId) {
-  try {
-    var raw = localStorage.getItem(EPG_CACHE_KEY);
-    if (!raw) return null;
-    var c = JSON.parse(raw);
-    if (!c || !c.data) return null;
-    var stored = c.data[String(chId)];
-    if (!stored || !stored.length) return null;
-    var out = [];
-    for (var i = 0; i < stored.length; i++) {
-      var p = stored[i];
-      out.push({ title: p.t, description: p.d, start: p.s, end: p.e, icon: p.ic || '' });
-    }
-    return out;
-  } catch (e) { return null; }
-}
-function cacheHasCurrentProgram(progs) {
-  if (!progs || !progs.length) return false;
-  var now = Date.now();
-  for (var i = 0; i < progs.length; i++) {
-    var p = progs[i];
-    var s = (p.start != null) ? p.start : ((p.s != null) ? p.s : null);
-    var e = (p.end != null) ? p.end : ((p.e != null) ? p.e : null);
-    if (s == null || e == null) continue;
-    if (s <= now && e > now) return true;
-  }
-  return false;
-}
-function mergeParsedIntoCache(parsed) {
-  try {
-    var raw = localStorage.getItem(EPG_CACHE_KEY);
-    var cache = raw ? JSON.parse(raw) : { fetchedAt: Date.now(), data: {} };
-    if (!cache.data) cache.data = {};
-    for (var id in parsed.byId) {
-      if (!parsed.byId.hasOwnProperty(id)) continue;
-      if (!cache.data[id]) cache.data[id] = [];
-      var existing = cache.data[id], seen = {};
-      for (var i = 0; i < existing.length; i++) seen[existing[i].s] = true;
-      var added = 0;
-      for (var j = 0; j < parsed.byId[id].length; j++) {
-        var prog = parsed.byId[id][j];
-        if (!seen[prog.s]) { existing.push({ t: prog.t, d: prog.d, s: prog.s, e: prog.e, ic: prog.ic || '' }); added++; }
-      }
-      if (added) existing.sort(function(a,b){ return a.s - b.s; });
-    }
-    cache.fetchedAt = Date.now();
-    localStorage.setItem(EPG_CACHE_KEY, JSON.stringify(cache));
-  } catch (e) {}
-}
-function getProgramsFromParsed(parsed, ch) {
-  var chId = String(ch.id);
-  if (parsed.byId[chId] && parsed.byId[chId].length) {
-    return parsed.byId[chId].map(function(p){ return { title: p.t, description: p.d, start: p.s, end: p.e, icon: p.ic || '' }; });
-  }
-  var norm = normalizeChannelName(ch.name);
-  if (norm) {
-    var progs = parsed.byName[norm];
-    if (!progs) for (var nk in parsed.byName) if (parsed.byName.hasOwnProperty(nk) && (nk.indexOf(norm) !== -1 || norm.indexOf(nk) !== -1)) { progs = parsed.byName[nk]; break; }
-    if (progs && progs.length) return progs.map(function(p){ return { title: p.t, description: p.d, start: p.s, end: p.e, icon: p.ic || '' }; });
-  }
-  return null;
-}
-function fetchEPGUntilChannelFound(ch) {
-  return new Promise(function(resolve) {
-    var i = 0;
-    var accumulated = { byId: {}, byName: {} };
-    function next() {
-      if (i >= EPG_SOURCES.length) { resolve(accumulated); return; }
-      var src = EPG_SOURCES[i++];
-      fetchAndParseSingleEPG(src).then(function(parsed) {
-        if (parsed) {
-          for (var id in parsed.byId) {
-            if (!parsed.byId.hasOwnProperty(id)) continue;
-            if (!accumulated.byId[id]) accumulated.byId[id] = [];
-            accumulated.byId[id] = accumulated.byId[id].concat(parsed.byId[id]);
-          }
-          for (var nm in parsed.byName) {
-            if (!parsed.byName.hasOwnProperty(nm)) continue;
-            if (!accumulated.byName[nm]) accumulated.byName[nm] = [];
-            accumulated.byName[nm] = accumulated.byName[nm].concat(parsed.byName[nm]);
-          }
-          mergeParsedIntoCache(parsed);
-          if (getProgramsFromParsed(accumulated, ch)) { resolve(accumulated); return; }
-        }
-        next();
-      }).catch(function() { next(); });
-    }
-    next();
-  });
-}
-
-/* Guide: use cache if it has a current programme. Only fetch if cache
-   is missing or stale AND has no current programme. Never blocks video. */
-function ensureProgramsForChannel(ch) {
-  var cached = readCacheForChannel(ch.id);
-  if (cached && cacheHasCurrentProgram(cached)) return Promise.resolve(cached);
-
-  /* Cache is fresh but just doesn't have this channel's current programme — no point re-fetching */
-  try {
-    var raw = localStorage.getItem(EPG_CACHE_KEY);
-    if (raw && cached) {
-      var c = JSON.parse(raw);
-      if (c && (Date.now() - c.fetchedAt) < EPG_CACHE_TTL_MS) return Promise.resolve(cached);
-    }
-  } catch (e) {}
-
-  return fetchEPGUntilChannelFound(ch).then(function(parsed) {
-    var progs = getProgramsFromParsed(parsed, ch);
-    return progs || cached || [];
-  }).catch(function() { return cached || []; });
-}
-
-/* ══════════════════════════════════════════════════════════════ Autoplay */
 function showTapToPlay() { tapToPlay.classList.remove('hidden'); }
 function hideTapToPlay() { tapToPlay.classList.add('hidden'); }
 function showUnmuteBtn() { unmuteBtn.classList.remove('hidden'); }
@@ -495,13 +249,13 @@ function attemptPlayback() {
   var p = videoEl.play();
   if (!p || !p.then) { setTimeout(function() { if (videoEl.paused && !isLoading) tryMutedPlayback(); }, 1500); return; }
   p.then(function() { hideUnmuteBtn(); hideTapToPlay(); })
-   .catch(function() { tryMutedPlayback(); });
+   .catch(function(err) { console.warn('[play] sound blocked:', err && err.name); tryMutedPlayback(); });
 }
 function tryMutedPlayback() {
   videoEl.muted = true;
   var p = videoEl.play();
   if (!p || !p.then) { setTimeout(function() { if (videoEl.paused) showTapToPlay(); else showUnmuteBtn(); }, 1500); return; }
-  p.then(function() { showUnmuteBtn(); }).catch(function() { showTapToPlay(); });
+  p.then(function() { showUnmuteBtn(); }).catch(function(err) { showTapToPlay(); });
 }
 tapToPlay.addEventListener('click', function(e) {
   e.stopPropagation(); hideTapToPlay(); videoEl.muted = false;
@@ -510,22 +264,25 @@ tapToPlay.addEventListener('click', function(e) {
 });
 unmuteBtn.addEventListener('click', function(e) { e.stopPropagation(); videoEl.muted = false; if (videoEl.paused) videoEl.play().catch(function(){}); if (!videoEl.muted) hideUnmuteBtn(); });
 
-/* ══════════════════════════════════════════════════════════════ Program lookup */
+function loadChannelPrograms() {
+  try {
+    var raw = localStorage.getItem('channelPrograms');
+    if (!raw) { channelPrograms = null; return; }
+    channelPrograms = JSON.parse(raw);
+    if (!channelPrograms || !channelPrograms.length) { channelPrograms = null; return; }
+    for (var i = 0; i < channelPrograms.length; i++) { var p = channelPrograms[i]; if (typeof p.start === 'string') p.start = new Date(p.start).getTime(); if (typeof p.end === 'string') p.end = new Date(p.end).getTime(); }
+  } catch (e) { channelPrograms = null; }
+}
 function findCurrentAndNext() {
   if (!channelPrograms || !channelPrograms.length) return { current: null, next: null };
   var now = Date.now(), current = null, next = null;
-  for (var i = 0; i < channelPrograms.length; i++) {
-    var p = channelPrograms[i];
-    if (p.start <= now && p.end > now) { current = { p: p, s: p.start, e: p.end }; break; }
-  }
+  for (var i = 0; i < channelPrograms.length; i++) { var p = channelPrograms[i]; var sMs = p.start instanceof Date ? p.start.getTime() : p.start, eMs = p.end instanceof Date ? p.end.getTime() : p.end; if (sMs <= now && eMs > now) { current = { p: p, s: sMs, e: eMs }; break; } }
   var ref = current ? current.e : now;
-  for (var j = 0; j < channelPrograms.length; j++) {
-    if (channelPrograms[j].start > ref) { next = { p: channelPrograms[j], s: channelPrograms[j].start, e: channelPrograms[j].end }; break; }
-  }
+  for (var j = 0; j < channelPrograms.length; j++) { var q = channelPrograms[j]; var qs = q.start instanceof Date ? q.start.getTime() : q.start; if (qs > ref) { next = { p: q, s: qs, e: q.end instanceof Date ? q.end.getTime() : q.end }; break; } }
   return { current: current, next: next };
 }
 function updateProgress() {
-  if (!channelPrograms || !channelPrograms.length) { dthProgressFill.style.width = '0%'; return; }
+  if (!channelPrograms || !channelPrograms.length) return;
   var cur = findCurrentAndNext();
   if (!cur.current) { dthProgressFill.style.width = '0%'; return; }
   var total = cur.current.e - cur.current.s, elapsed = Date.now() - cur.current.s;
@@ -542,9 +299,9 @@ function updateDthBanner() {
   dthChName.textContent = currentChannel.name || 'Unknown';
   var cur = findCurrentAndNext();
   if (cur.current) { dthNowTime.textContent = formatRange(cur.current.s, cur.current.e); dthNowTitle.textContent = cur.current.p.title || 'No Title'; }
-  else { dthNowTime.textContent = ''; dthNowTitle.textContent = channelPrograms && channelPrograms.length ? 'No current programme' : 'Loading guide…'; }
+  else { dthNowTime.textContent = ''; dthNowTitle.textContent = channelPrograms ? 'No current programme' : 'Loading guide…'; }
   if (cur.next) { dthNextTime.textContent = formatTimeOnly(cur.next.s); dthNextTitle.textContent = cur.next.p.title || 'No Title'; }
-  else { dthNextTime.textContent = ''; dthNextTitle.textContent = channelPrograms && channelPrograms.length ? 'No upcoming' : ''; }
+  else { dthNextTime.textContent = ''; dthNextTitle.textContent = channelPrograms ? 'No upcoming' : ''; }
   updateProgress();
 }
 function showDthBanner(ms) { updateDthBanner(); dthBanner.classList.add('visible'); startProgressUpdates(); if (bannerHideTimer) clearTimeout(bannerHideTimer); if (ms && ms > 0) bannerHideTimer = setTimeout(hideDthBanner, ms); }
@@ -553,7 +310,7 @@ function peekBanner(ms) { if (!dthBanner.classList.contains('visible')) showDthB
 function startBannerRefreshTimer() { if (programUpdateTimer) clearInterval(programUpdateTimer); programUpdateTimer = setInterval(function() { if (dthBanner.classList.contains('visible')) updateDthBanner(); }, 60000); }
 
 /* ══════════════════════════════════════════════════════════════
-   Channel number typing — reload-based switch (OLD working system)
+   Channel number typing — auto-switch after 1.2s, no OK needed
    ══════════════════════════════════════════════════════════════ */
 function showChNumOverlay() { chNumValue.textContent = chNumBuffer || '—'; chNumOverlay.classList.add('visible'); }
 function hideChNumOverlay() { chNumOverlay.classList.remove('visible'); }
@@ -562,7 +319,7 @@ function handleChNumDigit(digit) {
   chNumBuffer += digit;
   showChNumOverlay();
   clearTimeout(chNumTimer);
-  chNumTimer = setTimeout(autoSwitchByNumber, 1500);
+  chNumTimer = setTimeout(autoSwitchByNumber, 1200);
 }
 function autoSwitchByNumber() {
   var num = chNumBuffer;
@@ -577,20 +334,36 @@ function autoSwitchByNumber() {
   var found = null;
   for (var i = 0; i < all.length; i++) if (getChannelNumber(all[i]) === n) { found = all[i]; break; }
 
-  if (found) {
-    try { localStorage.setItem('currentChannel', JSON.stringify(found)); } catch (e) {}
-    showToast('Switching to CH ' + n + ' · ' + (found.name || ''));
-    window.location.href = 'jplayer.html?id=' + encodeURIComponent(found.id);
-    return;
-  }
-  showToast('Channel ' + num + ' not found', true);
+  if (found) { switchToChannel(found, n); return; }
+
+  showToast('Looking up CH ' + n + '…');
+  fetchChannelsFrom(0).then(function(chs) {
+    try { localStorage.setItem('allChannels', JSON.stringify(chs)); } catch (e) {}
+    var f2 = null;
+    for (var j = 0; j < chs.length; j++) if (getChannelNumber(chs[j]) === n) { f2 = chs[j]; break; }
+    if (f2) switchToChannel(f2, n);
+    else showToast('Channel ' + num + ' not found', true);
+  }).catch(function() { showToast('Channel ' + num + ' not found', true); });
+}
+function switchToChannel(ch, num) {
+  try {
+    localStorage.setItem('currentChannel', JSON.stringify(ch));
+    var cache = JSON.parse(localStorage.getItem(EPG_CACHE_KEY) || '{}');
+    var raw = cache.data && cache.data[String(ch.id)];
+    if (raw && raw.length) {
+      var ser = [];
+      for (var i = 0; i < raw.length; i++) ser.push({ title: raw[i].t, description: raw[i].d, start: raw[i].s, end: raw[i].e, icon: raw[i].ic || '' });
+      localStorage.setItem('channelPrograms', JSON.stringify(ser));
+    } else localStorage.removeItem('channelPrograms');
+  } catch (e) {}
+  showToast('Switching to CH ' + num + ' · ' + (ch.name || ''));
+  setTimeout(function() { window.location.href = 'jplayer.html?id=' + encodeURIComponent(ch.id); }, 300);
 }
 
-/* ══════════════════════════════════════════════════════════════ Cookies */
 function extractStarCookie(data, channelId) {
   var results = [];
   if (data && Array.isArray(data.successful_results)) results = results.concat(data.successful_results);
-  if (data && Array.isArray(data.failed_results))  results = results.concat(data.failed_results);
+  if (data && Array.isArray(data.failed_results)) results = results.concat(data.failed_results);
   for (var i = 0; i < results.length; i++) {
     var item = results[i]; if (!item) continue;
     if (String(item.channel_id) !== String(channelId)) continue;
@@ -604,11 +377,11 @@ function fetchCookiesForChannel(channelData) {
   var streamUrls = [channelData.url, channelData.url1, channelData.url2, channelData.url3].filter(function(u){ return !!u; }).map(function(u){ return u.replace('bpk-tv//', 'bpk-tv/'); });
   var hasJio = false, hasRegular = false;
   for (var i = 0; i < streamUrls.length; i++) { if (isJioPlLiveUrl(streamUrls[i])) hasJio = true; else hasRegular = true; }
-  var primaryCookie = '', starCookie = '';
+  var primaryCookie = '', fallbackCookie = '', starCookie = '';
   var tasks = [];
   if (hasJio) tasks.push(fetchWithFallback(COOKIE_STAR_SPORTS, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){ starCookie = extractStarCookie(d, channelData.id); }).catch(function(){}));
   if (hasRegular) tasks.push(fetchWithFallback(COOKIE_PRIMARY, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){ if (Array.isArray(d)) { for (var i = 0; i < d.length; i++) if (d[i] && d[i].cookie) { primaryCookie = d[i].cookie; break; } } else if (d && d.cookie) primaryCookie = d.cookie; }).catch(function(){}));
-  return Promise.all(tasks).then(function() { return { streamUrls: streamUrls, primaryCookie: primaryCookie, starCookie: starCookie }; });
+  return Promise.all(tasks).then(function() { return { streamUrls: streamUrls, primaryCookie: primaryCookie, fallbackCookie: fallbackCookie, starCookie: starCookie }; });
 }
 function parseChannelJson(text) {
   var c = String(text).trim(); if (c.charCodeAt(0) === 0xFEFF) c = c.slice(1);
@@ -633,11 +406,10 @@ function findChannelById(id) {
   });
 }
 
-/* ══════════════════════════════════════════════════════════════ Player init */
 function initPlayer() {
-  if (typeof shaka === 'undefined' || !shaka.Player) { showPlaceholder('⚠️ Player failed to load.', true, false); return false; }
+  if (typeof shaka === 'undefined' || !shaka.Player) { showPlaceholder('⚠️ Player failed to load.<br>Check your internet connection.', true, false); return false; }
   try { if (shaka.polyfill && shaka.polyfill.installAll) shaka.polyfill.installAll(); } catch (e) {}
-  if (!shaka.Player.isBrowserSupported()) { showPlaceholder('⚠️ Browser not supported.', true, false); return false; }
+  if (!shaka.Player.isBrowserSupported()) { showPlaceholder('⚠️ This browser is not supported by the player.', true, false); return false; }
 
   shakaPlayer = new shaka.Player(videoEl);
   shakaPlayer.getNetworkingEngine().registerRequestFilter(function(type, request) {
@@ -674,41 +446,18 @@ function syncTopBarWithShakaControls() {
   check();
 }
 
-/* ══════════════════════════════════════════════════════════════
-   playChannel — simple guard, no generation counter
-   ══════════════════════════════════════════════════════════════ */
 function playChannel(channelData) {
   if (!shakaPlayer || isLoading) return;
-  isLoading = true;
-  autoplayAttempted = false;
-  hideUnmuteBtn();
-  hideTapToPlay();
-
+  isLoading = true; autoplayAttempted = false; hideUnmuteBtn(); hideTapToPlay();
   currentChannel = channelData;
-  channelPrograms = null;
-
   var num = getChannelNumber(channelData);
   chNumEl.textContent = num !== null ? 'CH ' + num : '';
   titleEl.textContent = channelData.name || 'Unknown';
   showPlaceholder('Connecting to stream…', false, true);
 
-  /* EPG — fire and forget, never blocks video */
-  ensureProgramsForChannel(channelData).then(function(progs) {
-    channelPrograms = progs || [];
-    updateDthBanner();
-  }).catch(function() { channelPrograms = []; });
-
-  /* Stream */
-  shakaPlayer.unload().catch(function(){}).then(function() {
-    return fetchCookiesForChannel(channelData);
-  }).then(function(cookies) {
+  shakaPlayer.unload().catch(function(){}).then(function() { return fetchCookiesForChannel(channelData); }).then(function(cookies) {
     var streamUrls = cookies.streamUrls;
-    if (!streamUrls.length) {
-      isLoading = false;
-      showPlaceholder('⚠️ No stream URL.', true, false);
-      return;
-    }
-
+    if (!streamUrls.length) { isLoading = false; showPlaceholder('⚠️ No stream URL.', true, false); return; }
     var clearKeys = {};
     if (Array.isArray(channelData.keys)) for (var i = 0; i < channelData.keys.length; i++) { var k = channelData.keys[i]; if (k && k.keyId && k.key) clearKeys[k.keyId] = k.key; }
     else if (channelData.keyId && channelData.key) clearKeys[channelData.keyId] = channelData.key;
@@ -717,39 +466,28 @@ function playChannel(channelData) {
     var urlIdx = 0, loaded = false;
     function tryNextUrl() {
       if (loaded || urlIdx >= streamUrls.length) {
-        if (!loaded) {
-          isLoading = false;
-          activeCookie = '';
-          showPlaceholder('⚠️ Could not load this channel.', true, false);
-        }
+        if (!loaded) { isLoading = false; activeCookie = ''; showPlaceholder('⚠️ Could not load this channel.<br>Try another or tap Retry.', true, false); }
         return;
       }
       var streamUrl = streamUrls[urlIdx++];
       var isJio = isJioPlLiveUrl(streamUrl);
       var rounds = [];
       if (isJio) { if (cookies.starCookie) rounds.push(cookies.starCookie); }
-      else { if (cookies.primaryCookie) rounds.push(cookies.primaryCookie); if (rounds.length === 0) rounds.push(''); }
+      else { if (cookies.primaryCookie) rounds.push(cookies.primaryCookie); if (cookies.fallbackCookie && cookies.fallbackCookie !== cookies.primaryCookie) rounds.push(cookies.fallbackCookie); if (rounds.length === 0) rounds.push(''); }
       var cIdx = 0;
       function tryNextCookie() {
         if (loaded || cIdx >= rounds.length) { tryNextUrl(); return; }
         activeCookie = rounds[cIdx++];
         shakaPlayer.load(streamUrl).then(function() {
-          loaded = true;
-          isLoading = false;
-          hidePlaceholder();
+          loaded = true; isLoading = false; hidePlaceholder();
           attemptPlayback();
           setTimeout(function() { peekBanner(5000); }, 400);
-        }).catch(function() {
-          tryNextCookie();
-        });
+        }).catch(function(e) { console.warn('[play] failed:', e && (e.code || e.message)); tryNextCookie(); });
       }
       tryNextCookie();
     }
     tryNextUrl();
-  }).catch(function(e) {
-    isLoading = false;
-    showPlaceholder('⚠️ Error: ' + escapeHtml(e && e.message ? e.message : 'unknown'), true, false);
-  });
+  }).catch(function(e) { isLoading = false; showPlaceholder('⚠️ Error: ' + escapeHtml(e && e.message ? e.message : 'unknown'), true, false); });
 }
 
 var fitModes = [{ key: 'contain', label: 'FIT: CONTAIN' }, { key: 'cover', label: 'FULL: COVER' }, { key: 'stretch', label: 'FULL: STRETCH' }];
@@ -773,22 +511,30 @@ videoContainer.addEventListener('touchstart', function(e) {
   peekBanner(5000);
 }, { passive: true });
 videoContainer.addEventListener('mousemove', function() {
-  var now = Date.now(); if (now - lastMouseMoveTs < 400) return; lastMouseMoveTs = now;
+  var now = Date.now();
+  if (now - lastMouseMoveTs < 400) return;
+  lastMouseMoveTs = now;
   peekBanner(5000);
 });
 
 document.addEventListener('keydown', function(e) {
   var k = e.keyCode, focused = document.activeElement;
 
+  /* Digits — auto-switch after 1.2s, no OK needed */
   var isNum = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
   if (isNum) { e.preventDefault(); handleChNumDigit(String.fromCharCode(k >= 96 ? k - 48 : k)); return; }
 
   if (k === 8 || k === 27 || k === 461 || k === 10009 || k === 10033) {
     if (dthBanner.classList.contains('visible') && !document.querySelector('.shaka-overflow-menu:not(.shaka-hidden)') && !document.querySelector('.shaka-settings-menu:not(.shaka-hidden)')) { e.preventDefault(); hideDthBanner(); return; }
     if (document.querySelector('.shaka-overflow-menu:not(.shaka-hidden)') || document.querySelector('.shaka-settings-menu:not(.shaka-hidden)')) return;
-    e.preventDefault(); goBack(); return;
+    e.preventDefault();
+    goBack();
+    return;
   }
-  if (k === 37 || k === 38 || k === 39 || k === 40) { if (focused === fitBtn || focused === backBtn) return; peekBanner(3000); }
+  if (k === 37 || k === 38 || k === 39 || k === 40) {
+    if (focused === fitBtn || focused === backBtn) return;
+    peekBanner(3000);
+  }
   var inTopBar = (focused === backBtn || focused === fitBtn);
   if (k === 37) { if (focused === fitBtn) { backBtn.focus(); e.preventDefault(); } else if (!inTopBar) { backBtn.focus(); e.preventDefault(); } }
   else if (k === 39) { if (focused === backBtn) { fitBtn.focus(); e.preventDefault(); } else if (!inTopBar) { fitBtn.focus(); e.preventDefault(); } }
@@ -800,22 +546,20 @@ document.addEventListener('keydown', function(e) {
 videoEl.addEventListener('playing', function() { hidePlaceholder(); isLoading = false; if (videoEl.muted) showUnmuteBtn(); else hideUnmuteBtn(); });
 videoEl.addEventListener('loadedmetadata', function() {
   if (!autoplayAttempted) return;
-  setTimeout(function() {
-    if (videoEl.paused && !isLoading && currentChannel) tryMutedPlayback();
-  }, 2000);
+  setTimeout(function() { if (videoEl.paused && !isLoading && currentChannel) tryMutedPlayback(); }, 2000);
 });
 
 function boot() {
   var channelId = getQueryParam('id');
-  if (!channelId) { showPlaceholder('⚠️ No channel selected.', true, false); return; }
+  if (!channelId) { showPlaceholder('⚠️ No channel selected.<br>Return to the channel list.', true, false); return; }
   if (!initPlayer()) return;
-
+  loadChannelPrograms();
   startBannerRefreshTimer();
 
   var ch = null;
   try { var raw = localStorage.getItem('currentChannel'); if (raw) ch = JSON.parse(raw); } catch (e) { ch = null; }
   if (ch && String(ch.id) === String(channelId)) { playChannel(ch); return; }
-
+  channelPrograms = null;
   showPlaceholder('Looking up channel…', false, true);
   findChannelById(channelId).then(function(found){ playChannel(found); }).catch(function(e) {
     showPlaceholder('⚠️ Channel not found.<br><div style="color:#888;font-size:12px;margin-top:8px">' + escapeHtml(e.message || '') + '</div>', true, false);
