@@ -11,25 +11,18 @@
 <script src="https://cdn.jsdelivr.net/npm/shaka-player@2.5.5/dist/shaka-player.ui.min.js"></script>
 
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body {
   background: #000; width: 100%; height: 100%; overflow: hidden;
   font-family: Arial, Helvetica, sans-serif; color: #eee;
   -webkit-user-select: none; user-select: none; -webkit-text-size-adjust: 100%;
 }
-
 #playerWrapper { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #000; overflow: hidden; }
 #videoContainer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
-
-#video {
-  width: 100%; height: 100%; background: #000;
-  -o-object-fit: contain; object-fit: contain;
-  -o-object-position: center center; object-position: center center;
-  display: block;
-}
-#video.fit-contain { -o-object-fit: contain !important; object-fit: contain !important; }
-#video.fit-cover   { -o-object-fit: cover   !important; object-fit: cover   !important; }
-#video.fit-stretch { -o-object-fit: fill    !important; object-fit: fill    !important; }
+#video { width: 100%; height: 100%; background: #000; object-fit: contain; object-position: center center; display: block; }
+#video.fit-contain { object-fit: contain !important; }
+#video.fit-cover   { object-fit: cover   !important; }
+#video.fit-stretch { object-fit: fill    !important; }
 
 #topBar {
   position: absolute; top: 0; left: 0; right: 0; z-index: 10;
@@ -43,7 +36,6 @@ html, body {
   pointer-events: none;
 }
 #topBar.hidden { opacity: 0; visibility: hidden; }
-
 .top-btn {
   pointer-events: auto;
   background: rgba(255,255,255,0.14);
@@ -51,8 +43,8 @@ html, body {
   color: #fff; border-radius: 8px;
   padding: 10px 16px; min-height: 44px;
   font-size: 14px; font-weight: bold;
-  cursor: pointer; outline: none;
-  font-family: inherit; -webkit-appearance: none; appearance: none;
+  cursor: pointer; outline: none; font-family: inherit;
+  -webkit-appearance: none; appearance: none;
   white-space: nowrap;
   transition: background .15s, border-color .15s;
   flex-shrink: 0;
@@ -60,50 +52,28 @@ html, body {
 .top-btn:hover  { background: rgba(255,255,255,0.22); }
 .top-btn:active { background: rgba(255,255,255,0.28); }
 .top-btn:focus  { background: rgba(30,90,120,0.9); border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79,195,247,0.4); }
-
-#titleWrap {
-  flex: 1; min-width: 0;
-  display: flex; align-items: center; justify-content: center; gap: 8px;
-  pointer-events: none;
-}
+#titleWrap { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 8px; pointer-events: none; }
 #chNum {
-  display: inline-block;
-  padding: 3px 9px;
-  background: rgba(79,195,247,0.18);
-  border: 1px solid rgba(79,195,247,0.5);
-  color: #7cd0f5;
-  border-radius: 6px;
-  font-size: 13px;
-  font-weight: bold;
-  letter-spacing: 1px;
-  flex-shrink: 0;
+  display: inline-block; padding: 3px 9px;
+  background: rgba(79,195,247,0.18); border: 1px solid rgba(79,195,247,0.5);
+  color: #7cd0f5; border-radius: 6px;
+  font-size: 13px; font-weight: bold; letter-spacing: 1px; flex-shrink: 0;
 }
 #chNum:empty { display: none; }
-#title {
-  font-size: 16px; font-weight: bold; color: #fff;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  min-width: 0;
-}
+#title { font-size: 16px; font-weight: bold; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 
-/* ══════ DTH Info Banner ══════ */
 #dthBanner {
   position: absolute; bottom: 100px; left: 16px; right: 16px; z-index: 15;
   background: linear-gradient(135deg, rgba(12,22,32,0.97) 0%, rgba(18,35,50,0.94) 100%);
-  border: 1px solid rgba(79,195,247,0.35);
-  border-radius: 14px;
+  border: 1px solid rgba(79,195,247,0.35); border-radius: 14px;
   padding: 14px 18px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.7);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
-  transform: translateY(30px);
-  opacity: 0; visibility: hidden; pointer-events: none;
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  transform: translateY(30px); opacity: 0; visibility: hidden; pointer-events: none;
   transition: transform .3s ease, opacity .3s ease, visibility .3s ease;
 }
 #dthBanner.visible { transform: translateY(0); opacity: 1; visibility: visible; }
-
 .dth-row { display: flex; gap: 16px; align-items: flex-start; }
-
 .dth-logo-box {
   width: 100px; height: 100px;
   border-radius: 10px; background: #0a0a0a;
@@ -115,51 +85,29 @@ html, body {
 .dth-logo { max-width: 78px; max-height: 62px; object-fit: contain; display: block; }
 .dth-ch-num {
   position: absolute; bottom: 0; left: 0; right: 0;
-  text-align: center;
-  font-size: 11px; font-weight: bold; color: #7cd0f5;
-  background: rgba(0,0,0,0.88);
-  padding: 3px 0; letter-spacing: 1.5px;
+  text-align: center; font-size: 11px; font-weight: bold; color: #7cd0f5;
+  background: rgba(0,0,0,0.88); padding: 3px 0; letter-spacing: 1.5px;
   border-top: 1px solid rgba(79,195,247,0.25);
 }
 .dth-logo-box.no-logo .dth-logo { display: none; }
 .dth-logo-box.no-logo .dth-ch-num {
   position: static; font-size: 22px; font-weight: bold;
-  background: transparent; color: #4fc3f7;
-  border: none; letter-spacing: 1px; padding: 0;
+  background: transparent; color: #4fc3f7; border: none; letter-spacing: 1px; padding: 0;
 }
-
 .dth-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-.dth-ch-name {
-  font-size: 18px; font-weight: bold; color: #fff;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.8); line-height: 1.2;
-}
-.dth-now {
-  background: rgba(79,195,247,0.07);
-  border-left: 3px solid #66bb6a; border-radius: 6px;
-  padding: 8px 10px; display: flex; flex-direction: column; gap: 4px;
-}
+.dth-ch-name { font-size: 18px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0,0,0,0.8); line-height: 1.2; }
+.dth-now { background: rgba(79,195,247,0.07); border-left: 3px solid #66bb6a; border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
 .dth-now-header { display: flex; align-items: center; gap: 8px; font-size: 11px; }
 .dth-now-label { color: #66bb6a; font-weight: bold; letter-spacing: 1px; flex-shrink: 0; }
 .dth-now-time { color: #a0b8c8; font-size: 11px; }
-.dth-now-title {
-  font-size: 14px; font-weight: bold; color: #fff;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3;
-}
+.dth-now-title { font-size: 14px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
 .dth-progress { height: 4px; background: rgba(255,255,255,0.12); border-radius: 2px; overflow: hidden; margin-top: 4px; }
 .dth-progress-fill { height: 100%; background: linear-gradient(90deg, #66bb6a 0%, #4fc3f7 100%); border-radius: 2px; width: 0%; transition: width 1s linear; }
-.dth-next {
-  display: flex; align-items: center; gap: 8px;
-  font-size: 12px; padding: 4px 10px;
-  background: rgba(79,195,247,0.05);
-  border-left: 3px solid #4fc3f7; border-radius: 6px;
-  opacity: 0.9;
-}
+.dth-next { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 10px; background: rgba(79,195,247,0.05); border-left: 3px solid #4fc3f7; border-radius: 6px; opacity: 0.9; }
 .dth-next-label { color: #4fc3f7; font-weight: bold; font-size: 11px; letter-spacing: 1px; flex-shrink: 0; }
 .dth-next-time { color: #9bbdd0; font-size: 11px; flex-shrink: 0; }
 .dth-next-title { color: #e0e8ee; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-weight: bold; }
 
-/* ══════ Placeholder ══════ */
 #placeholder {
   position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 50;
   display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -175,15 +123,9 @@ html, body {
 }
 #placeholder button:hover { background: #3a3a3a; }
 #placeholder button:focus { background: #1e5a78; box-shadow: 0 0 0 2px rgba(79,195,247,0.4); }
-
-.spinner {
-  display: inline-block; width: 34px; height: 34px;
-  border: 3px solid #333; border-top-color: #4fc3f7; border-radius: 50%;
-  animation: spin 0.8s linear infinite; margin-bottom: 16px;
-}
+.spinner { display: inline-block; width: 34px; height: 34px; border: 3px solid #333; border-top-color: #4fc3f7; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ══════ Tap to play overlay ══════ */
 #tapToPlay {
   position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 40;
   display: flex; align-items: center; justify-content: center;
@@ -206,11 +148,9 @@ html, body {
 .tap-play-text { font-size: 18px; font-weight: bold; color: #fff; }
 #tapToPlay:hover .tap-play-icon { transform: scale(1.08); }
 
-/* ══════ Unmute button ══════ */
 #unmuteBtn {
   position: absolute; bottom: 24px; left: 50%;
-  -webkit-transform: translateX(-50%); transform: translateX(-50%);
-  z-index: 30;
+  transform: translateX(-50%); z-index: 30;
   display: flex; align-items: center; gap: 10px;
   padding: 12px 22px;
   background: rgba(220,53,69,0.95);
@@ -222,18 +162,40 @@ html, body {
   animation: pulseUnmute 1.8s ease-in-out infinite;
 }
 #unmuteBtn.hidden { display: none; }
-#unmuteBtn:hover, #unmuteBtn:focus {
-  background: rgba(240,70,85,1);
-  box-shadow: 0 0 0 3px rgba(255,255,255,0.3), 0 4px 20px rgba(0,0,0,0.6);
-}
+#unmuteBtn:hover, #unmuteBtn:focus { background: rgba(240,70,85,1); box-shadow: 0 0 0 3px rgba(255,255,255,0.3), 0 4px 20px rgba(0,0,0,0.6); }
 @keyframes pulseUnmute {
   0%, 100% { box-shadow: 0 4px 20px rgba(0,0,0,0.6), 0 0 0 0 rgba(220,53,69,0.7); }
   50%      { box-shadow: 0 4px 20px rgba(0,0,0,0.6), 0 0 0 10px rgba(220,53,69,0); }
 }
 .unmute-icon { font-size: 20px; }
-.unmute-text { letter-spacing: 0.5px; }
 
-/* Shaka controls */
+/* ══════ Channel number overlay ══════ */
+#chNumOverlay {
+  position: fixed; top: 22%; left: 50%;
+  transform: translateX(-50%);
+  min-width: 200px; padding: 20px 40px 16px;
+  background: rgba(10,20,28,0.96);
+  border: 3px solid #4fc3f7; border-radius: 18px;
+  text-align: center; z-index: 2000; pointer-events: none; display: none;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+}
+#chNumOverlay.visible { display: block; }
+#chNumOverlay .num-label { font-size: 12px; color: #7ab8d6; letter-spacing: 2px; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; }
+#chNumOverlay .num-value { font-size: 72px; color: #fff; font-weight: bold; line-height: 1; letter-spacing: 4px; text-shadow: 0 2px 10px rgba(79,195,247,0.6); }
+#chNumOverlay .num-hint { font-size: 12px; color: #8ab8d0; margin-top: 10px; letter-spacing: 0.5px; padding-top: 10px; border-top: 1px solid #2a3a48; }
+#chNumOverlay .num-hint b { color: #4fc3f7; }
+
+#toast {
+  position: fixed; bottom: 30px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30,30,30,0.95); color: #fff;
+  padding: 12px 22px; border-radius: 8px; border: 1px solid #4fc3f7;
+  font-size: 14px; z-index: 2500;
+  opacity: 0; transition: opacity .25s; pointer-events: none;
+}
+#toast.visible { opacity: 1; }
+#toast.error { border-color: #ef5350; color: #ffc7c7; }
+
 .shaka-controls-container { font-size: 14px; }
 .shaka-bottom-controls {
   padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
@@ -279,6 +241,7 @@ html, body {
   #unmuteBtn { font-size: 13px; padding: 10px 18px; }
   .tap-play-icon { width: 64px; height: 64px; font-size: 32px; }
   .tap-play-text { font-size: 15px; }
+  #chNumOverlay .num-value { font-size: 56px; }
 }
 @media (max-height: 480px) and (orientation: landscape) {
   #topBar { padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); }
@@ -322,9 +285,7 @@ html, body {
               <span class="dth-now-time" id="dthNowTime"></span>
             </div>
             <div class="dth-now-title" id="dthNowTitle"></div>
-            <div class="dth-progress">
-              <div class="dth-progress-fill" id="dthProgressFill"></div>
-            </div>
+            <div class="dth-progress"><div class="dth-progress-fill" id="dthProgressFill"></div></div>
           </div>
           <div class="dth-next">
             <span class="dth-next-label">○ NEXT</span>
@@ -335,7 +296,6 @@ html, body {
       </div>
     </div>
 
-    <!-- Tap to play overlay (shown only if autoplay is fully blocked) -->
     <div id="tapToPlay" class="hidden">
       <div class="tap-play-inner">
         <div class="tap-play-icon">▶</div>
@@ -343,7 +303,6 @@ html, body {
       </div>
     </div>
 
-    <!-- Unmute button (shown when playback started muted) -->
     <button id="unmuteBtn" class="hidden" type="button">
       <span class="unmute-icon">🔇</span>
       <span class="unmute-text">Tap for sound</span>
@@ -359,6 +318,14 @@ html, body {
     </div>
   </div>
 </div>
+
+<div id="chNumOverlay">
+  <div class="num-label">Switch to Channel</div>
+  <div class="num-value" id="chNumValue"></div>
+  <div class="num-hint">Press <b>OK</b> to switch &nbsp;·&nbsp; <b>Back</b> to cancel</div>
+</div>
+
+<div id="toast"></div>
 
 <script>
 if (!Array.prototype.includes) Array.prototype.includes = function(x){ return this.indexOf(x) !== -1; };
@@ -390,6 +357,7 @@ function xhrFetch(url, opts) {
 
 var CHANNELS_CANDIDATES = ['/jstr4web.json', 'https://jjtvxweb.pages.dev/jstr4web.json'];
 var CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
+var EPG_CACHE_KEY = 'jtv_epg_cache_v5';
 
 var COOKIE_PRIMARY     = "https://allinonereborn2.online/jstrweb2/cookies.json";
 var COOKIE_FALLBACK    = "";
@@ -423,6 +391,10 @@ var dthNextTitle = document.getElementById('dthNextTitle');
 var tapToPlay   = document.getElementById('tapToPlay');
 var unmuteBtn   = document.getElementById('unmuteBtn');
 
+var chNumOverlay = document.getElementById('chNumOverlay');
+var chNumValue   = document.getElementById('chNumValue');
+var toastEl      = document.getElementById('toast');
+
 var shakaPlayer    = null;
 var shakaUI        = null;
 var activeCookie   = '';
@@ -434,6 +406,10 @@ var bannerHideTimer = null;
 var progressTimer = null;
 var lastMouseMoveTs = 0;
 var autoplayAttempted = false;
+
+var chNumBuffer = '';
+var chNumTimer = null;
+var toastTimer = null;
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, function(c){
@@ -472,6 +448,13 @@ function showPlaceholder(html, showActions, showSpinner) {
   phActions.style.display = showActions ? 'flex' : 'none';
 }
 function hidePlaceholder() { placeholder.classList.add('hidden'); }
+function showToast(msg, isError) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('visible');
+  if (isError) toastEl.classList.add('error'); else toastEl.classList.remove('error');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ toastEl.classList.remove('visible'); }, 2500);
+}
 
 function getChannelNumber(ch) {
   if (!ch) return null;
@@ -484,9 +467,6 @@ function getChannelNumber(ch) {
   return null;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Autoplay helpers — try sound, fall back to muted, then to tap-to-play
-   ══════════════════════════════════════════════════════════════ */
 function showTapToPlay() { tapToPlay.classList.remove('hidden'); }
 function hideTapToPlay() { tapToPlay.classList.add('hidden'); }
 function showUnmuteBtn() { unmuteBtn.classList.remove('hidden'); }
@@ -495,46 +475,25 @@ function hideUnmuteBtn() { unmuteBtn.classList.add('hidden'); }
 function attemptPlayback() {
   autoplayAttempted = true;
   hideTapToPlay();
-
-  /* First try with sound */
   var p = videoEl.play();
   if (!p || !p.then) {
-    /* Old browser — check paused state after a short delay */
-    setTimeout(function() {
-      if (videoEl.paused && !isLoading) tryMutedPlayback();
-    }, 1500);
+    setTimeout(function() { if (videoEl.paused && !isLoading) tryMutedPlayback(); }, 1500);
     return;
   }
-  p.then(function() {
-    console.log('[play] ✓ started with sound');
-    hideUnmuteBtn();
-    hideTapToPlay();
-  }).catch(function(err) {
-    console.warn('[play] sound blocked:', err && err.name);
-    tryMutedPlayback();
-  });
+  p.then(function() { hideUnmuteBtn(); hideTapToPlay(); console.log('[play] ✓ sound'); })
+   .catch(function(err) { console.warn('[play] sound blocked:', err && err.name); tryMutedPlayback(); });
 }
-
 function tryMutedPlayback() {
   videoEl.muted = true;
   var p = videoEl.play();
   if (!p || !p.then) {
-    setTimeout(function() {
-      if (videoEl.paused) showTapToPlay();
-      else showUnmuteBtn();
-    }, 1500);
+    setTimeout(function() { if (videoEl.paused) showTapToPlay(); else showUnmuteBtn(); }, 1500);
     return;
   }
-  p.then(function() {
-    console.log('[play] ✓ started muted — showing unmute button');
-    showUnmuteBtn();
-  }).catch(function(err) {
-    console.warn('[play] muted also blocked:', err && err.name);
-    showTapToPlay();
-  });
+  p.then(function() { showUnmuteBtn(); console.log('[play] ✓ muted'); })
+   .catch(function(err) { console.warn('[play] muted blocked:', err && err.name); showTapToPlay(); });
 }
 
-/* Tap-to-play handler */
 tapToPlay.addEventListener('click', function(e) {
   e.stopPropagation();
   hideTapToPlay();
@@ -543,27 +502,18 @@ tapToPlay.addEventListener('click', function(e) {
   if (p && p.then) {
     p.then(function() { hideUnmuteBtn(); })
      .catch(function(err) {
-        console.warn('[tap-play] unmuted failed, retrying muted:', err.name);
+        console.warn('[tap-play] retry muted:', err.name);
         videoEl.muted = true;
         var p2 = videoEl.play();
         if (p2 && p2.then) p2.then(function() { showUnmuteBtn(); }).catch(function(){ showTapToPlay(); });
      });
   }
 });
-
-/* Unmute button handler */
 unmuteBtn.addEventListener('click', function(e) {
   e.stopPropagation();
   videoEl.muted = false;
-  if (videoEl.paused) {
-    videoEl.play().catch(function(){});
-  }
-  if (!videoEl.muted) {
-    hideUnmuteBtn();
-    console.log('[audio] unmuted');
-  } else {
-    console.warn('[audio] unmute blocked — user gesture may be required');
-  }
+  if (videoEl.paused) videoEl.play().catch(function(){});
+  if (!videoEl.muted) hideUnmuteBtn();
 });
 
 /* ══════════════════════════════════════════════════════════════ Programme info */
@@ -600,7 +550,6 @@ function findCurrentAndNext() {
   return { current: current, next: next };
 }
 
-/* ══════════════════════════════════════════════════════════════ DTH banner */
 function updateProgress() {
   if (!channelPrograms || !channelPrograms.length) return;
   var cur = findCurrentAndNext();
@@ -653,9 +602,7 @@ function showDthBanner(autoHideMs) {
   dthBanner.classList.add('visible');
   startProgressUpdates();
   if (bannerHideTimer) clearTimeout(bannerHideTimer);
-  if (autoHideMs && autoHideMs > 0) {
-    bannerHideTimer = setTimeout(hideDthBanner, autoHideMs);
-  }
+  if (autoHideMs && autoHideMs > 0) bannerHideTimer = setTimeout(hideDthBanner, autoHideMs);
 }
 function hideDthBanner() {
   dthBanner.classList.remove('visible');
@@ -670,6 +617,95 @@ function startBannerRefreshTimer() {
   programUpdateTimer = setInterval(function() {
     if (dthBanner.classList.contains('visible')) updateDthBanner();
   }, 60000);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   Channel number typing in player
+   ══════════════════════════════════════════════════════════════ */
+function showChNumOverlay() {
+  chNumValue.textContent = chNumBuffer || '—';
+  chNumOverlay.classList.add('visible');
+}
+function hideChNumOverlay() {
+  chNumOverlay.classList.remove('visible');
+}
+function handleChNumDigit(digit) {
+  if (chNumBuffer.length >= 4) chNumBuffer = '';
+  chNumBuffer += digit;
+  showChNumOverlay();
+  clearTimeout(chNumTimer);
+  chNumTimer = setTimeout(function() {
+    chNumBuffer = '';
+    hideChNumOverlay();
+  }, 6000);
+}
+function cancelChNum() {
+  chNumBuffer = '';
+  clearTimeout(chNumTimer);
+  hideChNumOverlay();
+}
+function commitChNum() {
+  var num = chNumBuffer;
+  chNumBuffer = '';
+  clearTimeout(chNumTimer);
+  hideChNumOverlay();
+  if (!num) return;
+
+  var n = parseInt(num, 10);
+
+  /* Try localStorage first */
+  var all = [];
+  try { all = JSON.parse(localStorage.getItem('allChannels') || '[]'); } catch (e) {}
+
+  var found = null;
+  for (var i = 0; i < all.length; i++) {
+    if (getChannelNumber(all[i]) === n) { found = all[i]; break; }
+  }
+
+  if (found) {
+    switchToChannel(found, n);
+    return;
+  }
+
+  /* Fallback: fetch channel list */
+  showToast('Looking up CH ' + n + '…');
+  fetchChannelsFrom(0).then(function(chs) {
+    try { localStorage.setItem('allChannels', JSON.stringify(chs)); } catch (e) {}
+    var f2 = null;
+    for (var j = 0; j < chs.length; j++) {
+      if (getChannelNumber(chs[j]) === n) { f2 = chs[j]; break; }
+    }
+    if (f2) switchToChannel(f2, n);
+    else showToast('Channel ' + num + ' not found', true);
+  }).catch(function() {
+    showToast('Channel ' + num + ' not found', true);
+  });
+}
+
+function switchToChannel(ch, num) {
+  try {
+    localStorage.setItem('currentChannel', JSON.stringify(ch));
+    var cache = JSON.parse(localStorage.getItem(EPG_CACHE_KEY) || '{}');
+    var raw = cache.data && cache.data[String(ch.id)];
+    if (raw && raw.length) {
+      var ser = [];
+      for (var i = 0; i < raw.length; i++) {
+        ser.push({
+          title: raw[i].t, description: raw[i].d,
+          start: raw[i].s, end: raw[i].e, icon: raw[i].ic || ''
+        });
+      }
+      localStorage.setItem('channelPrograms', JSON.stringify(ser));
+    } else {
+      localStorage.removeItem('channelPrograms');
+    }
+  } catch (e) {}
+
+  showToast('Switching to CH ' + num + ' · ' + (ch.name || ''));
+  /* Brief delay so toast is visible before reload */
+  setTimeout(function() {
+    window.location.href = 'jplayer.html?id=' + encodeURIComponent(ch.id);
+  }, 300);
 }
 
 /* ══════════════════════════════════════════════════════════════ Cookies */
@@ -758,7 +794,6 @@ function initPlayer() {
   }
 
   shakaPlayer = new shaka.Player(videoEl);
-
   shakaPlayer.getNetworkingEngine().registerRequestFilter(function(type, request) {
     request.headers['Referer']    = 'https://www.jiotv.com/';
     request.headers['User-Agent'] = 'plaYtv/7.1.5';
@@ -781,7 +816,6 @@ function initPlayer() {
     };
     shakaUI = new shaka.ui.Overlay(shakaPlayer, videoContainer, videoEl, uiConfig);
   } catch (e) {
-    console.warn('[shaka-ui] fallback:', e.message);
     videoEl.setAttribute('controls', 'controls');
   }
 
@@ -790,8 +824,7 @@ function initPlayer() {
 }
 
 function syncTopBarWithShakaControls() {
-  var lastState = null;
-  var attempts = 0;
+  var lastState = null, attempts = 0;
   function checkForContainer() {
     attempts++;
     var ctrl = videoContainer.querySelector('.shaka-controls-container');
@@ -817,20 +850,17 @@ function syncTopBarWithShakaControls() {
   checkForContainer();
 }
 
-/* ══════════════════════════════════════════════════════════════ Play */
 function playChannel(channelData) {
   if (!shakaPlayer || isLoading) return;
   isLoading = true;
   autoplayAttempted = false;
   hideUnmuteBtn();
   hideTapToPlay();
-
   currentChannel = channelData;
 
   var num = getChannelNumber(channelData);
   chNumEl.textContent = num !== null ? 'CH ' + num : '';
   titleEl.textContent = channelData.name || 'Unknown';
-
   showPlaceholder('Connecting to stream…', false, true);
 
   shakaPlayer.unload().catch(function(){}).then(function() {
@@ -859,9 +889,7 @@ function playChannel(channelData) {
 
     shakaPlayer.configure({ drm: { clearKeys: clearKeysConfig }, streaming: { lowLatencyMode: true }, abr: { enabled: true } });
 
-    var urlIdx = 0;
-    var loaded = false;
-
+    var urlIdx = 0, loaded = false;
     function tryNextUrl() {
       if (loaded || urlIdx >= streamUrls.length) {
         if (!loaded) {
@@ -873,7 +901,6 @@ function playChannel(channelData) {
       }
       var streamUrl = streamUrls[urlIdx++];
       var isJio = isJioPlLiveUrl(streamUrl);
-
       var cookieRounds = [];
       if (isJio) { if (starCookie) cookieRounds.push(starCookie); }
       else {
@@ -881,7 +908,6 @@ function playChannel(channelData) {
         if (fallbackCookie && fallbackCookie !== primaryCookie) cookieRounds.push(fallbackCookie);
         if (cookieRounds.length === 0) cookieRounds.push('');
       }
-
       var cIdx = 0;
       function tryNextCookie() {
         if (loaded || cIdx >= cookieRounds.length) { tryNextUrl(); return; }
@@ -890,9 +916,7 @@ function playChannel(channelData) {
           loaded = true;
           isLoading = false;
           hidePlaceholder();
-          /* ══ AUTOPLAY with fallback ══ */
           attemptPlayback();
-          /* Auto-show DTH banner on channel change */
           setTimeout(function() { peekBanner(5000); }, 400);
         }).catch(function(e) {
           console.warn('[play] failed:', e && (e.code || e.message));
@@ -932,9 +956,7 @@ backBtn.addEventListener('click', function(e){ e.preventDefault(); goBack(); });
 phBackBtn.addEventListener('click', function(e){ e.preventDefault(); goBack(); });
 phRetryBtn.addEventListener('click', function(e) { e.preventDefault(); if (currentChannel) playChannel(currentChannel); });
 
-/* ══════════════════════════════════════════════════════════════
-   Auto show/hide banner on interaction
-   ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════ Banner peek */
 videoContainer.addEventListener('click', function(e) {
   if (e.target === backBtn || e.target === fitBtn) return;
   if (e.target === unmuteBtn || e.target === tapToPlay) return;
@@ -953,11 +975,35 @@ videoContainer.addEventListener('mousemove', function() {
   peekBanner(5000);
 });
 
-/* ══════════════════════════════════════════════════════════════ Keyboard / remote */
+/* ══════════════════════════════════════════════════════════════ Keyboard */
 document.addEventListener('keydown', function(e) {
   var k = e.keyCode;
   var focused = document.activeElement;
 
+  /* Channel number typing — grab digits before anything else */
+  var isNumKey = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
+  if (isNumKey) {
+    e.preventDefault();
+    var digit = String.fromCharCode(k >= 96 ? k - 48 : k);
+    handleChNumDigit(digit);
+    return;
+  }
+
+  /* Enter → commit number if buffer exists */
+  if (k === 13 && chNumBuffer) {
+    e.preventDefault();
+    commitChNum();
+    return;
+  }
+
+  /* Back / Escape → cancel buffer first */
+  if ((k === 27 || k === 8 || k === 10009) && chNumBuffer) {
+    e.preventDefault();
+    cancelChNum();
+    return;
+  }
+
+  /* Back / Escape → hide banner first, then go back */
   if (k === 8 || k === 27 || k === 461 || k === 10009 || k === 10033) {
     if (dthBanner.classList.contains('visible') &&
         !document.querySelector('.shaka-overflow-menu:not(.shaka-hidden)') &&
@@ -997,27 +1043,20 @@ document.addEventListener('keydown', function(e) {
 videoEl.addEventListener('playing', function() {
   hidePlaceholder();
   isLoading = false;
-  /* If we somehow ended up playing muted without showing the button */
-  if (videoEl.muted && !unmuteBtn.classList.contains('hidden') === false) {
-    /* ensure unmute button visible */
-    showUnmuteBtn();
-  } else if (!videoEl.muted) {
-    hideUnmuteBtn();
-  }
+  if (videoEl.muted) showUnmuteBtn();
+  else hideUnmuteBtn();
 });
 
-/* Safety net: after 2 s of stalled load, try muted play */
 videoEl.addEventListener('loadedmetadata', function() {
   if (!autoplayAttempted) return;
   setTimeout(function() {
     if (videoEl.paused && !isLoading && currentChannel) {
-      console.warn('[safety] video still paused after load — forcing muted play');
+      console.warn('[safety] forcing muted play');
       tryMutedPlayback();
     }
   }, 2000);
 });
 
-/* ══════════════════════════════════════════════════════════════ Boot */
 function boot() {
   var channelId = getQueryParam('id');
   if (!channelId) {
