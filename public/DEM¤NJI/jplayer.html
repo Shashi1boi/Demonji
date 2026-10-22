@@ -12,34 +12,90 @@
 
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { background: #000; width: 100%; height: 100%; overflow: hidden; font-family: Arial, Helvetica, sans-serif; color: #eee; -webkit-user-select: none; user-select: none; -webkit-text-size-adjust: 100%; }
+html, body {
+  background: #000; width: 100%; height: 100%; overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif; color: #eee;
+  -webkit-user-select: none; user-select: none; -webkit-text-size-adjust: 100%;
+}
 #playerWrapper { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #000; overflow: hidden; }
 #videoContainer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
-#video { width: 100%; height: 100%; background: #000; object-fit: contain; display: block; }
+#video { width: 100%; height: 100%; background: #000; object-fit: contain; object-position: center center; display: block; }
 #video.fit-contain { object-fit: contain !important; }
 #video.fit-cover   { object-fit: cover   !important; }
 #video.fit-stretch { object-fit: fill    !important; }
 
-#topBar { position: absolute; top: 0; left: 0; right: 0; z-index: 10; padding: 12px 16px; padding-top: calc(12px + env(safe-area-inset-top)); padding-left: calc(16px + env(safe-area-inset-left)); padding-right: calc(16px + env(safe-area-inset-right)); background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0)); display: flex; align-items: center; gap: 12px; transition: opacity .3s ease, visibility .3s ease; pointer-events: none; }
+#topBar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+  padding: 12px 16px;
+  padding-top: calc(12px + env(safe-area-inset-top));
+  padding-left: calc(16px + env(safe-area-inset-left));
+  padding-right: calc(16px + env(safe-area-inset-right));
+  background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0));
+  display: flex; align-items: center; gap: 12px;
+  transition: opacity .3s ease, visibility .3s ease;
+  pointer-events: none;
+}
 #topBar.hidden { opacity: 0; visibility: hidden; }
-.top-btn { pointer-events: auto; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.28); color: #fff; border-radius: 8px; padding: 10px 16px; min-height: 44px; font-size: 14px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; white-space: nowrap; transition: background .15s, border-color .15s; flex-shrink: 0; }
-.top-btn:hover { background: rgba(255,255,255,0.22); }
-.top-btn:focus { background: rgba(30,90,120,0.9); border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79,195,247,0.4); }
+.top-btn {
+  pointer-events: auto;
+  background: rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.28);
+  color: #fff; border-radius: 8px;
+  padding: 10px 16px; min-height: 44px;
+  font-size: 14px; font-weight: bold;
+  cursor: pointer; outline: none; font-family: inherit;
+  -webkit-appearance: none; appearance: none;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s;
+  flex-shrink: 0;
+}
+.top-btn:hover  { background: rgba(255,255,255,0.22); }
+.top-btn:active { background: rgba(255,255,255,0.28); }
+.top-btn:focus  { background: rgba(30,90,120,0.9); border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79,195,247,0.4); }
 #titleWrap { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 8px; pointer-events: none; }
-#chNum { display: inline-block; padding: 3px 9px; background: rgba(79,195,247,0.18); border: 1px solid rgba(79,195,247,0.5); color: #7cd0f5; border-radius: 6px; font-size: 13px; font-weight: bold; letter-spacing: 1px; flex-shrink: 0; }
+#chNum {
+  display: inline-block; padding: 3px 9px;
+  background: rgba(79,195,247,0.18); border: 1px solid rgba(79,195,247,0.5);
+  color: #7cd0f5; border-radius: 6px;
+  font-size: 13px; font-weight: bold; letter-spacing: 1px; flex-shrink: 0;
+}
 #chNum:empty { display: none; }
 #title { font-size: 16px; font-weight: bold; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 
-#dthBanner { position: absolute; bottom: 100px; left: 16px; right: 16px; z-index: 15; background: linear-gradient(135deg, rgba(12,22,32,0.97) 0%, rgba(18,35,50,0.94) 100%); border: 1px solid rgba(79,195,247,0.35); border-radius: 14px; padding: 14px 18px; box-shadow: 0 8px 32px rgba(0,0,0,0.7); backdrop-filter: blur(8px); transform: translateY(30px); opacity: 0; visibility: hidden; pointer-events: none; transition: transform .3s ease, opacity .3s ease, visibility .3s ease; }
+#dthBanner {
+  position: absolute; bottom: 100px; left: 16px; right: 16px; z-index: 15;
+  background: linear-gradient(135deg, rgba(12,22,32,0.97) 0%, rgba(18,35,50,0.94) 100%);
+  border: 1px solid rgba(79,195,247,0.35); border-radius: 14px;
+  padding: 14px 18px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  transform: translateY(30px); opacity: 0; visibility: hidden; pointer-events: none;
+  transition: transform .3s ease, opacity .3s ease, visibility .3s ease;
+}
 #dthBanner.visible { transform: translateY(0); opacity: 1; visibility: visible; }
 .dth-row { display: flex; gap: 16px; align-items: flex-start; }
-.dth-logo-box { width: 100px; height: 100px; border-radius: 10px; background: #0a0a0a; border: 1px solid rgba(79,195,247,0.25); position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.dth-logo-box {
+  width: 100px; height: 100px;
+  border-radius: 10px; background: #0a0a0a;
+  border: 1px solid rgba(79,195,247,0.25);
+  position: relative; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
 .dth-logo { max-width: 78px; max-height: 62px; object-fit: contain; display: block; }
-.dth-ch-num { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font-size: 11px; font-weight: bold; color: #7cd0f5; background: rgba(0,0,0,0.88); padding: 3px 0; letter-spacing: 1.5px; border-top: 1px solid rgba(79,195,247,0.25); }
+.dth-ch-num {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  text-align: center; font-size: 11px; font-weight: bold; color: #7cd0f5;
+  background: rgba(0,0,0,0.88); padding: 3px 0; letter-spacing: 1.5px;
+  border-top: 1px solid rgba(79,195,247,0.25);
+}
 .dth-logo-box.no-logo .dth-logo { display: none; }
-.dth-logo-box.no-logo .dth-ch-num { position: static; font-size: 22px; font-weight: bold; background: transparent; color: #4fc3f7; border: none; letter-spacing: 1px; padding: 0; }
+.dth-logo-box.no-logo .dth-ch-num {
+  position: static; font-size: 22px; font-weight: bold;
+  background: transparent; color: #4fc3f7; border: none; letter-spacing: 1px; padding: 0;
+}
 .dth-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-.dth-ch-name { font-size: 18px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
+.dth-ch-name { font-size: 18px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0,0,0,0.8); line-height: 1.2; }
 .dth-now { background: rgba(79,195,247,0.07); border-left: 3px solid #66bb6a; border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
 .dth-now-header { display: flex; align-items: center; gap: 8px; font-size: 11px; }
 .dth-now-label { color: #66bb6a; font-weight: bold; letter-spacing: 1px; flex-shrink: 0; }
@@ -52,50 +108,159 @@ html, body { background: #000; width: 100%; height: 100%; overflow: hidden; font
 .dth-next-time { color: #9bbdd0; font-size: 11px; flex-shrink: 0; }
 .dth-next-title { color: #e0e8ee; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-weight: bold; }
 
-#placeholder { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; color: #888; text-align: center; padding: 24px; font-size: 15px; line-height: 1.6; }
+#placeholder {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 50;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: #000; color: #888; text-align: center;
+  padding: 24px; font-size: 15px; line-height: 1.6;
+}
 #placeholder.hidden { display: none; }
 #placeholder .ph-actions { margin-top: 22px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
-#placeholder button { background: #2a2a2a; border: none; color: #eee; padding: 12px 22px; min-height: 44px; border-radius: 8px; font-size: 15px; cursor: pointer; font-family: inherit; outline: none; }
+#placeholder button {
+  background: #2a2a2a; border: none; color: #eee;
+  padding: 12px 22px; min-height: 44px; border-radius: 8px;
+  font-size: 15px; cursor: pointer; font-family: inherit; outline: none;
+}
 #placeholder button:hover { background: #3a3a3a; }
 #placeholder button:focus { background: #1e5a78; box-shadow: 0 0 0 2px rgba(79,195,247,0.4); }
 .spinner { display: inline-block; width: 34px; height: 34px; border: 3px solid #333; border-top-color: #4fc3f7; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-#tapToPlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); cursor: pointer; }
+#tapToPlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 40;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0,0,0,0.4); cursor: pointer;
+}
 #tapToPlay.hidden { display: none; }
-.tap-play-inner { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 30px 50px; background: rgba(10,20,28,0.92); border: 2px solid #4fc3f7; border-radius: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.7); }
-.tap-play-icon { width: 80px; height: 80px; border-radius: 50%; background: #4fc3f7; color: #001018; display: flex; align-items: center; justify-content: center; font-size: 40px; padding-left: 8px; }
+.tap-play-inner {
+  display: flex; flex-direction: column; align-items: center; gap: 14px;
+  padding: 30px 50px; background: rgba(10,20,28,0.92);
+  border: 2px solid #4fc3f7; border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+}
+.tap-play-icon {
+  width: 80px; height: 80px; border-radius: 50%;
+  background: #4fc3f7; color: #001018;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 40px; padding-left: 8px;
+  transition: transform .15s;
+}
 .tap-play-text { font-size: 18px; font-weight: bold; color: #fff; }
+#tapToPlay:hover .tap-play-icon { transform: scale(1.08); }
 
-#unmuteBtn { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 10px; padding: 12px 22px; background: rgba(220,53,69,0.95); border: 2px solid rgba(255,255,255,0.4); color: #fff; border-radius: 30px; font-size: 15px; font-weight: bold; font-family: inherit; cursor: pointer; outline: none; box-shadow: 0 4px 20px rgba(0,0,0,0.6); animation: pulseUnmute 1.8s ease-in-out infinite; }
+#unmuteBtn {
+  position: absolute; bottom: 24px; left: 50%;
+  transform: translateX(-50%); z-index: 30;
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 22px;
+  background: rgba(220,53,69,0.95);
+  border: 2px solid rgba(255,255,255,0.4);
+  color: #fff; border-radius: 30px;
+  font-size: 15px; font-weight: bold; font-family: inherit;
+  cursor: pointer; outline: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+  animation: pulseUnmute 1.8s ease-in-out infinite;
+}
 #unmuteBtn.hidden { display: none; }
-#unmuteBtn:hover, #unmuteBtn:focus { background: rgba(240,70,85,1); }
-@keyframes pulseUnmute { 0%, 100% { box-shadow: 0 4px 20px rgba(0,0,0,0.6), 0 0 0 0 rgba(220,53,69,0.7); } 50% { box-shadow: 0 4px 20px rgba(0,0,0,0.6), 0 0 0 10px rgba(220,53,69,0); } }
+#unmuteBtn:hover, #unmuteBtn:focus { background: rgba(240,70,85,1); box-shadow: 0 0 0 3px rgba(255,255,255,0.3), 0 4px 20px rgba(0,0,0,0.6); }
+@keyframes pulseUnmute {
+  0%, 100% { box-shadow: 0 4px 20px rgba(0,0,0,0.6), 0 0 0 0 rgba(220,53,69,0.7); }
+  50%      { box-shadow: 0 4px 20px rgba(0,0,0,0.6), 0 0 0 10px rgba(220,53,69,0); }
+}
 .unmute-icon { font-size: 20px; }
 
-#chNumOverlay { position: fixed; top: 22%; left: 50%; transform: translateX(-50%); min-width: 180px; padding: 20px 40px; background: rgba(10,20,28,0.96); border: 3px solid #4fc3f7; border-radius: 18px; text-align: center; z-index: 2000; pointer-events: none; display: none; box-shadow: 0 8px 32px rgba(0,0,0,0.7); }
+/* ══════ Channel number overlay ══════ */
+#chNumOverlay {
+  position: fixed; top: 22%; left: 50%;
+  transform: translateX(-50%);
+  min-width: 200px; padding: 20px 40px 16px;
+  background: rgba(10,20,28,0.96);
+  border: 3px solid #4fc3f7; border-radius: 18px;
+  text-align: center; z-index: 2000; pointer-events: none; display: none;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+}
 #chNumOverlay.visible { display: block; }
 #chNumOverlay .num-label { font-size: 12px; color: #7ab8d6; letter-spacing: 2px; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; }
 #chNumOverlay .num-value { font-size: 72px; color: #fff; font-weight: bold; line-height: 1; letter-spacing: 4px; text-shadow: 0 2px 10px rgba(79,195,247,0.6); }
+#chNumOverlay .num-hint { font-size: 12px; color: #8ab8d0; margin-top: 10px; letter-spacing: 0.5px; padding-top: 10px; border-top: 1px solid #2a3a48; }
+#chNumOverlay .num-hint b { color: #4fc3f7; }
 
-#toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.95); color: #fff; padding: 12px 22px; border-radius: 8px; border: 1px solid #4fc3f7; font-size: 14px; z-index: 2500; opacity: 0; transition: opacity .25s; pointer-events: none; }
+#toast {
+  position: fixed; bottom: 30px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(30,30,30,0.95); color: #fff;
+  padding: 12px 22px; border-radius: 8px; border: 1px solid #4fc3f7;
+  font-size: 14px; z-index: 2500;
+  opacity: 0; transition: opacity .25s; pointer-events: none;
+}
 #toast.visible { opacity: 1; }
 #toast.error { border-color: #ef5350; color: #ffc7c7; }
 
 .shaka-controls-container { font-size: 14px; }
-.shaka-bottom-controls { padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important; padding-left: calc(12px + env(safe-area-inset-left)) !important; padding-right: calc(12px + env(safe-area-inset-right)) !important; }
+.shaka-bottom-controls {
+  padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
+  padding-left:   calc(12px + env(safe-area-inset-left))  !important;
+  padding-right:  calc(12px + env(safe-area-inset-right)) !important;
+}
 .shaka-seek-bar-container { height: 6px; }
 
-@media (min-width: 1280px) { .shaka-controls-container { font-size: 18px; } #chNum { font-size: 15px; padding: 4px 10px; } #title { font-size: 22px; } #dthBanner { bottom: 120px; padding: 18px 24px; } .dth-logo-box { width: 120px; height: 120px; } .dth-logo { max-width: 96px; max-height: 76px; } .dth-ch-name { font-size: 22px; } .dth-now-title { font-size: 17px; } }
-@media (max-width: 480px) { #topBar { gap: 8px; padding: 10px 12px; padding-top: calc(10px + env(safe-area-inset-top)); } #chNum { font-size: 11px; padding: 2px 7px; } #title { font-size: 13px; } .top-btn { padding: 10px 12px; min-height: 42px; font-size: 13px; } #dthBanner { bottom: 80px; left: 10px; right: 10px; padding: 10px 12px; } .dth-logo-box { width: 70px; height: 70px; } .dth-logo { max-width: 56px; max-height: 46px; } .dth-ch-num { font-size: 9px; padding: 2px 0; letter-spacing: 1px; } .dth-ch-name { font-size: 14px; } .dth-now-title { font-size: 12px; } .dth-now, .dth-next { padding: 6px 8px; } .dth-next-title { font-size: 11px; } #chNumOverlay .num-value { font-size: 56px; } }
-@media (max-height: 480px) and (orientation: landscape) { #topBar { padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); } #dthBanner { bottom: 70px; padding: 8px 12px; } .dth-logo-box { width: 64px; height: 64px; } }
+@media (min-width: 1280px) {
+  .shaka-controls-container { font-size: 18px; }
+  .shaka-seek-bar-container { height: 8px; }
+  #chNum { font-size: 15px; padding: 4px 10px; }
+  #title { font-size: 22px; }
+  #dthBanner { bottom: 120px; padding: 18px 24px; gap: 20px; }
+  .dth-logo-box { width: 120px; height: 120px; }
+  .dth-logo { max-width: 96px; max-height: 76px; }
+  .dth-ch-num { font-size: 13px; padding: 4px 0; }
+  .dth-ch-name { font-size: 22px; }
+  .dth-now-title { font-size: 17px; }
+  .dth-next-title { font-size: 14px; }
+  .dth-now, .dth-next { padding: 10px 14px; }
+}
+@media (min-width: 1800px) {
+  .shaka-controls-container { font-size: 22px; }
+  #dthBanner { bottom: 140px; }
+  .dth-logo-box { width: 140px; height: 140px; }
+  .dth-ch-name { font-size: 26px; }
+  .dth-now-title { font-size: 20px; }
+}
+@media (max-width: 480px) {
+  #topBar { gap: 8px; padding: 10px 12px; padding-top: calc(10px + env(safe-area-inset-top)); }
+  #chNum { font-size: 11px; padding: 2px 7px; }
+  #title { font-size: 13px; }
+  .top-btn { padding: 10px 12px; min-height: 42px; font-size: 13px; }
+  #dthBanner { bottom: 80px; left: 10px; right: 10px; padding: 10px 12px; gap: 10px; }
+  .dth-logo-box { width: 70px; height: 70px; }
+  .dth-logo { max-width: 56px; max-height: 46px; }
+  .dth-ch-num { font-size: 9px; padding: 2px 0; letter-spacing: 1px; }
+  .dth-ch-name { font-size: 14px; }
+  .dth-now-title { font-size: 12px; }
+  .dth-now, .dth-next { padding: 6px 8px; }
+  .dth-next-title { font-size: 11px; }
+  #unmuteBtn { font-size: 13px; padding: 10px 18px; }
+  .tap-play-icon { width: 64px; height: 64px; font-size: 32px; }
+  .tap-play-text { font-size: 15px; }
+  #chNumOverlay .num-value { font-size: 56px; }
+}
+@media (max-height: 480px) and (orientation: landscape) {
+  #topBar { padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); }
+  #chNum { font-size: 11px; }
+  #title { font-size: 13px; }
+  .top-btn { padding: 8px 12px; min-height: 38px; font-size: 12px; }
+  #dthBanner { bottom: 70px; padding: 8px 12px; }
+  .dth-logo-box { width: 64px; height: 64px; }
+  .dth-ch-name { font-size: 14px; }
+  .dth-now-title { font-size: 12px; }
+}
 </style>
 </head>
 <body>
 
 <div id="playerWrapper">
   <div id="videoContainer">
-    <video id="video" autoplay playsinline webkit-playsinline preload="auto" x5-playsinline x5-video-player-type="h5"></video>
+    <video id="video" autoplay playsinline webkit-playsinline preload="auto"
+           x5-playsinline x5-video-player-type="h5"></video>
 
     <div id="topBar">
       <button id="backBtn" class="top-btn" type="button" tabindex="0">◄ Back</button>
@@ -115,7 +280,10 @@ html, body { background: #000; width: 100%; height: 100%; overflow: hidden; font
         <div class="dth-info">
           <div class="dth-ch-name" id="dthChName">Loading…</div>
           <div class="dth-now">
-            <div class="dth-now-header"><span class="dth-now-label">● NOW</span><span class="dth-now-time" id="dthNowTime"></span></div>
+            <div class="dth-now-header">
+              <span class="dth-now-label">● NOW</span>
+              <span class="dth-now-time" id="dthNowTime"></span>
+            </div>
             <div class="dth-now-title" id="dthNowTitle"></div>
             <div class="dth-progress"><div class="dth-progress-fill" id="dthProgressFill"></div></div>
           </div>
@@ -128,9 +296,17 @@ html, body { background: #000; width: 100%; height: 100%; overflow: hidden; font
       </div>
     </div>
 
-    <div id="tapToPlay" class="hidden"><div class="tap-play-inner"><div class="tap-play-icon">▶</div><div class="tap-play-text">Tap to play</div></div></div>
+    <div id="tapToPlay" class="hidden">
+      <div class="tap-play-inner">
+        <div class="tap-play-icon">▶</div>
+        <div class="tap-play-text">Tap to play</div>
+      </div>
+    </div>
 
-    <button id="unmuteBtn" class="hidden" type="button"><span class="unmute-icon">🔇</span><span class="unmute-text">Tap for sound</span></button>
+    <button id="unmuteBtn" class="hidden" type="button">
+      <span class="unmute-icon">🔇</span>
+      <span class="unmute-text">Tap for sound</span>
+    </button>
   </div>
 
   <div id="placeholder">
@@ -146,6 +322,7 @@ html, body { background: #000; width: 100%; height: 100%; overflow: hidden; font
 <div id="chNumOverlay">
   <div class="num-label">Switch to Channel</div>
   <div class="num-value" id="chNumValue"></div>
+  <div class="num-hint">Press <b>OK</b> to switch &nbsp;·&nbsp; <b>Back</b> to cancel</div>
 </div>
 
 <div id="toast"></div>
@@ -160,10 +337,17 @@ function xhrFetch(url, opts) {
     var xhr = new XMLHttpRequest();
     xhr.open(opts.method || 'GET', url, true);
     xhr.timeout = opts.timeout || 20000;
-    if (opts.headers) for (var k in opts.headers) if (opts.headers.hasOwnProperty(k)) { try { xhr.setRequestHeader(k, opts.headers[k]); } catch(e){} }
+    if (opts.headers) {
+      for (var k in opts.headers) {
+        if (opts.headers.hasOwnProperty(k)) { try { xhr.setRequestHeader(k, opts.headers[k]); } catch(e){} }
+      }
+    }
     xhr.onload = function() {
-      if (xhr.status >= 200 && xhr.status < 300) resolve({ ok:true, status:xhr.status, text: function(){ return Promise.resolve(xhr.responseText); }, json: function(){ return Promise.resolve(JSON.parse(xhr.responseText)); } });
-      else reject(new Error('HTTP ' + xhr.status));
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve({ ok: true, status: xhr.status,
+          text: function(){ return Promise.resolve(xhr.responseText); },
+          json: function(){ return Promise.resolve(JSON.parse(xhr.responseText)); } });
+      } else reject(new Error('HTTP ' + xhr.status));
     };
     xhr.onerror = function(){ reject(new Error('Network error')); };
     xhr.ontimeout = function(){ reject(new Error('Timeout')); };
@@ -206,6 +390,7 @@ var dthNextTitle = document.getElementById('dthNextTitle');
 
 var tapToPlay   = document.getElementById('tapToPlay');
 var unmuteBtn   = document.getElementById('unmuteBtn');
+
 var chNumOverlay = document.getElementById('chNumOverlay');
 var chNumValue   = document.getElementById('chNumValue');
 var toastEl      = document.getElementById('toast');
@@ -221,107 +406,245 @@ var bannerHideTimer = null;
 var progressTimer = null;
 var lastMouseMoveTs = 0;
 var autoplayAttempted = false;
+
 var chNumBuffer = '';
 var chNumTimer = null;
 var toastTimer = null;
 
-function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-function formatTimeOnly(ms) { var d = new Date(ms), h = d.getHours(), m = d.getMinutes(), ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap; }
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+function formatTimeOnly(ms) {
+  var d = new Date(ms);
+  var h = d.getHours(), m = d.getMinutes();
+  var ap = h >= 12 ? 'PM' : 'AM';
+  h = h % 12; if (h === 0) h = 12;
+  return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap;
+}
 function formatRange(s, e) { return formatTimeOnly(s) + ' - ' + formatTimeOnly(e); }
 function getQueryParam(name) {
   var q = window.location.search.substring(1).split('&');
-  for (var i = 0; i < q.length; i++) { var kv = q[i].split('='); if (decodeURIComponent(kv[0]) === name) return decodeURIComponent(kv[1] || ''); }
+  for (var i = 0; i < q.length; i++) {
+    var kv = q[i].split('=');
+    if (decodeURIComponent(kv[0]) === name) return decodeURIComponent(kv[1] || '');
+  }
   return null;
 }
-function isJioPlLiveUrl(url) { try { var a = document.createElement('a'); a.href = url; return a.hostname.toLowerCase() === 'jiotvpllive.cdn.jio.com'; } catch (e) { return false; } }
-function fetchWithFallback(url, opts) { return xhrFetch(url, opts).catch(function(e){ return xhrFetch(CORS_PROXY + url, opts); }); }
-function showPlaceholder(html, showActions, showSpinner) { placeholder.classList.remove('hidden'); phMsg.innerHTML = html; phSpinner.style.display = showSpinner ? 'inline-block' : 'none'; phActions.style.display = showActions ? 'flex' : 'none'; }
+function isJioPlLiveUrl(url) {
+  try { var a = document.createElement('a'); a.href = url; return a.hostname.toLowerCase() === 'jiotvpllive.cdn.jio.com'; }
+  catch (e) { return false; }
+}
+function fetchWithFallback(url, opts) {
+  return xhrFetch(url, opts).catch(function(e) {
+    return xhrFetch(CORS_PROXY + url, opts);
+  });
+}
+function showPlaceholder(html, showActions, showSpinner) {
+  placeholder.classList.remove('hidden');
+  phMsg.innerHTML = html;
+  phSpinner.style.display = showSpinner ? 'inline-block' : 'none';
+  phActions.style.display = showActions ? 'flex' : 'none';
+}
 function hidePlaceholder() { placeholder.classList.add('hidden'); }
-function showToast(msg, isError) { toastEl.textContent = msg; toastEl.classList.add('visible'); if (isError) toastEl.classList.add('error'); else toastEl.classList.remove('error'); clearTimeout(toastTimer); toastTimer = setTimeout(function(){ toastEl.classList.remove('visible'); }, 2500); }
-function getChannelNumber(ch) { if (!ch) return null; if (typeof ch.id === 'number') return ch.id; if (typeof ch.id === 'string') { var n = parseInt(ch.id, 10); if (!isNaN(n) && String(n) === ch.id) return n; } return null; }
+function showToast(msg, isError) {
+  toastEl.textContent = msg;
+  toastEl.classList.add('visible');
+  if (isError) toastEl.classList.add('error'); else toastEl.classList.remove('error');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(function(){ toastEl.classList.remove('visible'); }, 2500);
+}
+
+function getChannelNumber(ch) {
+  if (!ch) return null;
+  var id = ch.id;
+  if (typeof id === 'number') return id;
+  if (typeof id === 'string') {
+    var n = parseInt(id, 10);
+    if (!isNaN(n) && String(n) === id) return n;
+  }
+  return null;
+}
 
 function showTapToPlay() { tapToPlay.classList.remove('hidden'); }
 function hideTapToPlay() { tapToPlay.classList.add('hidden'); }
 function showUnmuteBtn() { unmuteBtn.classList.remove('hidden'); }
 function hideUnmuteBtn() { unmuteBtn.classList.add('hidden'); }
+
 function attemptPlayback() {
-  autoplayAttempted = true; hideTapToPlay();
+  autoplayAttempted = true;
+  hideTapToPlay();
   var p = videoEl.play();
-  if (!p || !p.then) { setTimeout(function() { if (videoEl.paused && !isLoading) tryMutedPlayback(); }, 1500); return; }
-  p.then(function() { hideUnmuteBtn(); hideTapToPlay(); })
+  if (!p || !p.then) {
+    setTimeout(function() { if (videoEl.paused && !isLoading) tryMutedPlayback(); }, 1500);
+    return;
+  }
+  p.then(function() { hideUnmuteBtn(); hideTapToPlay(); console.log('[play] ✓ sound'); })
    .catch(function(err) { console.warn('[play] sound blocked:', err && err.name); tryMutedPlayback(); });
 }
 function tryMutedPlayback() {
   videoEl.muted = true;
   var p = videoEl.play();
-  if (!p || !p.then) { setTimeout(function() { if (videoEl.paused) showTapToPlay(); else showUnmuteBtn(); }, 1500); return; }
-  p.then(function() { showUnmuteBtn(); }).catch(function(err) { showTapToPlay(); });
+  if (!p || !p.then) {
+    setTimeout(function() { if (videoEl.paused) showTapToPlay(); else showUnmuteBtn(); }, 1500);
+    return;
+  }
+  p.then(function() { showUnmuteBtn(); console.log('[play] ✓ muted'); })
+   .catch(function(err) { console.warn('[play] muted blocked:', err && err.name); showTapToPlay(); });
 }
-tapToPlay.addEventListener('click', function(e) {
-  e.stopPropagation(); hideTapToPlay(); videoEl.muted = false;
-  var p = videoEl.play();
-  if (p && p.then) p.then(function() { hideUnmuteBtn(); }).catch(function() { videoEl.muted = true; var p2 = videoEl.play(); if (p2 && p2.then) p2.then(function(){ showUnmuteBtn(); }).catch(function(){ showTapToPlay(); }); });
-});
-unmuteBtn.addEventListener('click', function(e) { e.stopPropagation(); videoEl.muted = false; if (videoEl.paused) videoEl.play().catch(function(){}); if (!videoEl.muted) hideUnmuteBtn(); });
 
+tapToPlay.addEventListener('click', function(e) {
+  e.stopPropagation();
+  hideTapToPlay();
+  videoEl.muted = false;
+  var p = videoEl.play();
+  if (p && p.then) {
+    p.then(function() { hideUnmuteBtn(); })
+     .catch(function(err) {
+        console.warn('[tap-play] retry muted:', err.name);
+        videoEl.muted = true;
+        var p2 = videoEl.play();
+        if (p2 && p2.then) p2.then(function() { showUnmuteBtn(); }).catch(function(){ showTapToPlay(); });
+     });
+  }
+});
+unmuteBtn.addEventListener('click', function(e) {
+  e.stopPropagation();
+  videoEl.muted = false;
+  if (videoEl.paused) videoEl.play().catch(function(){});
+  if (!videoEl.muted) hideUnmuteBtn();
+});
+
+/* ══════════════════════════════════════════════════════════════ Programme info */
 function loadChannelPrograms() {
   try {
     var raw = localStorage.getItem('channelPrograms');
     if (!raw) { channelPrograms = null; return; }
     channelPrograms = JSON.parse(raw);
     if (!channelPrograms || !channelPrograms.length) { channelPrograms = null; return; }
-    for (var i = 0; i < channelPrograms.length; i++) { var p = channelPrograms[i]; if (typeof p.start === 'string') p.start = new Date(p.start).getTime(); if (typeof p.end === 'string') p.end = new Date(p.end).getTime(); }
+    for (var i = 0; i < channelPrograms.length; i++) {
+      var p = channelPrograms[i];
+      if (typeof p.start === 'string') p.start = new Date(p.start).getTime();
+      if (typeof p.end === 'string') p.end = new Date(p.end).getTime();
+    }
   } catch (e) { channelPrograms = null; }
 }
+
 function findCurrentAndNext() {
   if (!channelPrograms || !channelPrograms.length) return { current: null, next: null };
-  var now = Date.now(), current = null, next = null;
-  for (var i = 0; i < channelPrograms.length; i++) { var p = channelPrograms[i]; var sMs = p.start instanceof Date ? p.start.getTime() : p.start, eMs = p.end instanceof Date ? p.end.getTime() : p.end; if (sMs <= now && eMs > now) { current = { p: p, s: sMs, e: eMs }; break; } }
+  var now = Date.now();
+  var current = null, next = null;
+  for (var i = 0; i < channelPrograms.length; i++) {
+    var p = channelPrograms[i];
+    var sMs = p.start instanceof Date ? p.start.getTime() : p.start;
+    var eMs = p.end instanceof Date ? p.end.getTime() : p.end;
+    if (sMs <= now && eMs > now) { current = { p: p, s: sMs, e: eMs }; break; }
+  }
   var ref = current ? current.e : now;
-  for (var j = 0; j < channelPrograms.length; j++) { var q = channelPrograms[j]; var qs = q.start instanceof Date ? q.start.getTime() : q.start; if (qs > ref) { next = { p: q, s: qs, e: q.end instanceof Date ? q.end.getTime() : q.end }; break; } }
+  for (var j = 0; j < channelPrograms.length; j++) {
+    var q = channelPrograms[j];
+    var qs = q.start instanceof Date ? q.start.getTime() : q.start;
+    if (qs > ref) { next = { p: q, s: qs, e: q.end instanceof Date ? q.end.getTime() : q.end }; break; }
+  }
   return { current: current, next: next };
 }
+
 function updateProgress() {
   if (!channelPrograms || !channelPrograms.length) return;
   var cur = findCurrentAndNext();
   if (!cur.current) { dthProgressFill.style.width = '0%'; return; }
-  var total = cur.current.e - cur.current.s, elapsed = Date.now() - cur.current.s;
-  dthProgressFill.style.width = Math.max(0, Math.min(100, (elapsed / total) * 100)).toFixed(1) + '%';
+  var total = cur.current.e - cur.current.s;
+  var elapsed = Date.now() - cur.current.s;
+  var pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
+  dthProgressFill.style.width = pct.toFixed(1) + '%';
 }
-function startProgressUpdates() { stopProgressUpdates(); updateProgress(); progressTimer = setInterval(updateProgress, 1000); }
-function stopProgressUpdates() { if (progressTimer) { clearInterval(progressTimer); progressTimer = null; } }
+function startProgressUpdates() {
+  stopProgressUpdates();
+  updateProgress();
+  progressTimer = setInterval(updateProgress, 1000);
+}
+function stopProgressUpdates() {
+  if (progressTimer) { clearInterval(progressTimer); progressTimer = null; }
+}
 function updateDthBanner() {
   if (!currentChannel) return;
   var num = getChannelNumber(currentChannel);
   dthChNum.textContent = num !== null ? 'CH ' + num : 'CH —';
-  if (currentChannel.logo) { dthLogo.src = currentChannel.logo; dthLogo.style.display = 'block'; dthLogoBox.classList.remove('no-logo'); }
-  else { dthLogo.style.display = 'none'; dthLogoBox.classList.add('no-logo'); }
+  if (currentChannel.logo) {
+    dthLogo.src = currentChannel.logo;
+    dthLogo.style.display = 'block';
+    dthLogoBox.classList.remove('no-logo');
+  } else {
+    dthLogo.style.display = 'none';
+    dthLogoBox.classList.add('no-logo');
+  }
   dthChName.textContent = currentChannel.name || 'Unknown';
   var cur = findCurrentAndNext();
-  if (cur.current) { dthNowTime.textContent = formatRange(cur.current.s, cur.current.e); dthNowTitle.textContent = cur.current.p.title || 'No Title'; }
-  else { dthNowTime.textContent = ''; dthNowTitle.textContent = channelPrograms ? 'No current programme' : 'Loading guide…'; }
-  if (cur.next) { dthNextTime.textContent = formatTimeOnly(cur.next.s); dthNextTitle.textContent = cur.next.p.title || 'No Title'; }
-  else { dthNextTime.textContent = ''; dthNextTitle.textContent = channelPrograms ? 'No upcoming' : ''; }
+  if (cur.current) {
+    dthNowTime.textContent = formatRange(cur.current.s, cur.current.e);
+    dthNowTitle.textContent = cur.current.p.title || 'No Title';
+  } else {
+    dthNowTime.textContent = '';
+    dthNowTitle.textContent = channelPrograms ? 'No current programme' : 'Loading guide…';
+  }
+  if (cur.next) {
+    dthNextTime.textContent = formatTimeOnly(cur.next.s);
+    dthNextTitle.textContent = cur.next.p.title || 'No Title';
+  } else {
+    dthNextTime.textContent = '';
+    dthNextTitle.textContent = channelPrograms ? 'No upcoming programme' : '';
+  }
   updateProgress();
 }
-function showDthBanner(ms) { updateDthBanner(); dthBanner.classList.add('visible'); startProgressUpdates(); if (bannerHideTimer) clearTimeout(bannerHideTimer); if (ms && ms > 0) bannerHideTimer = setTimeout(hideDthBanner, ms); }
-function hideDthBanner() { dthBanner.classList.remove('visible'); stopProgressUpdates(); if (bannerHideTimer) { clearTimeout(bannerHideTimer); bannerHideTimer = null; } }
-function peekBanner(ms) { if (!dthBanner.classList.contains('visible')) showDthBanner(ms || 5000); }
-function startBannerRefreshTimer() { if (programUpdateTimer) clearInterval(programUpdateTimer); programUpdateTimer = setInterval(function() { if (dthBanner.classList.contains('visible')) updateDthBanner(); }, 60000); }
+function showDthBanner(autoHideMs) {
+  updateDthBanner();
+  dthBanner.classList.add('visible');
+  startProgressUpdates();
+  if (bannerHideTimer) clearTimeout(bannerHideTimer);
+  if (autoHideMs && autoHideMs > 0) bannerHideTimer = setTimeout(hideDthBanner, autoHideMs);
+}
+function hideDthBanner() {
+  dthBanner.classList.remove('visible');
+  stopProgressUpdates();
+  if (bannerHideTimer) { clearTimeout(bannerHideTimer); bannerHideTimer = null; }
+}
+function peekBanner(ms) {
+  if (!dthBanner.classList.contains('visible')) showDthBanner(ms || 5000);
+}
+function startBannerRefreshTimer() {
+  if (programUpdateTimer) clearInterval(programUpdateTimer);
+  programUpdateTimer = setInterval(function() {
+    if (dthBanner.classList.contains('visible')) updateDthBanner();
+  }, 60000);
+}
 
 /* ══════════════════════════════════════════════════════════════
-   Channel number typing — auto-switch after 1.2s, no OK needed
+   Channel number typing in player
    ══════════════════════════════════════════════════════════════ */
-function showChNumOverlay() { chNumValue.textContent = chNumBuffer || '—'; chNumOverlay.classList.add('visible'); }
-function hideChNumOverlay() { chNumOverlay.classList.remove('visible'); }
+function showChNumOverlay() {
+  chNumValue.textContent = chNumBuffer || '—';
+  chNumOverlay.classList.add('visible');
+}
+function hideChNumOverlay() {
+  chNumOverlay.classList.remove('visible');
+}
 function handleChNumDigit(digit) {
   if (chNumBuffer.length >= 4) chNumBuffer = '';
   chNumBuffer += digit;
   showChNumOverlay();
   clearTimeout(chNumTimer);
-  chNumTimer = setTimeout(autoSwitchByNumber, 1200);
+  chNumTimer = setTimeout(function() {
+    chNumBuffer = '';
+    hideChNumOverlay();
+  }, 6000);
 }
-function autoSwitchByNumber() {
+function cancelChNum() {
+  chNumBuffer = '';
+  clearTimeout(chNumTimer);
+  hideChNumOverlay();
+}
+function commitChNum() {
   var num = chNumBuffer;
   chNumBuffer = '';
   clearTimeout(chNumTimer);
@@ -329,22 +652,36 @@ function autoSwitchByNumber() {
   if (!num) return;
 
   var n = parseInt(num, 10);
+
+  /* Try localStorage first */
   var all = [];
   try { all = JSON.parse(localStorage.getItem('allChannels') || '[]'); } catch (e) {}
+
   var found = null;
-  for (var i = 0; i < all.length; i++) if (getChannelNumber(all[i]) === n) { found = all[i]; break; }
+  for (var i = 0; i < all.length; i++) {
+    if (getChannelNumber(all[i]) === n) { found = all[i]; break; }
+  }
 
-  if (found) { switchToChannel(found, n); return; }
+  if (found) {
+    switchToChannel(found, n);
+    return;
+  }
 
+  /* Fallback: fetch channel list */
   showToast('Looking up CH ' + n + '…');
   fetchChannelsFrom(0).then(function(chs) {
     try { localStorage.setItem('allChannels', JSON.stringify(chs)); } catch (e) {}
     var f2 = null;
-    for (var j = 0; j < chs.length; j++) if (getChannelNumber(chs[j]) === n) { f2 = chs[j]; break; }
+    for (var j = 0; j < chs.length; j++) {
+      if (getChannelNumber(chs[j]) === n) { f2 = chs[j]; break; }
+    }
     if (f2) switchToChannel(f2, n);
     else showToast('Channel ' + num + ' not found', true);
-  }).catch(function() { showToast('Channel ' + num + ' not found', true); });
+  }).catch(function() {
+    showToast('Channel ' + num + ' not found', true);
+  });
 }
+
 function switchToChannel(ch, num) {
   try {
     localStorage.setItem('currentChannel', JSON.stringify(ch));
@@ -352,39 +689,73 @@ function switchToChannel(ch, num) {
     var raw = cache.data && cache.data[String(ch.id)];
     if (raw && raw.length) {
       var ser = [];
-      for (var i = 0; i < raw.length; i++) ser.push({ title: raw[i].t, description: raw[i].d, start: raw[i].s, end: raw[i].e, icon: raw[i].ic || '' });
+      for (var i = 0; i < raw.length; i++) {
+        ser.push({
+          title: raw[i].t, description: raw[i].d,
+          start: raw[i].s, end: raw[i].e, icon: raw[i].ic || ''
+        });
+      }
       localStorage.setItem('channelPrograms', JSON.stringify(ser));
-    } else localStorage.removeItem('channelPrograms');
+    } else {
+      localStorage.removeItem('channelPrograms');
+    }
   } catch (e) {}
+
   showToast('Switching to CH ' + num + ' · ' + (ch.name || ''));
-  setTimeout(function() { window.location.href = 'jplayer.html?id=' + encodeURIComponent(ch.id); }, 300);
+  /* Brief delay so toast is visible before reload */
+  setTimeout(function() {
+    window.location.href = 'jplayer.html?id=' + encodeURIComponent(ch.id);
+  }, 300);
 }
 
+/* ══════════════════════════════════════════════════════════════ Cookies */
 function extractStarCookie(data, channelId) {
   var results = [];
   if (data && Array.isArray(data.successful_results)) results = results.concat(data.successful_results);
-  if (data && Array.isArray(data.failed_results)) results = results.concat(data.failed_results);
+  if (data && Array.isArray(data.failed_results))  results = results.concat(data.failed_results);
   for (var i = 0; i < results.length; i++) {
-    var item = results[i]; if (!item) continue;
+    var item = results[i];
+    if (!item) continue;
     if (String(item.channel_id) !== String(channelId)) continue;
     var finalUrl = (item.error_details && item.error_details.final_url) || item.final_url || '';
-    var match = finalUrl.match(/[?&]__hdnea__=([^&]+)/); if (match) return '__hdnea__=' + match[1];
-    var raw = finalUrl.match(/__hdnea__=([^&]+)/); if (raw) return '__hdnea__=' + raw[1];
+    var match = finalUrl.match(/[?&]__hdnea__=([^&]+)/);
+    if (match) return '__hdnea__=' + match[1];
+    var raw = finalUrl.match(/__hdnea__=([^&]+)/);
+    if (raw) return '__hdnea__=' + raw[1];
   }
   return '';
 }
 function fetchCookiesForChannel(channelData) {
-  var streamUrls = [channelData.url, channelData.url1, channelData.url2, channelData.url3].filter(function(u){ return !!u; }).map(function(u){ return u.replace('bpk-tv//', 'bpk-tv/'); });
+  var streamUrls = [channelData.url, channelData.url1, channelData.url2, channelData.url3]
+    .filter(function(u){ return !!u; }).map(function(u){ return u.replace('bpk-tv//', 'bpk-tv/'); });
   var hasJio = false, hasRegular = false;
-  for (var i = 0; i < streamUrls.length; i++) { if (isJioPlLiveUrl(streamUrls[i])) hasJio = true; else hasRegular = true; }
+  for (var i = 0; i < streamUrls.length; i++) {
+    if (isJioPlLiveUrl(streamUrls[i])) hasJio = true; else hasRegular = true;
+  }
   var primaryCookie = '', fallbackCookie = '', starCookie = '';
   var tasks = [];
-  if (hasJio) tasks.push(fetchWithFallback(COOKIE_STAR_SPORTS, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){ starCookie = extractStarCookie(d, channelData.id); }).catch(function(){}));
-  if (hasRegular) tasks.push(fetchWithFallback(COOKIE_PRIMARY, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){ if (Array.isArray(d)) { for (var i = 0; i < d.length; i++) if (d[i] && d[i].cookie) { primaryCookie = d[i].cookie; break; } } else if (d && d.cookie) primaryCookie = d.cookie; }).catch(function(){}));
-  return Promise.all(tasks).then(function() { return { streamUrls: streamUrls, primaryCookie: primaryCookie, fallbackCookie: fallbackCookie, starCookie: starCookie }; });
+  if (hasJio) {
+    tasks.push(fetchWithFallback(COOKIE_STAR_SPORTS, { cache: 'no-store' }).then(function(r){ return r.json(); })
+      .then(function(data){ starCookie = extractStarCookie(data, channelData.id); })
+      .catch(function(e){ console.warn('Star cookie:', e.message); }));
+  }
+  if (hasRegular) {
+    tasks.push(fetchWithFallback(COOKIE_PRIMARY, { cache: 'no-store' }).then(function(r){ return r.json(); })
+      .then(function(data){
+        if (Array.isArray(data)) {
+          for (var i = 0; i < data.length; i++) if (data[i] && data[i].cookie) { primaryCookie = data[i].cookie; break; }
+        } else if (data && data.cookie) primaryCookie = data.cookie;
+      })
+      .catch(function(e){ console.warn('Primary cookie:', e.message); }));
+  }
+  return Promise.all(tasks).then(function() {
+    return { streamUrls: streamUrls, primaryCookie: primaryCookie, fallbackCookie: fallbackCookie, starCookie: starCookie };
+  });
 }
+
 function parseChannelJson(text) {
-  var c = String(text).trim(); if (c.charCodeAt(0) === 0xFEFF) c = c.slice(1);
+  var c = String(text).trim();
+  if (c.charCodeAt(0) === 0xFEFF) c = c.slice(1);
   try { var p = JSON.parse(c); if (Array.isArray(p)) return p; if (p && Array.isArray(p.channels)) return p.channels; } catch(e){}
   try { var p2 = JSON.parse('[' + c.replace(/,\s*$/, '') + ']'); if (Array.isArray(p2)) return p2; } catch(e){}
   throw new Error('Invalid JSON');
@@ -398,116 +769,203 @@ function fetchChannelsFrom(idx) {
 }
 function findChannelById(id) {
   var last = CHANNELS_CANDIDATES[CHANNELS_CANDIDATES.length - 1];
-  return fetchChannelsFrom(0).catch(function() {
-    return xhrFetch(CORS_PROXY + last, { timeout: 25000 }).then(function(r){ return r.text(); }).then(function(t){ return parseChannelJson(t); });
-  }).then(function(list) {
-    for (var i = 0; i < list.length; i++) if (String(list[i].id) === String(id)) return list[i];
-    throw new Error('Channel not found');
-  });
+  return fetchChannelsFrom(0)
+    .catch(function() {
+      return xhrFetch(CORS_PROXY + last, { timeout: 25000 })
+        .then(function(r){ return r.text(); })
+        .then(function(t){ return parseChannelJson(t); });
+    })
+    .then(function(list){
+      for (var i = 0; i < list.length; i++) if (String(list[i].id) === String(id)) return list[i];
+      throw new Error('Channel not found');
+    });
 }
 
+/* ══════════════════════════════════════════════════════════════ Player init */
 function initPlayer() {
-  if (typeof shaka === 'undefined' || !shaka.Player) { showPlaceholder('⚠️ Player failed to load.<br>Check your internet connection.', true, false); return false; }
+  if (typeof shaka === 'undefined' || !shaka.Player) {
+    showPlaceholder('⚠️ Player failed to load.<br>Check your internet connection.', true, false);
+    return false;
+  }
   try { if (shaka.polyfill && shaka.polyfill.installAll) shaka.polyfill.installAll(); } catch (e) {}
-  if (!shaka.Player.isBrowserSupported()) { showPlaceholder('⚠️ This browser is not supported by the player.', true, false); return false; }
+  if (!shaka.Player.isBrowserSupported()) {
+    showPlaceholder('⚠️ This browser is not supported by the player.', true, false);
+    return false;
+  }
 
   shakaPlayer = new shaka.Player(videoEl);
   shakaPlayer.getNetworkingEngine().registerRequestFilter(function(type, request) {
     request.headers['Referer']    = 'https://www.jiotv.com/';
     request.headers['User-Agent'] = 'plaYtv/7.1.5';
-    if (activeCookie && (type === shaka.net.NetworkingEngine.RequestType.MANIFEST || type === shaka.net.NetworkingEngine.RequestType.SEGMENT)) {
+    if (activeCookie &&
+        (type === shaka.net.NetworkingEngine.RequestType.MANIFEST ||
+         type === shaka.net.NetworkingEngine.RequestType.SEGMENT)) {
       var url = request.uris[0];
       url = url.replace(/([?&])__hdnea__=[^&]*/g, '$1').replace(/[?&]+$/, '');
       var sep = url.indexOf('?') === -1 ? '?' : '&';
       request.uris[0] = url + sep + activeCookie;
     }
   });
+
   try {
-    var uiConfig = { addSeekBar: true, addBigPlayButton: true, controlPanelElements: ['play_pause', 'time_and_duration', 'spacer', 'mute', 'volume', 'quality', 'captions', 'playback_rate', 'picture_in_picture', 'fullscreen', 'overflow_menu'], overflowMenuButtons: ['quality', 'captions', 'playback_rate', 'picture_in_picture'] };
+    var uiConfig = {
+      addSeekBar: true,
+      addBigPlayButton: true,
+      controlPanelElements: ['play_pause', 'time_and_duration', 'spacer', 'mute', 'volume', 'quality', 'captions', 'playback_rate', 'picture_in_picture', 'fullscreen', 'overflow_menu'],
+      overflowMenuButtons: ['quality', 'captions', 'playback_rate', 'picture_in_picture']
+    };
     shakaUI = new shaka.ui.Overlay(shakaPlayer, videoContainer, videoEl, uiConfig);
-  } catch (e) { videoEl.setAttribute('controls', 'controls'); }
+  } catch (e) {
+    videoEl.setAttribute('controls', 'controls');
+  }
+
   syncTopBarWithShakaControls();
   return true;
 }
+
 function syncTopBarWithShakaControls() {
   var lastState = null, attempts = 0;
-  function check() {
+  function checkForContainer() {
     attempts++;
     var ctrl = videoContainer.querySelector('.shaka-controls-container');
-    if (!ctrl) { if (attempts < 30) setTimeout(check, 200); return; }
+    if (!ctrl) {
+      if (attempts < 30) setTimeout(checkForContainer, 200);
+      return;
+    }
     setInterval(function() {
-      var isHidden = ctrl.classList.contains('shaka-hidden') || ctrl.offsetParent === null || window.getComputedStyle(ctrl).visibility === 'hidden' || parseFloat(window.getComputedStyle(ctrl).opacity) === 0;
-      if (isHidden !== lastState) { lastState = isHidden; if (isHidden) topBar.classList.add('hidden'); else topBar.classList.remove('hidden'); }
+      var isHidden = ctrl.classList.contains('shaka-hidden') ||
+                     ctrl.offsetParent === null ||
+                     window.getComputedStyle(ctrl).visibility === 'hidden' ||
+                     parseFloat(window.getComputedStyle(ctrl).opacity) === 0;
+      if (isHidden !== lastState) {
+        lastState = isHidden;
+        if (isHidden) topBar.classList.add('hidden');
+        else topBar.classList.remove('hidden');
+      }
     }, 200);
-    var initial = ctrl.classList.contains('shaka-hidden');
-    lastState = initial;
-    if (initial) topBar.classList.add('hidden');
+    var initialHidden = ctrl.classList.contains('shaka-hidden');
+    lastState = initialHidden;
+    if (initialHidden) topBar.classList.add('hidden');
   }
-  check();
+  checkForContainer();
 }
 
 function playChannel(channelData) {
   if (!shakaPlayer || isLoading) return;
-  isLoading = true; autoplayAttempted = false; hideUnmuteBtn(); hideTapToPlay();
+  isLoading = true;
+  autoplayAttempted = false;
+  hideUnmuteBtn();
+  hideTapToPlay();
   currentChannel = channelData;
+
   var num = getChannelNumber(channelData);
   chNumEl.textContent = num !== null ? 'CH ' + num : '';
   titleEl.textContent = channelData.name || 'Unknown';
   showPlaceholder('Connecting to stream…', false, true);
 
-  shakaPlayer.unload().catch(function(){}).then(function() { return fetchCookiesForChannel(channelData); }).then(function(cookies) {
+  shakaPlayer.unload().catch(function(){}).then(function() {
+    return fetchCookiesForChannel(channelData);
+  }).then(function(cookies) {
     var streamUrls = cookies.streamUrls;
-    if (!streamUrls.length) { isLoading = false; showPlaceholder('⚠️ No stream URL.', true, false); return; }
-    var clearKeys = {};
-    if (Array.isArray(channelData.keys)) for (var i = 0; i < channelData.keys.length; i++) { var k = channelData.keys[i]; if (k && k.keyId && k.key) clearKeys[k.keyId] = k.key; }
-    else if (channelData.keyId && channelData.key) clearKeys[channelData.keyId] = channelData.key;
-    shakaPlayer.configure({ drm: { clearKeys: clearKeys }, streaming: { lowLatencyMode: true }, abr: { enabled: true } });
+    var primaryCookie = cookies.primaryCookie;
+    var fallbackCookie = cookies.fallbackCookie;
+    var starCookie = cookies.starCookie;
+
+    if (!streamUrls.length) {
+      isLoading = false;
+      showPlaceholder('⚠️ No stream URL for this channel.', true, false);
+      return;
+    }
+
+    var clearKeysConfig = {};
+    if (Array.isArray(channelData.keys) && channelData.keys.length > 0) {
+      for (var i = 0; i < channelData.keys.length; i++) {
+        var k = channelData.keys[i];
+        if (k && k.keyId && k.key) clearKeysConfig[k.keyId] = k.key;
+      }
+    } else if (channelData.keyId && channelData.key) {
+      clearKeysConfig[channelData.keyId] = channelData.key;
+    }
+
+    shakaPlayer.configure({ drm: { clearKeys: clearKeysConfig }, streaming: { lowLatencyMode: true }, abr: { enabled: true } });
 
     var urlIdx = 0, loaded = false;
     function tryNextUrl() {
       if (loaded || urlIdx >= streamUrls.length) {
-        if (!loaded) { isLoading = false; activeCookie = ''; showPlaceholder('⚠️ Could not load this channel.<br>Try another or tap Retry.', true, false); }
+        if (!loaded) {
+          isLoading = false;
+          activeCookie = '';
+          showPlaceholder('⚠️ Could not load this channel.<br>Try another channel or tap Retry.', true, false);
+        }
         return;
       }
       var streamUrl = streamUrls[urlIdx++];
       var isJio = isJioPlLiveUrl(streamUrl);
-      var rounds = [];
-      if (isJio) { if (cookies.starCookie) rounds.push(cookies.starCookie); }
-      else { if (cookies.primaryCookie) rounds.push(cookies.primaryCookie); if (cookies.fallbackCookie && cookies.fallbackCookie !== cookies.primaryCookie) rounds.push(cookies.fallbackCookie); if (rounds.length === 0) rounds.push(''); }
+      var cookieRounds = [];
+      if (isJio) { if (starCookie) cookieRounds.push(starCookie); }
+      else {
+        if (primaryCookie) cookieRounds.push(primaryCookie);
+        if (fallbackCookie && fallbackCookie !== primaryCookie) cookieRounds.push(fallbackCookie);
+        if (cookieRounds.length === 0) cookieRounds.push('');
+      }
       var cIdx = 0;
       function tryNextCookie() {
-        if (loaded || cIdx >= rounds.length) { tryNextUrl(); return; }
-        activeCookie = rounds[cIdx++];
+        if (loaded || cIdx >= cookieRounds.length) { tryNextUrl(); return; }
+        activeCookie = cookieRounds[cIdx++];
         shakaPlayer.load(streamUrl).then(function() {
-          loaded = true; isLoading = false; hidePlaceholder();
+          loaded = true;
+          isLoading = false;
+          hidePlaceholder();
           attemptPlayback();
           setTimeout(function() { peekBanner(5000); }, 400);
-        }).catch(function(e) { console.warn('[play] failed:', e && (e.code || e.message)); tryNextCookie(); });
+        }).catch(function(e) {
+          console.warn('[play] failed:', e && (e.code || e.message));
+          tryNextCookie();
+        });
       }
       tryNextCookie();
     }
     tryNextUrl();
-  }).catch(function(e) { isLoading = false; showPlaceholder('⚠️ Error: ' + escapeHtml(e && e.message ? e.message : 'unknown'), true, false); });
+  }).catch(function(e) {
+    isLoading = false;
+    showPlaceholder('⚠️ Error: ' + escapeHtml(e && e.message ? e.message : 'unknown'), true, false);
+  });
 }
 
-var fitModes = [{ key: 'contain', label: 'FIT: CONTAIN' }, { key: 'cover', label: 'FULL: COVER' }, { key: 'stretch', label: 'FULL: STRETCH' }];
+/* ══════════════════════════════════════════════════════════════ Fit modes */
+var fitModes = [
+  { key: 'contain', label: 'FIT: CONTAIN' },
+  { key: 'cover',   label: 'FULL: COVER' },
+  { key: 'stretch', label: 'FULL: STRETCH' }
+];
 var fitModeIndex = 0;
-function applyFitMode(index) { fitModeIndex = (index + fitModes.length) % fitModes.length; var mode = fitModes[fitModeIndex]; videoEl.className = 'fit-' + mode.key; fitBtn.innerHTML = mode.label; }
+function applyFitMode(index) {
+  fitModeIndex = (index + fitModes.length) % fitModes.length;
+  var mode = fitModes[fitModeIndex];
+  videoEl.className = 'fit-' + mode.key;
+  fitBtn.innerHTML = mode.label;
+}
 fitBtn.addEventListener('click', function(e){ e.preventDefault(); applyFitMode(fitModeIndex + 1); });
 applyFitMode(0);
 
-function goBack() { try { if (history.length > 1) history.back(); else window.location.href = 'jtv.html'; } catch (e) { window.location.href = 'jtv.html'; } }
+function goBack() {
+  try { if (history.length > 1) history.back(); else window.location.href = 'jtv.html'; }
+  catch (e) { window.location.href = 'jtv.html'; }
+}
 backBtn.addEventListener('click', function(e){ e.preventDefault(); goBack(); });
 phBackBtn.addEventListener('click', function(e){ e.preventDefault(); goBack(); });
-phRetryBtn.addEventListener('click', function(e){ e.preventDefault(); if (currentChannel) playChannel(currentChannel); });
+phRetryBtn.addEventListener('click', function(e) { e.preventDefault(); if (currentChannel) playChannel(currentChannel); });
 
+/* ══════════════════════════════════════════════════════════════ Banner peek */
 videoContainer.addEventListener('click', function(e) {
-  if (e.target === backBtn || e.target === fitBtn || e.target === unmuteBtn || e.target === tapToPlay) return;
+  if (e.target === backBtn || e.target === fitBtn) return;
+  if (e.target === unmuteBtn || e.target === tapToPlay) return;
   if (e.target.closest && (e.target.closest('.shaka-overlays-container') || e.target.closest('#unmuteBtn') || e.target.closest('#tapToPlay'))) return;
   peekBanner(5000);
 });
 videoContainer.addEventListener('touchstart', function(e) {
-  if (e.target === backBtn || e.target === fitBtn || e.target === unmuteBtn || e.target === tapToPlay) return;
+  if (e.target === backBtn || e.target === fitBtn) return;
+  if (e.target === unmuteBtn || e.target === tapToPlay) return;
   peekBanner(5000);
 }, { passive: true });
 videoContainer.addEventListener('mousemove', function() {
@@ -517,57 +975,123 @@ videoContainer.addEventListener('mousemove', function() {
   peekBanner(5000);
 });
 
+/* ══════════════════════════════════════════════════════════════ Keyboard */
 document.addEventListener('keydown', function(e) {
-  var k = e.keyCode, focused = document.activeElement;
+  var k = e.keyCode;
+  var focused = document.activeElement;
 
-  /* Digits — auto-switch after 1.2s, no OK needed */
-  var isNum = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
-  if (isNum) { e.preventDefault(); handleChNumDigit(String.fromCharCode(k >= 96 ? k - 48 : k)); return; }
+  /* Channel number typing — grab digits before anything else */
+  var isNumKey = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
+  if (isNumKey) {
+    e.preventDefault();
+    var digit = String.fromCharCode(k >= 96 ? k - 48 : k);
+    handleChNumDigit(digit);
+    return;
+  }
 
+  /* Enter → commit number if buffer exists */
+  if (k === 13 && chNumBuffer) {
+    e.preventDefault();
+    commitChNum();
+    return;
+  }
+
+  /* Back / Escape → cancel buffer first */
+  if ((k === 27 || k === 8 || k === 10009) && chNumBuffer) {
+    e.preventDefault();
+    cancelChNum();
+    return;
+  }
+
+  /* Back / Escape → hide banner first, then go back */
   if (k === 8 || k === 27 || k === 461 || k === 10009 || k === 10033) {
-    if (dthBanner.classList.contains('visible') && !document.querySelector('.shaka-overflow-menu:not(.shaka-hidden)') && !document.querySelector('.shaka-settings-menu:not(.shaka-hidden)')) { e.preventDefault(); hideDthBanner(); return; }
-    if (document.querySelector('.shaka-overflow-menu:not(.shaka-hidden)') || document.querySelector('.shaka-settings-menu:not(.shaka-hidden)')) return;
+    if (dthBanner.classList.contains('visible') &&
+        !document.querySelector('.shaka-overflow-menu:not(.shaka-hidden)') &&
+        !document.querySelector('.shaka-settings-menu:not(.shaka-hidden)')) {
+      e.preventDefault();
+      hideDthBanner();
+      return;
+    }
+    if (document.querySelector('.shaka-overflow-menu:not(.shaka-hidden)') ||
+        document.querySelector('.shaka-settings-menu:not(.shaka-hidden)')) return;
     e.preventDefault();
     goBack();
     return;
   }
+
   if (k === 37 || k === 38 || k === 39 || k === 40) {
     if (focused === fitBtn || focused === backBtn) return;
     peekBanner(3000);
   }
+
   var inTopBar = (focused === backBtn || focused === fitBtn);
-  if (k === 37) { if (focused === fitBtn) { backBtn.focus(); e.preventDefault(); } else if (!inTopBar) { backBtn.focus(); e.preventDefault(); } }
-  else if (k === 39) { if (focused === backBtn) { fitBtn.focus(); e.preventDefault(); } else if (!inTopBar) { fitBtn.focus(); e.preventDefault(); } }
-  else if (k === 40 && inTopBar) { focused.blur(); e.preventDefault(); }
+  if (k === 37) {
+    if (focused === fitBtn) { backBtn.focus(); e.preventDefault(); }
+    else if (!inTopBar)     { backBtn.focus(); e.preventDefault(); }
+  } else if (k === 39) {
+    if (focused === backBtn) { fitBtn.focus(); e.preventDefault(); }
+    else if (!inTopBar)      { fitBtn.focus(); e.preventDefault(); }
+  } else if (k === 40 && inTopBar) { focused.blur(); e.preventDefault(); }
   else if (k === 38 && !inTopBar) { backBtn.focus(); e.preventDefault(); }
-  else if (k === 13 && inTopBar) { e.preventDefault(); if (focused === backBtn) goBack(); else if (focused === fitBtn) applyFitMode(fitModeIndex + 1); }
+  else if (k === 13 && inTopBar) {
+    e.preventDefault();
+    if (focused === backBtn) goBack();
+    else if (focused === fitBtn) applyFitMode(fitModeIndex + 1);
+  }
 });
 
-videoEl.addEventListener('playing', function() { hidePlaceholder(); isLoading = false; if (videoEl.muted) showUnmuteBtn(); else hideUnmuteBtn(); });
+videoEl.addEventListener('playing', function() {
+  hidePlaceholder();
+  isLoading = false;
+  if (videoEl.muted) showUnmuteBtn();
+  else hideUnmuteBtn();
+});
+
 videoEl.addEventListener('loadedmetadata', function() {
   if (!autoplayAttempted) return;
-  setTimeout(function() { if (videoEl.paused && !isLoading && currentChannel) tryMutedPlayback(); }, 2000);
+  setTimeout(function() {
+    if (videoEl.paused && !isLoading && currentChannel) {
+      console.warn('[safety] forcing muted play');
+      tryMutedPlayback();
+    }
+  }, 2000);
 });
 
 function boot() {
   var channelId = getQueryParam('id');
-  if (!channelId) { showPlaceholder('⚠️ No channel selected.<br>Return to the channel list.', true, false); return; }
+  if (!channelId) {
+    showPlaceholder('⚠️ No channel selected.<br>Return to the channel list.', true, false);
+    return;
+  }
   if (!initPlayer()) return;
+
   loadChannelPrograms();
   startBannerRefreshTimer();
 
   var ch = null;
-  try { var raw = localStorage.getItem('currentChannel'); if (raw) ch = JSON.parse(raw); } catch (e) { ch = null; }
-  if (ch && String(ch.id) === String(channelId)) { playChannel(ch); return; }
+  try { var raw = localStorage.getItem('currentChannel'); if (raw) ch = JSON.parse(raw); }
+  catch (e) { ch = null; }
+
+  if (ch && String(ch.id) === String(channelId)) {
+    playChannel(ch);
+    return;
+  }
+
   channelPrograms = null;
   showPlaceholder('Looking up channel…', false, true);
-  findChannelById(channelId).then(function(found){ playChannel(found); }).catch(function(e) {
-    showPlaceholder('⚠️ Channel not found.<br><div style="color:#888;font-size:12px;margin-top:8px">' + escapeHtml(e.message || '') + '</div>', true, false);
-  });
+
+  findChannelById(channelId)
+    .then(function(found){ playChannel(found); })
+    .catch(function(e) {
+      showPlaceholder('⚠️ Channel not found.<br>' +
+        '<div style="color:#888;font-size:12px;margin-top:8px">' +
+        escapeHtml(e.message || '') + '</div>', true, false);
+    });
 }
 
 if (document.readyState === 'complete' || document.readyState === 'interactive') setTimeout(boot, 0);
 else document.addEventListener('DOMContentLoaded', boot);
 </script>
+
 </body>
 </html>
