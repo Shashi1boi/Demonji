@@ -234,7 +234,6 @@ var currentDetailChannel = null;
 var chNumBuffer = '';
 var chNumTimer = null;
 var toastTimer = null;
-var pendingPopup = null;
 
 var epgByChannelId = {};
 var epgLoaded = false;
@@ -293,10 +292,10 @@ function chunkedUngzip(bytes) {
     if (typeof pako === 'undefined') { reject(new Error('pako not loaded')); return; }
     try {
       var inflator = new pako.Inflate({ to: 'string' });
-      var chunks = [], totalChars = 0, startTime = Date.now();
-      inflator.onData = function(chunk) { chunks.push(chunk); totalChars += chunk.length; };
+      var chunks = [];
+      inflator.onData = function(chunk) { chunks.push(chunk); };
       inflator.onEnd = function(status) {
-        if (status === 0) { safeLog('[pako] done — ' + totalChars + ' chars in ' + (Date.now()-startTime) + 'ms'); resolve(chunks.join('')); }
+        if (status === 0) resolve(chunks.join(''));
         else reject(new Error('inflate failed ' + status));
       };
       var offset = 0, CHUNK = 65536;
@@ -578,16 +577,14 @@ function openDetails(ch) {
 }
 function closeDetails() { detailModal.classList.add('hidden'); currentDetailChannel = null; }
 
+/* ══════════════════════════════════════════════════════════════
+   Open player — just stores currentChannel + allChannels and
+   navigates. Player loads its own EPG.
+   ══════════════════════════════════════════════════════════════ */
 function openPlayer(ch) {
   try {
     localStorage.setItem('currentChannel', JSON.stringify(ch));
     localStorage.setItem('allChannels', JSON.stringify(allChannels));
-    var progs = epgByChannelId[String(ch.id)];
-    if (progs && progs.length) {
-      var ser = [];
-      for (var i = 0; i < progs.length; i++) ser.push({ title: progs[i].t, description: progs[i].d, start: progs[i].s, end: progs[i].e, icon: progs[i].ic || '' });
-      localStorage.setItem('channelPrograms', JSON.stringify(ser));
-    } else localStorage.removeItem('channelPrograms');
   } catch (e) {}
   var url = 'jplayer.html?id=' + encodeURIComponent(ch.id);
   try { var w = window.open(url, '_blank'); if (!w) window.location.href = url; }
@@ -595,72 +592,48 @@ function openPlayer(ch) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   Channel number typing — opens popup on first digit, auto-commits
-   after 1.2s of inactivity. No OK / Back needed.
+   Channel number typing — no popup until number is complete,
+   1.5s auto-commit, TV uses same-tab.
    ══════════════════════════════════════════════════════════════ */
 function showChNumOverlay() { chNumValue.textContent = chNumBuffer || '—'; chNumOverlay.classList.add('visible'); }
 function hideChNumOverlay() { chNumOverlay.classList.remove('visible'); }
-function closePendingPopup() {
-  if (pendingPopup && !pendingPopup.closed) { try { pendingPopup.close(); } catch(e) {} }
-  pendingPopup = null;
-}
 function handleChNumDigit(digit) {
   if (chNumBuffer.length >= 4) chNumBuffer = '';
-  /* Open popup ONCE on the very first digit — this is a real user gesture
-     so window.open is never blocked. We redirect it later. */
-  if (chNumBuffer.length === 0 && !pendingPopup) {
-    try {
-      pendingPopup = window.open('about:blank', '_blank');
-      if (pendingPopup) {
-        try {
-          pendingPopup.document.write('<!DOCTYPE html><title>Loading…</title><body style="margin:0;background:#000;color:#4fc3f7;font-family:Arial;display:flex;align-items:center;justify-content:center;height:100vh;font-size:20px;">Loading channel…</body>');
-        } catch(e) {}
-      }
-    } catch(e) { pendingPopup = null; }
-  }
   chNumBuffer += digit;
   showChNumOverlay();
   clearTimeout(chNumTimer);
-  chNumTimer = setTimeout(autoPlayByNumber, 1200);
+  chNumTimer = setTimeout(autoPlayByNumber, 1500);
 }
 function autoPlayByNumber() {
   var num = chNumBuffer;
   chNumBuffer = '';
   clearTimeout(chNumTimer);
   hideChNumOverlay();
-  if (!num) { closePendingPopup(); return; }
+  if (!num) return;
 
   var n = parseInt(num, 10);
   var found = null;
   for (var i = 0; i < allChannels.length; i++) if (getChannelNumber(allChannels[i]) === n) { found = allChannels[i]; break; }
 
-  if (!found) {
-    closePendingPopup();
-    showToast('Channel ' + num + ' not found', true);
-    return;
-  }
+  if (!found) { showToast('Channel ' + num + ' not found', true); return; }
 
   showToast('Tuning to CH ' + n + ' · ' + (found.name || ''));
-
   try {
     localStorage.setItem('currentChannel', JSON.stringify(found));
     localStorage.setItem('allChannels', JSON.stringify(allChannels));
-    var progs = epgByChannelId[String(found.id)];
-    if (progs && progs.length) {
-      var ser = [];
-      for (var i = 0; i < progs.length; i++) ser.push({ title: progs[i].t, description: progs[i].d, start: progs[i].s, end: progs[i].e, icon: progs[i].ic || '' });
-      localStorage.setItem('channelPrograms', JSON.stringify(ser));
-    } else localStorage.removeItem('channelPrograms');
   } catch (e) {}
 
   var url = 'jplayer.html?id=' + encodeURIComponent(found.id);
 
-  if (pendingPopup && !pendingPopup.closed) {
-    try { pendingPopup.location.href = url; pendingPopup.focus(); pendingPopup = null; return; } catch(e) {}
-  }
-  /* Fallback — open fresh or same tab */
-  try { var w = window.open(url, '_blank'); if (!w) window.location.href = url; }
-  catch (e) { window.location.href = url; }
+  /* TV detection — popups steal focus mid-typing, use same-tab */
+  var isTV = /Tizen|Web0S|webOS|SMART-TV|SmartTV|HbbTV|NetCast|BRAVIA|Android TV|AFT|FireTV|Hisense|Panasonic|Philips|Kepler/i.test(navigator.userAgent);
+
+  if (isTV) { window.location.href = url; return; }
+  try {
+    var w = window.open(url, '_blank');
+    if (w && !w.closed) { try { w.focus(); } catch (e) {} return; }
+  } catch (e) {}
+  window.location.href = url;
 }
 
 function loadChannels() {
@@ -707,7 +680,6 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 
-  /* Channel number typing — any digit key, anywhere except search */
   var isNum = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
   if (isNum && focused !== searchEl) {
     e.preventDefault();
