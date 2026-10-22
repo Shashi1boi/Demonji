@@ -55,10 +55,23 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
 .spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid #333; border-top-color: #4fc3f7; border-radius: 50%; -webkit-animation: spin 0.8s linear infinite; animation: spin 0.8s linear infinite; margin-bottom: 14px; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-#chNumOverlay { position: fixed; top: 22%; left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%); min-width: 200px; padding: 20px 40px; background: rgba(10,20,28,0.96); border: 3px solid #4fc3f7; border-radius: 18px; text-align: center; z-index: 2000; pointer-events: none; display: none; box-shadow: 0 8px 32px rgba(0,0,0,0.7); }
+/* Channel number overlay — clickable to restore focus if stolen */
+#chNumOverlay {
+  position: fixed; top: 22%; left: 50%;
+  -webkit-transform: translateX(-50%); transform: translateX(-50%);
+  min-width: 200px; padding: 20px 40px;
+  background: rgba(10,20,28,0.96);
+  border: 3px solid #4fc3f7; border-radius: 18px;
+  text-align: center; z-index: 2000;
+  pointer-events: auto; cursor: default;
+  display: none; box-shadow: 0 8px 32px rgba(0,0,0,0.7);
+}
 #chNumOverlay.visible { display: block; }
+#chNumOverlay.no-focus { border-color: #ef5350; cursor: pointer; }
 #chNumOverlay .num-label { font-size: 12px; color: #7ab8d6; letter-spacing: 2px; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; }
 #chNumOverlay .num-value { font-size: 72px; color: #fff; font-weight: bold; line-height: 1; letter-spacing: 4px; text-shadow: 0 2px 10px rgba(79,195,247,0.6); }
+#chNumOverlay .num-hint { font-size: 13px; color: #ef5350; margin-top: 10px; font-weight: bold; display: none; }
+#chNumOverlay.no-focus .num-hint { display: block; }
 
 #detailModal { position: fixed; inset: 0; top:0;left:0;right:0;bottom:0; background: rgba(0,0,0,0.88); z-index: 1500; display: flex; align-items: center; justify-content: center; padding: 16px; }
 #detailModal.hidden { display: none; }
@@ -119,6 +132,7 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
 <div id="chNumOverlay">
   <div class="num-label">Channel</div>
   <div class="num-value" id="chNumValue"></div>
+  <div class="num-hint">Tap here to continue typing</div>
 </div>
 
 <div id="detailModal" class="hidden">
@@ -776,28 +790,68 @@ function openPlayer(ch) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   Channel number typing — auto-commits after 1.2s of no input.
-   Opens the new tab on the FIRST digit (real user gesture) so
-   window.open is never blocked; the tab then navigates to the
-   chosen channel when the number finishes.
+   Channel number typing — pre-opens blank tab on first digit,
+   then AGGRESSIVELY restores focus back to the parent window
+   (multiple retries at different delays) so further digits can
+   be typed. On commit (1.2s), the blank tab is navigated to
+   the chosen channel.
    ══════════════════════════════════════════════════════════════ */
+function forceFocusBack(popup) {
+  // Multiple attempts at increasing delays
+  var delays = [0, 30, 100, 250, 500];
+  for (var i = 0; i < delays.length; i++) {
+    (function(delay) {
+      setTimeout(function() {
+        try { if (popup && !popup.closed && popup.blur) popup.blur(); } catch (e) {}
+        try { window.focus(); } catch (e) {}
+        try {
+          if (!document.hasFocus()) {
+            if (document.body && !document.body.hasAttribute('tabindex')) {
+              document.body.setAttribute('tabindex', '-1');
+            }
+            if (document.body && document.body.focus) document.body.focus();
+          }
+        } catch (e) {}
+      }, delay);
+    })(delays[i]);
+  }
+  // Final check at 600ms — if still no focus, show "tap to continue" hint
+  setTimeout(function() {
+    try {
+      if (!document.hasFocus() && chNumBuffer) {
+        chNumOverlay.classList.add('no-focus');
+        safeWarn('[num] focus still lost after 600ms — showing tap-to-continue hint');
+      }
+    } catch (e) {}
+  }, 600);
+}
+
 function tryOpenPendingWin() {
   try {
     var w = window.open('', '_blank');
     if (w) {
+      // Immediately try to push focus back to parent
+      try { if (w.blur) w.blur(); } catch (e) {}
+      try { window.focus(); } catch (e) {}
+      // Fill in placeholder content
       try {
         w.document.title = 'Selecting channel…';
-        w.document.body.style.background = '#000';
-        w.document.body.style.color = '#4fc3f7';
-        w.document.body.style.fontFamily = 'Arial, Helvetica, sans-serif';
-        w.document.body.style.display = 'flex';
-        w.document.body.style.alignItems = 'center';
-        w.document.body.style.justifyContent = 'center';
-        w.document.body.style.height = '100vh';
-        w.document.body.style.margin = '0';
-        w.document.body.style.fontSize = '22px';
-        w.document.body.textContent = 'Selecting channel…';
+        var b = w.document.body;
+        if (b) {
+          b.style.background = '#000';
+          b.style.color = '#4fc3f7';
+          b.style.fontFamily = 'Arial, Helvetica, sans-serif';
+          b.style.display = 'flex';
+          b.style.alignItems = 'center';
+          b.style.justifyContent = 'center';
+          b.style.height = '100vh';
+          b.style.margin = '0';
+          b.style.fontSize = '22px';
+          b.textContent = 'Selecting channel…';
+        }
       } catch (e) {}
+      // Aggressive focus restoration after content write
+      forceFocusBack(w);
       return w;
     }
   } catch (e) {}
@@ -814,16 +868,18 @@ function closePendingWin() {
 function showChNumOverlay() {
   chNumValue.textContent = chNumBuffer || '—';
   chNumOverlay.classList.add('visible');
+  chNumOverlay.classList.remove('no-focus');
 }
 function hideChNumOverlay() {
   chNumOverlay.classList.remove('visible');
+  chNumOverlay.classList.remove('no-focus');
 }
 
 function handleChNumDigit(digit) {
-  /* On the FIRST digit of a new sequence, open a blank tab right now
-     (this event IS a user gesture → window.open always succeeds). */
+  // On the very first digit of a new sequence: open the blank tab
   if (!chNumBuffer) {
     pendingWin = tryOpenPendingWin();
+    safeLog('[num] pendingWin opened:', !!pendingWin);
   }
   if (chNumBuffer.length >= 4) chNumBuffer = '';
   chNumBuffer += digit;
@@ -856,11 +912,15 @@ function commitChNum() {
   var url = getPlayerUrl(found);
 
   if (pendingWin && !pendingWin.closed) {
-    try { pendingWin.location.href = url; pendingWin = null; return; }
-    catch (e) { console.warn('[pendingWin] nav failed:', e); }
+    try {
+      pendingWin.location.href = url;
+      try { pendingWin.focus(); } catch (e) {}
+      pendingWin = null;
+      return;
+    } catch (e) { safeWarn('[num] pendingWin nav failed:', e.message); }
   }
 
-  /* Fallback if the pre-opened tab is gone/blocked */
+  // Fallback: pre-opened tab is gone
   try { var w = window.open(url, '_blank'); if (!w) window.location.href = url; }
   catch (e) { window.location.href = url; }
 }
@@ -871,6 +931,18 @@ function cancelChNum() {
   hideChNumOverlay();
   closePendingWin();
 }
+
+/* Click the overlay to steal focus back if the new tab grabbed it */
+chNumOverlay.addEventListener('click', function() {
+  try { window.focus(); } catch (e) {}
+  try {
+    if (document.body && !document.body.hasAttribute('tabindex')) {
+      document.body.setAttribute('tabindex', '-1');
+    }
+    if (document.body && document.body.focus) document.body.focus();
+  } catch (e) {}
+  chNumOverlay.classList.remove('no-focus');
+});
 
 function loadChannels() {
   gridEl.innerHTML = '<div class="msg"><div class="spinner"></div><div>Loading channels…</div></div>';
@@ -930,7 +1002,7 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 
-  /* Digits → number buffer (auto-commits) */
+  /* Digits → number buffer */
   var isNumKey = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
   if (isNumKey && focused !== searchEl) {
     e.preventDefault();
@@ -938,13 +1010,14 @@ document.addEventListener('keydown', function(e) {
     handleChNumDigit(digit);
     return;
   }
-  /* Enter → commit immediately (optional early confirm) */
+  /* Enter → commit immediately */
   if (k === 13 && chNumBuffer) {
     e.preventDefault();
+    clearTimeout(chNumTimer);
     commitChNum();
     return;
   }
-  /* Back/Escape → cancel if buffer is active */
+  /* Back/Escape → cancel buffer */
   if ((k === 27 || k === 8 || k === 10009) && chNumBuffer) {
     e.preventDefault();
     cancelChNum();
@@ -1004,7 +1077,6 @@ dCancel.addEventListener('click', function(e){ e.preventDefault(); closeDetails(
 dWatch.addEventListener('click', function(e){ e.preventDefault(); if (currentDetailChannel) openPlayer(currentDetailChannel); });
 detailModal.addEventListener('click', function(e){ if (e.target === detailModal) closeDetails(); });
 
-/* Warn user on page unload if a pending tab is open but never navigated */
 window.addEventListener('beforeunload', function() {
   if (pendingWin && !pendingWin.closed) {
     try { pendingWin.close(); } catch (e) {}
