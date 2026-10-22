@@ -19,13 +19,13 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
 #epgStatus.error { color: #ef5350; }
 #categories { background: #0e0e0e; border-bottom: 1px solid #222; padding: 10px 16px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; flex-shrink: 0; scrollbar-width: none; }
 #categories::-webkit-scrollbar { display: none; }
-.cat-chip { display: inline-block; padding: 8px 16px; margin-right: 8px; background: #1a1a1a; border: 1px solid #2a2a2a; color: #ccc; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; white-space: nowrap; }
+.cat-chip { display: inline-block; padding: 8px 16px; margin-right: 8px; background: #1a1a1a; border: 1px solid #2a2a2a; color: #ccc; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; white-space: nowrap; transition: background .15s, color .15s, border-color .15s; }
 .cat-chip:hover { background: #242424; color: #fff; }
 .cat-chip.active { background: #1a3a4a; border-color: #4fc3f7; color: #fff; }
 .cat-chip:focus { background: #1e2a35; border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79,195,247,0.35); }
 #wrap { height: calc(100vh - 130px); height: calc(100dvh - 130px); overflow-y: auto; overflow-x: hidden; padding: 14px; padding-bottom: calc(20px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling: touch; contain: layout style; }
 #grid { display: flex; flex-wrap: wrap; margin: -6px; contain: layout style; }
-.card { box-sizing: border-box; padding: 12px; margin: 6px; width: calc(100% - 12px); background: #161616; border: 2px solid transparent; border-radius: 10px; cursor: pointer; outline: none; display: flex; flex-direction: column; gap: 10px; contain: layout style; }
+.card { box-sizing: border-box; padding: 12px; margin: 6px; width: calc(100% - 12px); background: #161616; border: 2px solid transparent; border-radius: 10px; cursor: pointer; outline: none; transition: background .15s, border-color .15s; display: flex; flex-direction: column; gap: 10px; contain: layout style; }
 .card:hover { background: #1a1e24; border-color: #2f4a5f; }
 .card:focus { background: #1a2a35; border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79,195,247,0.3); }
 .card.hidden { display: none; }
@@ -48,6 +48,7 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
 .card-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .card-btn { padding: 8px 14px; background: #1e5a78; border: 1px solid #4fc3f7; color: #fff; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; white-space: nowrap; }
 .card-btn:hover { background: #2a7ba0; }
+.card-btn:focus { box-shadow: 0 0 0 2px rgba(79,195,247,0.35); }
 .msg { width: 100%; padding: 60px 20px; text-align: center; font-size: 15px; color: #888; }
 .msg.err { color: #ef5350; }
 .msg button { margin-top: 16px; background: #2a2a2a; border: none; color: #eee; padding: 12px 24px; border-radius: 6px; font-size: 15px; cursor: pointer; font-family: inherit; }
@@ -86,7 +87,9 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
 .detail-actions { display: flex; gap: 10px; padding: 14px 16px; border-top: 1px solid #2a2a2a; background: #121212; flex-shrink: 0; }
 .detail-actions button { flex: 1; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; border: none; }
 .btn-watch { background: #1e5a78; color: #fff; border: 1px solid #4fc3f7 !important; }
+.btn-watch:hover, .btn-watch:focus { background: #2a7ba0; box-shadow: 0 0 0 2px rgba(79,195,247,0.35); }
 .btn-cancel { background: #2a2a2a; color: #ddd; border: 1px solid #333 !important; }
+.btn-cancel:hover, .btn-cancel:focus { background: #3a3a3a; border-color: #4fc3f7 !important; }
 
 #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.95); color: #fff; padding: 12px 22px; border-radius: 8px; border: 1px solid #4fc3f7; font-size: 14px; z-index: 2500; opacity: 0; transition: opacity .25s; pointer-events: none; }
 #toast.visible { opacity: 1; }
@@ -96,7 +99,7 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
 @media (min-width: 900px) { .card { width: calc(33.333% - 12px); } }
 @media (min-width: 1280px) { .card { width: calc(33.333% - 12px); padding: 14px; } .card-logo { width: 56px; height: 56px; } .card-name { font-size: 17px; } .epg-now-title { font-size: 14px; } }
 @media (min-width: 1700px) { .card { width: calc(25% - 12px); } .card-name { font-size: 18px; } }
-@media (max-width: 480px) { #header { padding: 10px 12px; } #header h1 { font-size: 16px; width: 100%; } #searchWrap { min-width: 100%; } #chNumOverlay .num-value { font-size: 56px; } }
+@media (max-width: 480px) { #header { padding: 10px 12px; } #header h1 { font-size: 16px; width: 100%; } #searchWrap { min-width: 100%; } #chNumOverlay .num-value { font-size: 56px; } .detail-name { font-size: 17px; } }
 </style>
 </head>
 <body>
@@ -160,6 +163,8 @@ if (typeof Promise === 'undefined') {
 if (!Array.prototype.includes) Array.prototype.includes = function(x){ return this.indexOf(x) !== -1; };
 if (!Element.prototype.closest) { Element.prototype.closest = function(sel) { var el = this; while (el) { if (el.matches && el.matches(sel)) return el; el = el.parentElement; } return null; }; }
 var rAF = window.requestAnimationFrame || function(cb){ return setTimeout(function(){ cb(Date.now()); }, 16); };
+function safeLog(){ try { console.log.apply(console, arguments); } catch(e){} }
+function safeWarn(){ try { console.warn.apply(console, arguments); } catch(e){} }
 
 function xhrFetch(url, opts) {
   opts = opts || {};
@@ -169,8 +174,11 @@ function xhrFetch(url, opts) {
     xhr.timeout = opts.timeout || 20000;
     if (opts.headers) for (var k in opts.headers) if (opts.headers.hasOwnProperty(k)) { try { xhr.setRequestHeader(k, opts.headers[k]); } catch(e){} }
     xhr.onload = function() {
-      if (xhr.status >= 200 && xhr.status < 300) resolve({ ok:true, status:xhr.status, text: function(){ return Promise.resolve(xhr.responseText); }, json: function(){ return Promise.resolve(JSON.parse(xhr.responseText)); } });
-      else reject(new Error('HTTP ' + xhr.status));
+      if (xhr.status >= 200 && xhr.status < 300) {
+        resolve({ ok:true, status:xhr.status,
+          text: function(){ return Promise.resolve(xhr.responseText); },
+          json: function(){ return Promise.resolve(JSON.parse(xhr.responseText)); } });
+      } else reject(new Error('HTTP ' + xhr.status));
     };
     xhr.onerror = function(){ reject(new Error('Network error')); };
     xhr.ontimeout = function(){ reject(new Error('Timeout')); };
@@ -199,7 +207,6 @@ var EPG_SOURCES = [
 ];
 var EPG_CACHE_KEY = 'jtv_epg_cache_v5';
 var EPG_CACHE_TTL_MS = 60 * 60 * 1000;
-var PARSE_CHUNK_MS = 25;   /* ms budget per frame on TV */
 
 var gridEl       = document.getElementById('grid');
 var searchEl     = document.getElementById('search');
@@ -250,34 +257,24 @@ function showToast(msg, isError) {
   toastTimer = setTimeout(function(){ toastEl.classList.remove('visible'); }, 2500);
 }
 
-function decodeXmlEntities(s) {
-  return s
-    .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'").replace(/&#x27;/g, "'")
-    .replace(/&#10;/g, '\n').replace(/&#13;/g, '\r')
-    .replace(/&amp;/g, '&');
-}
-
 function parseEPGDate(dateStr) {
   if (!dateStr) return null;
   var parts = String(dateStr).trim().split(' ');
   var datetime = parts[0], tz = parts[1] || '+0000';
   var year = parseInt(datetime.slice(0,4),10), month = parseInt(datetime.slice(4,6),10)-1,
-      day = parseInt(datetime.slice(6,8),10), hour = parseInt(datetime.slice(8,10),10)||0,
-      minute = parseInt(datetime.slice(10,12),10)||0, second = parseInt(datetime.slice(12,14),10)||0;
-  if (isNaN(year) || isNaN(month) || isNaN(day)) return null;
+      day = parseInt(datetime.slice(6,8),10), hour = parseInt(datetime.slice(8,10),10),
+      minute = parseInt(datetime.slice(10,12),10), second = parseInt(datetime.slice(12,14),10);
+  if (isNaN(year)) return null;
   var ms = Date.UTC(year, month, day, hour, minute, second);
   var sign = tz.charAt(0) === '-' ? -1 : 1;
   var tzh = parseInt(tz.slice(1,3),10)||0, tzm = parseInt(tz.slice(3,5),10)||0;
   return ms - sign * (tzh*3600 + tzm*60) * 1000;
 }
-
 function normalizeChannelName(name) {
   if (!name) return '';
   var cleaned = String(name).toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
   return cleaned.replace(/\b(hd|sd|fhd|4k|plus|movies|music|news|tv|channel)\b/g, '').trim();
 }
-
 function bytesToUtf8String(bytes) {
   if (typeof TextDecoder !== 'undefined') { try { return new TextDecoder('utf-8').decode(bytes); } catch (e) {} }
   var result = '', i = 0;
@@ -290,132 +287,85 @@ function bytesToUtf8String(bytes) {
   }
   return result;
 }
-
-/* ══════════════════════════════════════════════════════════════
-   CHUNKED XML PARSER — regex based, yields every 25 ms via rAF.
-   No DOMParser → no freezing on TV.
-   ══════════════════════════════════════════════════════════════ */
-function parseXmltvChunked(xmlText, onProgress, onDone) {
-  var channelNames = {};
-  var channelRe = /<channel\s+id="([^"]+)"[^>]*>([\s\S]*?)<\/channel>/g;
-  var cm;
-  while ((cm = channelRe.exec(xmlText)) !== null) {
-    var dnM = cm[2].match(/<display-name[^>]*>([^<]*)<\/display-name>/);
-    if (dnM) channelNames[cm[1]] = decodeXmlEntities(dnM[1].trim());
-  }
-
-  var byId = {};
-  var programmeRe = /<programme\s+([^>]*)>([\s\S]*?)<\/programme>/g;
-  var lastProgressTime = 0;
-
-  function step() {
-    var t0 = Date.now();
-    var m;
-    while ((m = programmeRe.exec(xmlText)) !== null) {
-      try {
-        var attrs = m[1], body = m[2];
-        var startM = attrs.match(/start="([^"]+)"/);
-        if (!startM) continue;
-        var stopM = attrs.match(/stop="([^"]+)"/);
-        var chM = attrs.match(/channel="([^"]+)"/);
-        if (!chM) continue;
-
-        var startMs = parseEPGDate(startM[1]);
-        if (!startMs) continue;
-        var endMs = stopM ? parseEPGDate(stopM[1]) : (startMs + 3600000);
-        if (!endMs) continue;
-
-        var titleM = body.match(/<title[^>]*>([\s\S]*?)<\/title>/);
-        var descM = body.match(/<desc[^>]*>([\s\S]*?)<\/desc>/);
-        var iconM = body.match(/<icon\s+src="([^"]+)"/);
-
-        var id = chM[1];
-        if (!byId[id]) byId[id] = [];
-        byId[id].push({
-          t: titleM ? decodeXmlEntities(titleM[1]).trim() : 'No title',
-          d: descM ? decodeXmlEntities(descM[1]).trim().substring(0, 300) : '',
-          s: startMs,
-          e: endMs,
-          ic: iconM ? iconM[1] : ''
-        });
-      } catch (e) { /* skip malformed */ }
-
-      if (Date.now() - t0 > PARSE_CHUNK_MS) {
-        if (onProgress) onProgress(byId);
-        setTimeout(step, 0);
-        return;
-      }
-    }
-    for (var id2 in byId) if (byId.hasOwnProperty(id2)) byId[id2].sort(function(a,b){ return a.s - b.s; });
-    onDone(byId, channelNames);
-  }
-  step();
-}
-
-function parseBufferChunked(buf) {
-  return new Promise(function(resolve) {
-    var bytes = new Uint8Array(buf);
-    if (bytes.length < 500) { resolve(null); return; }
-    var isGzip = bytes[0] === 0x1f && bytes[1] === 0x8b;
-
-    function continueWithXmlText(xmlText) {
-      parseXmltvChunked(xmlText,
-        function(partial) { applyPartialEpg(partial); },
-        function(byId, channelNames) { resolve({ byId: byId, channelNames: channelNames }); }
-      );
-    }
-
-    if (isGzip) {
-      if (typeof pako === 'undefined') { resolve(null); return; }
+function chunkedUngzip(bytes) {
+  return new Promise(function(resolve, reject) {
+    if (typeof pako === 'undefined') { reject(new Error('pako not loaded')); return; }
+    try {
       var inflator = new pako.Inflate({ to: 'string' });
       var chunks = [];
       inflator.onData = function(chunk) { chunks.push(chunk); };
-      inflator.onEnd = function(status) {
-        if (status !== 0) { resolve(null); return; }
-        continueWithXmlText(chunks.join(''));
-      };
+      inflator.onEnd = function(status) { if (status === 0) resolve(chunks.join('')); else reject(new Error('inflate failed ' + status)); };
       var offset = 0, CHUNK = 65536;
       function pushNext() {
         if (offset >= bytes.length) return;
         var end = Math.min(offset + CHUNK, bytes.length);
-        inflator.push(bytes.subarray(offset, end), end >= bytes.length);
+        var chunk = bytes.subarray(offset, end);
+        var isFinal = end >= bytes.length;
+        try { inflator.push(chunk, isFinal); } catch (e) { reject(e); return; }
         offset = end;
-        if (offset < bytes.length) rAF(pushNext);
+        if (!isFinal) rAF(pushNext);
       }
       pushNext();
-    } else {
-      continueWithXmlText(bytesToUtf8String(bytes));
-    }
+    } catch (e) { reject(e); }
   });
 }
-
-function applyPartialEpg(partial) {
-  /* As parsing progresses, refresh cards in batches so users see data appear. */
-  var touched = 0;
-  for (var id in partial) {
-    if (!partial.hasOwnProperty(id)) continue;
-    if (epgByChannelId[id] && epgByChannelId[id].length >= partial[id].length) continue;
-    epgByChannelId[id] = partial[id];
-    touched++;
-    if (touched >= 30) break;
+function processXmlText(xmlText, label) {
+  if (!xmlText || xmlText.length < 500) throw new Error('XML too small');
+  var xmlDoc = new DOMParser().parseFromString(xmlText, 'text/xml');
+  if (xmlDoc.getElementsByTagName('parsererror').length > 0) throw new Error('XML parse error');
+  var channelIdToName = {};
+  var chNodes = xmlDoc.getElementsByTagName('channel');
+  for (var c = 0; c < chNodes.length; c++) {
+    var id = chNodes[c].getAttribute('id'); if (!id) continue;
+    var dn = chNodes[c].getElementsByTagName('display-name')[0];
+    if (dn) channelIdToName[id] = dn.textContent.trim();
   }
-  if (touched) {
-    epgLoaded = true;
-    refreshAllCardsEpg();
+  var byId = {}, byName = {};
+  var progNodes = xmlDoc.getElementsByTagName('programme');
+  for (var p = 0; p < progNodes.length; p++) {
+    var prog = progNodes[p];
+    var chId = prog.getAttribute('channel'); if (!chId) continue;
+    var startStr = prog.getAttribute('start'), stopStr = prog.getAttribute('stop');
+    if (!startStr) continue;
+    var startMs = parseEPGDate(startStr); if (!startMs) continue;
+    var endMs = stopStr ? parseEPGDate(stopStr) : (startMs + 3600000); if (!endMs) continue;
+    var titleNode = prog.getElementsByTagName('title')[0];
+    var descNode = prog.getElementsByTagName('desc')[0];
+    var iconNode = prog.getElementsByTagName('icon')[0];
+    var desc = descNode ? descNode.textContent.trim() : '';
+    if (desc.length > 300) desc = desc.substring(0, 300);
+    var entry = { t: titleNode ? titleNode.textContent.trim() : 'No title', d: desc, s: startMs, e: endMs, ic: iconNode ? (iconNode.getAttribute('src') || '') : '' };
+    if (!byId[chId]) byId[chId] = [];
+    byId[chId].push(entry);
+    var nm = channelIdToName[chId];
+    if (nm) { var nk = normalizeChannelName(nm); if (nk) { if (!byName[nk]) byName[nk] = []; byName[nk].push(entry); } }
   }
+  for (var k1 in byId) if (byId.hasOwnProperty(k1)) byId[k1].sort(function(a,b){ return a.s - b.s; });
+  for (var k2 in byName) if (byName.hasOwnProperty(k2)) byName[k2].sort(function(a,b){ return a.s - b.s; });
+  safeLog('[epg] ' + label + ' → ' + progNodes.length + ' programmes');
+  return { byId: byId, byName: byName };
 }
-
-function fetchEpgSourceChunked(src) {
-  return xhrFetchBuffer(src.url, { timeout: src.timeout || 180000 })
-    .then(function(buf) { return parseBufferChunked(buf); })
-    .catch(function() {
-      return xhrFetchBuffer(CORS_PROXY + src.url, { timeout: 180000 })
-        .then(function(buf) { return parseBufferChunked(buf); })
-        .catch(function() { return null; });
+function fetchAndParseSingleEPG(source) {
+  if (typeof pako === 'undefined') return Promise.resolve(null);
+  var url = source.url, name = source.name, timeout = source.timeout || 60000;
+  return xhrFetchBuffer(url, { timeout: timeout })
+    .then(function(buf) {
+      if (!buf) throw new Error('Empty');
+      var bytes = new Uint8Array(buf);
+      if (bytes.length < 500) throw new Error('Too small');
+      if (bytes[0] === 0x1f && bytes[1] === 0x8b) return chunkedUngzip(bytes).then(function(x){ return processXmlText(x, name); });
+      return processXmlText(bytesToUtf8String(bytes), name);
+    })
+    .catch(function(e) {
+      safeWarn('[epg] ' + name + ' failed: ' + e.message + ' — proxy');
+      return xhrFetchBuffer(CORS_PROXY + url, { timeout: 180000 }).then(function(buf) {
+        var bytes = new Uint8Array(buf);
+        if (bytes.length < 500) throw new Error('Too small via proxy');
+        if (bytes[0] === 0x1f && bytes[1] === 0x8b) return chunkedUngzip(bytes).then(function(x){ return processXmlText(x, name+' (proxy)'); });
+        return processXmlText(bytesToUtf8String(bytes), name+' (proxy)');
+      }).catch(function(e2){ safeWarn('[epg] ' + name + ' proxy failed: ' + e2.message); return null; });
     });
 }
-
-/* ══════════════════════════════════════════════════════════════ Cache */
 function loadCache() {
   try {
     var raw = localStorage.getItem(EPG_CACHE_KEY); if (!raw) return false;
@@ -426,39 +376,27 @@ function loadCache() {
     return fresh && epgLoaded;
   } catch (e) { return false; }
 }
-function saveCache() {
-  try { localStorage.setItem(EPG_CACHE_KEY, JSON.stringify({ fetchedAt: Date.now(), data: epgByChannelId })); }
-  catch (e) { /* quota error — ignore */ }
-}
-
-function mergeIntoEpg(parsed) {
-  if (!parsed || !parsed.byId) return;
-  for (var id in parsed.byId) {
-    if (!parsed.byId.hasOwnProperty(id)) continue;
+function saveCache() { try { localStorage.setItem(EPG_CACHE_KEY, JSON.stringify({ fetchedAt: Date.now(), data: epgByChannelId })); } catch (e) {} }
+function mergeSource(result) {
+  if (!result) return;
+  for (var id in result.byId) {
+    if (!result.byId.hasOwnProperty(id)) continue;
     if (!epgByChannelId[id]) epgByChannelId[id] = [];
     var existing = epgByChannelId[id], seen = {};
     for (var i = 0; i < existing.length; i++) seen[existing[i].s] = true;
     var added = 0;
-    for (var j = 0; j < parsed.byId[id].length; j++) {
-      if (!seen[parsed.byId[id][j].s]) { existing.push(parsed.byId[id][j]); added++; }
-    }
+    for (var j = 0; j < result.byId[id].length; j++) if (!seen[result.byId[id][j].s]) { existing.push(result.byId[id][j]); added++; }
     if (added) existing.sort(function(a,b){ return a.s - b.s; });
   }
-  /* Name-based fallback for channels without id match */
   for (var i2 = 0; i2 < allChannels.length; i2++) {
     var ch = allChannels[i2], id2 = String(ch.id);
     if (epgByChannelId[id2] && epgByChannelId[id2].length) continue;
     var norm = normalizeChannelName(ch.name); if (!norm) continue;
-    for (var cn in parsed.channelNames) {
-      if (!parsed.channelNames.hasOwnProperty(cn)) continue;
-      if (normalizeChannelName(parsed.channelNames[cn]) === norm && parsed.byId[cn]) {
-        epgByChannelId[id2] = parsed.byId[cn].slice();
-        break;
-      }
-    }
+    var progs = result.byName[norm];
+    if (!progs) for (var nk in result.byName) if (result.byName.hasOwnProperty(nk) && (nk.indexOf(norm) !== -1 || norm.indexOf(nk) !== -1)) { progs = result.byName[nk]; break; }
+    if (progs && progs.length) epgByChannelId[id2] = progs.slice();
   }
 }
-
 function loadAllEPG() {
   var idx = 0;
   function next() {
@@ -471,16 +409,14 @@ function loadAllEPG() {
       return;
     }
     var src = EPG_SOURCES[idx++];
-    setEpgStatus('Loading guide ' + idx + '/' + EPG_SOURCES.length + '…');
-    fetchEpgSourceChunked(src).then(function(parsed) {
-      if (parsed) { mergeIntoEpg(parsed); epgLoaded = Object.keys(epgByChannelId).length > 0; refreshAllCardsEpg(); }
+    setEpgStatus('Guide ' + idx + '/' + EPG_SOURCES.length + ': ' + src.name + '…');
+    fetchAndParseSingleEPG(src).then(function(result) {
+      if (result) { mergeSource(result); epgLoaded = Object.keys(epgByChannelId).length > 0; refreshAllCardsEpg(); }
       next();
     });
   }
   next();
 }
-
-/* ══════════════════════════════════════════════════════════════ EPG helpers */
 function getCurrentProgram(progs) { if (!progs || !progs.length) return null; var now = Date.now(); for (var i = 0; i < progs.length; i++) if (progs[i].s <= now && progs[i].e > now) return progs[i]; return null; }
 function getNextProgram(progs, after) { if (!progs || !progs.length) return null; var ref = after || Date.now(); for (var i = 0; i < progs.length; i++) if (progs[i].s > ref) return progs[i]; return null; }
 function getChannelNumber(ch) {
@@ -519,8 +455,6 @@ function refreshAllCardsEpg() {
   function step() { var end = Math.min(i + BATCH, ids.length); for (; i < end; i++) updateCardEpg(ids[i]); if (i < ids.length) rAF(step); }
   rAF(step);
 }
-
-/* ══════════════════════════════════════════════════════════════ Channels */
 function parseChannelJson(text) {
   var c = String(text).trim(); if (c.charCodeAt(0) === 0xFEFF) c = c.slice(1);
   try { var p = JSON.parse(c); if (Array.isArray(p)) return p; if (p && Array.isArray(p.channels)) return p.channels; } catch(e){}
@@ -529,7 +463,7 @@ function parseChannelJson(text) {
 }
 function fetchChannelsFrom(idx) {
   if (idx >= CHANNELS_CANDIDATES.length) return Promise.reject(new Error('All failed'));
-  return xhrFetch(CHANNELS_CANDIDATES[idx], { timeout: 20000 })
+  return xhrFetch(CHANNELS_CANDIDATES[idx], { headers: { 'X-Requested-With': 'XMLHttpRequest' }, timeout: 20000 })
     .then(function(r){ return r.text(); })
     .then(function(t){ var p = parseChannelJson(t); if (p && p.length) return p; throw new Error('Empty'); })
     .catch(function(){ return fetchChannelsFrom(idx + 1); });
@@ -606,7 +540,6 @@ function renderCategories() {
     chip.addEventListener('click', function() { selectedCategory = chip.getAttribute('data-cat'); renderCategories(); applyFilter(); wrapEl.scrollTop = 0; });
   })(chips[c2]);
 }
-
 function openDetails(ch) {
   currentDetailChannel = ch;
   var num = getChannelNumber(ch);
@@ -651,7 +584,6 @@ function openPlayer(ch) {
   catch (e) { window.location.href = url; }
 }
 
-/* ══════════════════════════════════════════════════════════════ Channel number typing */
 function showChNumOverlay() { chNumValue.textContent = chNumBuffer || '—'; chNumOverlay.classList.add('visible'); }
 function hideChNumOverlay() { chNumOverlay.classList.remove('visible'); }
 function handleChNumDigit(digit) {
@@ -662,14 +594,23 @@ function handleChNumDigit(digit) {
   chNumTimer = setTimeout(autoPlayByNumber, 1500);
 }
 function autoPlayByNumber() {
-  var num = chNumBuffer; chNumBuffer = ''; clearTimeout(chNumTimer); hideChNumOverlay();
+  var num = chNumBuffer;
+  chNumBuffer = '';
+  clearTimeout(chNumTimer);
+  hideChNumOverlay();
   if (!num) return;
+
   var n = parseInt(num, 10);
   var found = null;
   for (var i = 0; i < allChannels.length; i++) if (getChannelNumber(allChannels[i]) === n) { found = allChannels[i]; break; }
   if (!found) { showToast('Channel ' + num + ' not found', true); return; }
+
   showToast('Tuning to CH ' + n + ' · ' + (found.name || ''));
-  try { localStorage.setItem('currentChannel', JSON.stringify(found)); localStorage.setItem('allChannels', JSON.stringify(allChannels)); } catch (e) {}
+  try {
+    localStorage.setItem('currentChannel', JSON.stringify(found));
+    localStorage.setItem('allChannels', JSON.stringify(allChannels));
+  } catch (e) {}
+
   var url = 'jplayer.html?id=' + encodeURIComponent(found.id);
   var isTV = /Tizen|Web0S|webOS|SMART-TV|SmartTV|HbbTV|NetCast|BRAVIA|Android TV|AFT|FireTV|Hisense|Panasonic|Philips|Kepler/i.test(navigator.userAgent);
   if (isTV) { window.location.href = url; return; }
@@ -681,9 +622,7 @@ function loadChannels() {
   gridEl.innerHTML = '<div class="msg"><div class="spinner"></div><div>Loading channels…</div></div>';
   var last = CHANNELS_CANDIDATES[CHANNELS_CANDIDATES.length - 1];
   fetchChannelsFrom(0)
-    .catch(function() {
-      return xhrFetch(CORS_PROXY + last, { timeout: 25000 }).then(function(r){ return r.text(); }).then(function(t){ return parseChannelJson(t); });
-    })
+    .catch(function() { return xhrFetch(CORS_PROXY + last, { timeout: 25000 }).then(function(r){ return r.text(); }).then(function(t){ return parseChannelJson(t); }); })
     .then(function(chs) {
       if (!chs || !chs.length) throw new Error('No channels');
       allChannels = chs;
@@ -709,7 +648,6 @@ searchEl.addEventListener('input', function() {
 document.addEventListener('keydown', function(e) {
   var k = e.keyCode, focused = document.activeElement;
   var inModal = !detailModal.classList.contains('hidden');
-
   if (inModal) {
     if (k === 27 || k === 8 || k === 10009) { e.preventDefault(); closeDetails(); return; }
     if (k === 13) {
@@ -720,13 +658,8 @@ document.addEventListener('keydown', function(e) {
     if (k === 39 && focused === dCancel) { e.preventDefault(); dWatch.focus(); return; }
     return;
   }
-
   var isNum = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
-  if (isNum && focused !== searchEl) {
-    e.preventDefault();
-    handleChNumDigit(String.fromCharCode(k >= 96 ? k - 48 : k));
-    return;
-  }
+  if (isNum && focused !== searchEl) { e.preventDefault(); handleChNumDigit(String.fromCharCode(k >= 96 ? k - 48 : k)); return; }
 
   if (focused && focused.classList && focused.classList.contains('cat-chip')) {
     var chips = categoriesEl.querySelectorAll('.cat-chip');
