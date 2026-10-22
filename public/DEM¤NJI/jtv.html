@@ -234,6 +234,7 @@ var currentDetailChannel = null;
 var chNumBuffer = '';
 var chNumTimer = null;
 var toastTimer = null;
+var pendingPopup = null;
 
 var epgByChannelId = {};
 var epgLoaded = false;
@@ -292,10 +293,10 @@ function chunkedUngzip(bytes) {
     if (typeof pako === 'undefined') { reject(new Error('pako not loaded')); return; }
     try {
       var inflator = new pako.Inflate({ to: 'string' });
-      var chunks = [];
-      inflator.onData = function(chunk) { chunks.push(chunk); };
+      var chunks = [], totalChars = 0, startTime = Date.now();
+      inflator.onData = function(chunk) { chunks.push(chunk); totalChars += chunk.length; };
       inflator.onEnd = function(status) {
-        if (status === 0) resolve(chunks.join(''));
+        if (status === 0) { safeLog('[pako] done — ' + totalChars + ' chars in ' + (Date.now()-startTime) + 'ms'); resolve(chunks.join('')); }
         else reject(new Error('inflate failed ' + status));
       };
       var offset = 0, CHUNK = 65536;
@@ -577,14 +578,16 @@ function openDetails(ch) {
 }
 function closeDetails() { detailModal.classList.add('hidden'); currentDetailChannel = null; }
 
-/* ══════════════════════════════════════════════════════════════
-   Open player — just stores currentChannel + allChannels and
-   navigates. Player loads its own EPG.
-   ══════════════════════════════════════════════════════════════ */
 function openPlayer(ch) {
   try {
     localStorage.setItem('currentChannel', JSON.stringify(ch));
     localStorage.setItem('allChannels', JSON.stringify(allChannels));
+    var progs = epgByChannelId[String(ch.id)];
+    if (progs && progs.length) {
+      var ser = [];
+      for (var i = 0; i < progs.length; i++) ser.push({ title: progs[i].t, description: progs[i].d, start: progs[i].s, end: progs[i].e, icon: progs[i].ic || '' });
+      localStorage.setItem('channelPrograms', JSON.stringify(ser));
+    } else localStorage.removeItem('channelPrograms');
   } catch (e) {}
   var url = 'jplayer.html?id=' + encodeURIComponent(ch.id);
   try { var w = window.open(url, '_blank'); if (!w) window.location.href = url; }
@@ -592,48 +595,164 @@ function openPlayer(ch) {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   Channel number typing — no popup until number is complete,
-   1.5s auto-commit, TV uses same-tab.
+   FIXED CHANNEL NUMBER SYSTEM
+   - Popup opens on first digit with a self-navigating loader
+   - EPG pulled from in-memory OR raw cache with up to 3 s retry
    ══════════════════════════════════════════════════════════════ */
 function showChNumOverlay() { chNumValue.textContent = chNumBuffer || '—'; chNumOverlay.classList.add('visible'); }
 function hideChNumOverlay() { chNumOverlay.classList.remove('visible'); }
+
+function closePendingPopup() {
+  if (pendingPopup && !pendingPopup.closed) { try { pendingPopup.close(); } catch(e) {} }
+  pendingPopup = null;
+  try { localStorage.removeItem('pendingPopupUrl'); } catch (e) {}
+}
+
+/* Resolve EPG for a channel: in-memory first, then raw localStorage cache.
+   Handles both compact {t,d,s,e} and expanded {title,description,start,end}. */
+function getProgramsForChannel(chId) {
+  var progs = epgByChannelId[String(chId)];
+  if (progs && progs.length) return progs;
+  try {
+    var cache = JSON.parse(localStorage.getItem(EPG_CACHE_KEY) || '{}');
+    var raw = cache.data && cache.data[String(chId)];
+    if (raw && raw.length) return raw;
+  } catch (e) {}
+  return null;
+}
+
+/* Opens player for a channel number, retrying up to ~3 s if EPG
+   hasn't been populated yet (background loadAllEPG still running). */
+function openChannelByNumber(found, n, attempt) {
+  var progs = getProgramsForChannel(found.id);
+  if ((!progs || !progs.length) && attempt < 6) {
+    setTimeout(function() { openChannelByNumber(found, n, attempt + 1); }, 500);
+    return;
+  }
+
+  try {
+    localStorage.setItem('currentChannel', JSON.stringify(found));
+    localStorage.setItem('allChannels', JSON.stringify(allChannels));
+    if (progs && progs.length) {
+      var ser = [];
+      for (var i = 0; i < progs.length; i++) {
+        var p = progs[i];
+        var title = (p.title != null) ? p.title : p.t;
+        var desc  = (p.description != null) ? p.description : p.d;
+        var start = (p.start != null) ? p.start : p.s;
+        var end   = (p.end != null) ? p.end : p.e;
+        var icon  = (p.icon != null) ? p.icon : p.ic;
+        if (typeof start === 'string') start = new Date(start).getTime();
+        if (typeof end   === 'string') end   = new Date(end).getTime();
+        ser.push({ title: title || 'No Title', description: desc || '', start: start, end: end, icon: icon || '' });
+      }
+      localStorage.setItem('channelPrograms', JSON.stringify(ser));
+    } else {
+      localStorage.removeItem('channelPrograms');
+    }
+  } catch (e) {}
+
+  var url = 'jplayer.html?id=' + encodeURIComponent(found.id);
+
+  /* Redirect pending popup via shared localStorage — the loader script
+     inside the popup polls `pendingPopupUrl` and navigates itself.
+     This works even when calling from a setTimeout (no user gesture). */
+  if (pendingPopup && !pendingPopup.closed) {
+    var pop = pendingPopup;
+    pendingPopup = null;
+    var stored = false;
+    try {
+      localStorage.setItem('pendingPopupUrl', url);
+      stored = true;
+      setTimeout(function() { try { localStorage.removeItem('pendingPopupUrl'); } catch (e) {} }, 10000);
+    } catch (e) { safeWarn('[popup] storage fail', e); }
+    if (stored) {
+      try { pop.focus(); } catch (e) {}
+      return;
+    }
+  }
+
+  /* Fallback — no popup yet, open fresh or same-tab */
+  try { var w = window.open(url, '_blank'); if (!w) window.location.href = url; }
+  catch (e) { window.location.href = url; }
+}
+
 function handleChNumDigit(digit) {
   if (chNumBuffer.length >= 4) chNumBuffer = '';
+
+  /* On the very first digit of a fresh number, open the popup with a
+     self-navigating loader. Subsequent digits just extend the buffer. */
+  if (chNumBuffer.length === 0 && !pendingPopup) {
+    try { localStorage.removeItem('pendingPopupUrl'); } catch (e) {}
+    try {
+      pendingPopup = window.open('', '_blank');
+      if (pendingPopup) {
+        try {
+          var doc = pendingPopup.document;
+          doc.open();
+          doc.write(
+            '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Loading…</title></head>' +
+            '<body style="margin:0;background:#000;color:#4fc3f7;font-family:Arial;display:flex;align-items:center;justify-content:center;height:100vh;font-size:20px;text-align:center;padding:20px;">' +
+            '<div>Loading channel…<br><small id="msg" style="color:#555;font-size:12px;margin-top:12px;display:block">Please wait</small></div>' +
+            '<script>' +
+            '(function(){' +
+            '  function go(){' +
+            '    try {' +
+            '      var u = localStorage.getItem("pendingPopupUrl");' +
+            '      if (u && u !== "null" && u.length > 5) { window.location.href = u; return true; }' +
+            '    } catch(e) {}' +
+            '    return false;' +
+            '  }' +
+            '  if (go()) return;' +
+            '  try {' +
+            '    window.addEventListener("storage", function(ev){' +
+            '      if (ev.key === "pendingPopupUrl" && ev.newValue) window.location.href = ev.newValue;' +
+            '    });' +
+            '  } catch(e) {}' +
+            '  var ticks = 0;' +
+            '  var iv = setInterval(function(){' +
+            '    ticks++;' +
+            '    if (go()) { clearInterval(iv); return; }' +
+            '    if (ticks > 50) {' +
+            '      clearInterval(iv);' +
+            '      var m = document.getElementById("msg");' +
+            '      if (m) m.textContent = "No channel selected. You can close this tab.";' +
+            '    }' +
+            '  }, 400);' +
+            '})();' +
+            '<\/script></body></html>'
+          );
+          doc.close();
+        } catch (e) { pendingPopup = null; }
+      }
+    } catch (e) { pendingPopup = null; }
+  }
+
   chNumBuffer += digit;
   showChNumOverlay();
   clearTimeout(chNumTimer);
-  chNumTimer = setTimeout(autoPlayByNumber, 1500);
+  chNumTimer = setTimeout(autoPlayByNumber, 1200);
 }
+
 function autoPlayByNumber() {
   var num = chNumBuffer;
   chNumBuffer = '';
   clearTimeout(chNumTimer);
   hideChNumOverlay();
-  if (!num) return;
+  if (!num) { closePendingPopup(); return; }
 
   var n = parseInt(num, 10);
   var found = null;
   for (var i = 0; i < allChannels.length; i++) if (getChannelNumber(allChannels[i]) === n) { found = allChannels[i]; break; }
 
-  if (!found) { showToast('Channel ' + num + ' not found', true); return; }
+  if (!found) {
+    closePendingPopup();
+    showToast('Channel ' + num + ' not found', true);
+    return;
+  }
 
   showToast('Tuning to CH ' + n + ' · ' + (found.name || ''));
-  try {
-    localStorage.setItem('currentChannel', JSON.stringify(found));
-    localStorage.setItem('allChannels', JSON.stringify(allChannels));
-  } catch (e) {}
-
-  var url = 'jplayer.html?id=' + encodeURIComponent(found.id);
-
-  /* TV detection — popups steal focus mid-typing, use same-tab */
-  var isTV = /Tizen|Web0S|webOS|SMART-TV|SmartTV|HbbTV|NetCast|BRAVIA|Android TV|AFT|FireTV|Hisense|Panasonic|Philips|Kepler/i.test(navigator.userAgent);
-
-  if (isTV) { window.location.href = url; return; }
-  try {
-    var w = window.open(url, '_blank');
-    if (w && !w.closed) { try { w.focus(); } catch (e) {} return; }
-  } catch (e) {}
-  window.location.href = url;
+  openChannelByNumber(found, n, 0);
 }
 
 function loadChannels() {
