@@ -169,11 +169,10 @@ html, body {
 }
 .unmute-icon { font-size: 20px; }
 
-/* ══════ Channel number overlay ══════ */
 #chNumOverlay {
   position: fixed; top: 22%; left: 50%;
   transform: translateX(-50%);
-  min-width: 200px; padding: 20px 40px 16px;
+  min-width: 200px; padding: 20px 40px;
   background: rgba(10,20,28,0.96);
   border: 3px solid #4fc3f7; border-radius: 18px;
   text-align: center; z-index: 2000; pointer-events: none; display: none;
@@ -182,8 +181,6 @@ html, body {
 #chNumOverlay.visible { display: block; }
 #chNumOverlay .num-label { font-size: 12px; color: #7ab8d6; letter-spacing: 2px; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; }
 #chNumOverlay .num-value { font-size: 72px; color: #fff; font-weight: bold; line-height: 1; letter-spacing: 4px; text-shadow: 0 2px 10px rgba(79,195,247,0.6); }
-#chNumOverlay .num-hint { font-size: 12px; color: #8ab8d0; margin-top: 10px; letter-spacing: 0.5px; padding-top: 10px; border-top: 1px solid #2a3a48; }
-#chNumOverlay .num-hint b { color: #4fc3f7; }
 
 #toast {
   position: fixed; bottom: 30px; left: 50%;
@@ -320,9 +317,8 @@ html, body {
 </div>
 
 <div id="chNumOverlay">
-  <div class="num-label">Switch to Channel</div>
+  <div class="num-label">Channel</div>
   <div class="num-value" id="chNumValue"></div>
-  <div class="num-hint">Press <b>OK</b> to switch &nbsp;·&nbsp; <b>Back</b> to cancel</div>
 </div>
 
 <div id="toast"></div>
@@ -480,8 +476,8 @@ function attemptPlayback() {
     setTimeout(function() { if (videoEl.paused && !isLoading) tryMutedPlayback(); }, 1500);
     return;
   }
-  p.then(function() { hideUnmuteBtn(); hideTapToPlay(); console.log('[play] ✓ sound'); })
-   .catch(function(err) { console.warn('[play] sound blocked:', err && err.name); tryMutedPlayback(); });
+  p.then(function() { hideUnmuteBtn(); hideTapToPlay(); })
+   .catch(function() { tryMutedPlayback(); });
 }
 function tryMutedPlayback() {
   videoEl.muted = true;
@@ -490,10 +486,8 @@ function tryMutedPlayback() {
     setTimeout(function() { if (videoEl.paused) showTapToPlay(); else showUnmuteBtn(); }, 1500);
     return;
   }
-  p.then(function() { showUnmuteBtn(); console.log('[play] ✓ muted'); })
-   .catch(function(err) { console.warn('[play] muted blocked:', err && err.name); showTapToPlay(); });
+  p.then(function() { showUnmuteBtn(); }).catch(function() { showTapToPlay(); });
 }
-
 tapToPlay.addEventListener('click', function(e) {
   e.stopPropagation();
   hideTapToPlay();
@@ -501,8 +495,7 @@ tapToPlay.addEventListener('click', function(e) {
   var p = videoEl.play();
   if (p && p.then) {
     p.then(function() { hideUnmuteBtn(); })
-     .catch(function(err) {
-        console.warn('[tap-play] retry muted:', err.name);
+     .catch(function() {
         videoEl.muted = true;
         var p2 = videoEl.play();
         if (p2 && p2.then) p2.then(function() { showUnmuteBtn(); }).catch(function(){ showTapToPlay(); });
@@ -516,7 +509,6 @@ unmuteBtn.addEventListener('click', function(e) {
   if (!videoEl.muted) hideUnmuteBtn();
 });
 
-/* ══════════════════════════════════════════════════════════════ Programme info */
 function loadChannelPrograms() {
   try {
     var raw = localStorage.getItem('channelPrograms');
@@ -620,7 +612,8 @@ function startBannerRefreshTimer() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   Channel number typing in player
+   Channel number typing — auto-commits after 1.2s, switches
+   the current player tab to the new channel in-place.
    ══════════════════════════════════════════════════════════════ */
 function showChNumOverlay() {
   chNumValue.textContent = chNumBuffer || '—';
@@ -634,10 +627,7 @@ function handleChNumDigit(digit) {
   chNumBuffer += digit;
   showChNumOverlay();
   clearTimeout(chNumTimer);
-  chNumTimer = setTimeout(function() {
-    chNumBuffer = '';
-    hideChNumOverlay();
-  }, 6000);
+  chNumTimer = setTimeout(commitChNum, 1200);
 }
 function cancelChNum() {
   chNumBuffer = '';
@@ -652,8 +642,6 @@ function commitChNum() {
   if (!num) return;
 
   var n = parseInt(num, 10);
-
-  /* Try localStorage first */
   var all = [];
   try { all = JSON.parse(localStorage.getItem('allChannels') || '[]'); } catch (e) {}
 
@@ -663,11 +651,12 @@ function commitChNum() {
   }
 
   if (found) {
+    showToast('Switching to CH ' + n + ' · ' + (found.name || ''));
     switchToChannel(found, n);
     return;
   }
 
-  /* Fallback: fetch channel list */
+  /* Fallback: fetch list */
   showToast('Looking up CH ' + n + '…');
   fetchChannelsFrom(0).then(function(chs) {
     try { localStorage.setItem('allChannels', JSON.stringify(chs)); } catch (e) {}
@@ -680,6 +669,14 @@ function commitChNum() {
   }).catch(function() {
     showToast('Channel ' + num + ' not found', true);
   });
+}
+
+function getPlayerUrl(ch) {
+  var loc = window.location;
+  var origin = loc.protocol + '//' + loc.host;
+  var path = loc.pathname;
+  var dir = path.substring(0, path.lastIndexOf('/') + 1);
+  return origin + dir + 'jplayer.html?id=' + encodeURIComponent(ch.id);
 }
 
 function switchToChannel(ch, num) {
@@ -701,10 +698,9 @@ function switchToChannel(ch, num) {
     }
   } catch (e) {}
 
-  showToast('Switching to CH ' + num + ' · ' + (ch.name || ''));
-  /* Brief delay so toast is visible before reload */
+  /* Navigate in-place after the toast is visible */
   setTimeout(function() {
-    window.location.href = 'jplayer.html?id=' + encodeURIComponent(ch.id);
+    window.location.href = getPlayerUrl(ch);
   }, 300);
 }
 
@@ -781,7 +777,6 @@ function findChannelById(id) {
     });
 }
 
-/* ══════════════════════════════════════════════════════════════ Player init */
 function initPlayer() {
   if (typeof shaka === 'undefined' || !shaka.Player) {
     showPlaceholder('⚠️ Player failed to load.<br>Check your internet connection.', true, false);
@@ -932,7 +927,6 @@ function playChannel(channelData) {
   });
 }
 
-/* ══════════════════════════════════════════════════════════════ Fit modes */
 var fitModes = [
   { key: 'contain', label: 'FIT: CONTAIN' },
   { key: 'cover',   label: 'FULL: COVER' },
@@ -956,7 +950,6 @@ backBtn.addEventListener('click', function(e){ e.preventDefault(); goBack(); });
 phBackBtn.addEventListener('click', function(e){ e.preventDefault(); goBack(); });
 phRetryBtn.addEventListener('click', function(e) { e.preventDefault(); if (currentChannel) playChannel(currentChannel); });
 
-/* ══════════════════════════════════════════════════════════════ Banner peek */
 videoContainer.addEventListener('click', function(e) {
   if (e.target === backBtn || e.target === fitBtn) return;
   if (e.target === unmuteBtn || e.target === tapToPlay) return;
@@ -975,12 +968,11 @@ videoContainer.addEventListener('mousemove', function() {
   peekBanner(5000);
 });
 
-/* ══════════════════════════════════════════════════════════════ Keyboard */
 document.addEventListener('keydown', function(e) {
   var k = e.keyCode;
   var focused = document.activeElement;
 
-  /* Channel number typing — grab digits before anything else */
+  /* Digits → buffer (auto-commits) */
   var isNumKey = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
   if (isNumKey) {
     e.preventDefault();
@@ -988,22 +980,20 @@ document.addEventListener('keydown', function(e) {
     handleChNumDigit(digit);
     return;
   }
-
-  /* Enter → commit number if buffer exists */
+  /* Enter → commit immediately */
   if (k === 13 && chNumBuffer) {
     e.preventDefault();
+    clearTimeout(chNumTimer);
     commitChNum();
     return;
   }
-
-  /* Back / Escape → cancel buffer first */
+  /* Back/Escape → cancel if buffer active */
   if ((k === 27 || k === 8 || k === 10009) && chNumBuffer) {
     e.preventDefault();
     cancelChNum();
     return;
   }
 
-  /* Back / Escape → hide banner first, then go back */
   if (k === 8 || k === 27 || k === 461 || k === 10009 || k === 10033) {
     if (dthBanner.classList.contains('visible') &&
         !document.querySelector('.shaka-overflow-menu:not(.shaka-hidden)') &&
@@ -1050,10 +1040,7 @@ videoEl.addEventListener('playing', function() {
 videoEl.addEventListener('loadedmetadata', function() {
   if (!autoplayAttempted) return;
   setTimeout(function() {
-    if (videoEl.paused && !isLoading && currentChannel) {
-      console.warn('[safety] forcing muted play');
-      tryMutedPlayback();
-    }
+    if (videoEl.paused && !isLoading && currentChannel) tryMutedPlayback();
   }, 2000);
 });
 
