@@ -7,6 +7,7 @@
 <meta name="format-detection" content="telephone=no">
 <title>Player</title>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@2.5.5/dist/controls.css">
 <script src="https://cdn.jsdelivr.net/npm/shaka-player@2.5.5/dist/shaka-player.ui.min.js"></script>
 
@@ -22,7 +23,7 @@ html, body { background: #000; width: 100%; height: 100%; overflow: hidden; font
 
 #topBar { position: absolute; top: 0; left: 0; right: 0; z-index: 10; padding: 12px 16px; padding-top: calc(12px + env(safe-area-inset-top)); padding-left: calc(16px + env(safe-area-inset-left)); padding-right: calc(16px + env(safe-area-inset-right)); background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0)); display: flex; align-items: center; gap: 12px; transition: opacity .3s ease, visibility .3s ease; pointer-events: none; }
 #topBar.hidden { opacity: 0; visibility: hidden; }
-.top-btn { pointer-events: auto; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.28); color: #fff; border-radius: 8px; padding: 10px 16px; min-height: 44px; font-size: 14px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; white-space: nowrap; flex-shrink: 0; }
+.top-btn { pointer-events: auto; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.28); color: #fff; border-radius: 8px; padding: 10px 16px; min-height: 44px; font-size: 14px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; white-space: nowrap; transition: background .15s, border-color .15s; flex-shrink: 0; }
 .top-btn:hover { background: rgba(255,255,255,0.22); }
 .top-btn:focus { background: rgba(30,90,120,0.9); border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79,195,247,0.4); }
 #titleWrap { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 8px; pointer-events: none; }
@@ -152,6 +153,8 @@ html, body { background: #000; width: 100%; height: 100%; overflow: hidden; font
 <script>
 if (!Array.prototype.includes) Array.prototype.includes = function(x){ return this.indexOf(x) !== -1; };
 if (!Element.prototype.closest) { Element.prototype.closest = function(sel) { var el = this; while (el) { if (el.matches && el.matches(sel)) return el; el = el.parentElement; } return null; }; }
+var rAF = window.requestAnimationFrame || function(cb){ return setTimeout(function(){ cb(Date.now()); }, 16); };
+function safeWarn(){ try { console.warn.apply(console, arguments); } catch(e){} }
 
 function xhrFetch(url, opts) {
   opts = opts || {};
@@ -169,10 +172,28 @@ function xhrFetch(url, opts) {
     try { xhr.send(opts.body || null); } catch(e){ reject(e); }
   });
 }
+function xhrFetchBuffer(url, opts) {
+  opts = opts || {};
+  return new Promise(function(resolve, reject) {
+    var xhr = new XMLHttpRequest();
+    xhr.open(opts.method || 'GET', url, true);
+    xhr.responseType = 'arraybuffer';
+    xhr.timeout = opts.timeout || 120000;
+    xhr.onload = function() { if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response); else reject(new Error('HTTP ' + xhr.status)); };
+    xhr.onerror = function(){ reject(new Error('Network error')); };
+    xhr.ontimeout = function(){ reject(new Error('Timeout')); };
+    try { xhr.send(null); } catch(e){ reject(e); }
+  });
+}
 
 var CHANNELS_CANDIDATES = ['/jstr4web.json', 'https://jjtvxweb.pages.dev/jstr4web.json'];
 var CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
+var EPG_SOURCES = [
+  { url: 'https://avkb.short.gy/tsepg.xml.gz', name: 'AVKB TSEPG', timeout: 180000 },
+  { url: 'https://epgshare01.online/epgshare01/epg_ripper_IN4.xml.gz', name: 'Open-EPG', timeout: 180000 }
+];
 var EPG_CACHE_KEY = 'jtv_epg_cache_v5';
+var EPG_CACHE_TTL_MS = 60 * 60 * 1000;
 
 var COOKIE_PRIMARY     = "https://allinonereborn2.online/jstrweb2/cookies.json";
 var COOKIE_STAR_SPORTS = "https://allinonereborn2.online/jtv-fetch/jstarcookie/cookie.json";
@@ -209,10 +230,11 @@ var chNumValue   = document.getElementById('chNumValue');
 var toastEl      = document.getElementById('toast');
 
 var shakaPlayer    = null;
+var shakaUI        = null;
 var activeCookie   = '';
 var currentChannel = null;
 var isLoading      = false;
-var channelPrograms = [];   /* read from cache only — never fetched here */
+var channelPrograms = null;
 var programUpdateTimer = null;
 var bannerHideTimer = null;
 var progressTimer = null;
@@ -221,6 +243,14 @@ var autoplayAttempted = false;
 var chNumBuffer = '';
 var chNumTimer = null;
 var toastTimer = null;
+
+/* ══════════════════════════════════════════════════════════════
+   Generation counter — every playChannel() bumps this. Any async
+   callback that resolves later checks if it's still the active
+   generation; if not, it silently discards itself. This is what
+   makes in-place switching safe even with overlapping loads.
+   ══════════════════════════════════════════════════════════════ */
+var playGeneration = 0;
 
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function formatTimeOnly(ms) { var d = new Date(ms), h = d.getHours(), m = d.getMinutes(), ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap; }
@@ -242,26 +272,224 @@ function getChannelNumber(ch) {
   return null;
 }
 
+/* ══════════════════════════════════════════════════════════════ EPG parsing */
+function parseEPGDate(dateStr) {
+  if (!dateStr) return null;
+  var parts = String(dateStr).trim().split(' ');
+  var datetime = parts[0], tz = parts[1] || '+0000';
+  var year = parseInt(datetime.slice(0,4),10), month = parseInt(datetime.slice(4,6),10)-1,
+      day = parseInt(datetime.slice(6,8),10), hour = parseInt(datetime.slice(8,10),10),
+      minute = parseInt(datetime.slice(10,12),10), second = parseInt(datetime.slice(12,14),10);
+  if (isNaN(year)) return null;
+  var ms = Date.UTC(year, month, day, hour, minute, second);
+  var sign = tz.charAt(0) === '-' ? -1 : 1;
+  var tzh = parseInt(tz.slice(1,3),10)||0, tzm = parseInt(tz.slice(3,5),10)||0;
+  return ms - sign * (tzh*3600 + tzm*60) * 1000;
+}
+function normalizeChannelName(name) {
+  if (!name) return '';
+  var cleaned = String(name).toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
+  return cleaned.replace(/\b(hd|sd|fhd|4k|plus|movies|music|news|tv|channel)\b/g, '').trim();
+}
+function bytesToUtf8String(bytes) {
+  if (typeof TextDecoder !== 'undefined') { try { return new TextDecoder('utf-8').decode(bytes); } catch (e) {} }
+  var result = '', i = 0;
+  while (i < bytes.length) {
+    var b = bytes[i++];
+    if (b < 0x80) result += String.fromCharCode(b);
+    else if (b < 0xE0) result += String.fromCharCode(((b & 0x1F) << 6) | (bytes[i++] & 0x3F));
+    else if (b < 0xF0) result += String.fromCharCode(((b & 0x0F) << 12) | ((bytes[i++] & 0x3F) << 6) | (bytes[i++] & 0x3F));
+    else { var cp = ((b & 0x07) << 18) | ((bytes[i++] & 0x3F) << 12) | ((bytes[i++] & 0x3F) << 6) | (bytes[i++] & 0x3F); cp -= 0x10000; result += String.fromCharCode(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF)); }
+  }
+  return result;
+}
+function chunkedUngzip(bytes) {
+  return new Promise(function(resolve, reject) {
+    if (typeof pako === 'undefined') { reject(new Error('pako not loaded')); return; }
+    try {
+      var inflator = new pako.Inflate({ to: 'string' });
+      var chunks = [];
+      inflator.onData = function(chunk) { chunks.push(chunk); };
+      inflator.onEnd = function(status) { if (status === 0) resolve(chunks.join('')); else reject(new Error('inflate failed ' + status)); };
+      var offset = 0, CHUNK = 65536;
+      function pushNext() {
+        if (offset >= bytes.length) return;
+        var end = Math.min(offset + CHUNK, bytes.length);
+        var chunk = bytes.subarray(offset, end);
+        var isFinal = end >= bytes.length;
+        try { inflator.push(chunk, isFinal); } catch (e) { reject(e); return; }
+        offset = end;
+        if (!isFinal) rAF(pushNext);
+      }
+      pushNext();
+    } catch (e) { reject(e); }
+  });
+}
+function processXmlText(xmlText) {
+  if (!xmlText || xmlText.length < 500) throw new Error('XML too small');
+  var xmlDoc = new DOMParser().parseFromString(xmlText, 'text/xml');
+  if (xmlDoc.getElementsByTagName('parsererror').length > 0) throw new Error('XML parse error');
+  var channelIdToName = {};
+  var chNodes = xmlDoc.getElementsByTagName('channel');
+  for (var c = 0; c < chNodes.length; c++) {
+    var id = chNodes[c].getAttribute('id'); if (!id) continue;
+    var dn = chNodes[c].getElementsByTagName('display-name')[0];
+    if (dn) channelIdToName[id] = dn.textContent.trim();
+  }
+  var byId = {}, byName = {};
+  var progNodes = xmlDoc.getElementsByTagName('programme');
+  for (var p = 0; p < progNodes.length; p++) {
+    var prog = progNodes[p];
+    var chId = prog.getAttribute('channel'); if (!chId) continue;
+    var startStr = prog.getAttribute('start'), stopStr = prog.getAttribute('stop');
+    if (!startStr) continue;
+    var startMs = parseEPGDate(startStr); if (!startMs) continue;
+    var endMs = stopStr ? parseEPGDate(stopStr) : (startMs + 3600000); if (!endMs) continue;
+    var titleNode = prog.getElementsByTagName('title')[0];
+    var descNode = prog.getElementsByTagName('desc')[0];
+    var iconNode = prog.getElementsByTagName('icon')[0];
+    var desc = descNode ? descNode.textContent.trim() : '';
+    if (desc.length > 300) desc = desc.substring(0, 300);
+    var entry = { t: titleNode ? titleNode.textContent.trim() : 'No title', d: desc, s: startMs, e: endMs, ic: iconNode ? (iconNode.getAttribute('src') || '') : '' };
+    if (!byId[chId]) byId[chId] = [];
+    byId[chId].push(entry);
+    var nm = channelIdToName[chId];
+    if (nm) { var nk = normalizeChannelName(nm); if (nk) { if (!byName[nk]) byName[nk] = []; byName[nk].push(entry); } }
+  }
+  for (var k1 in byId) if (byId.hasOwnProperty(k1)) byId[k1].sort(function(a,b){ return a.s - b.s; });
+  for (var k2 in byName) if (byName.hasOwnProperty(k2)) byName[k2].sort(function(a,b){ return a.s - b.s; });
+  return { byId: byId, byName: byName };
+}
+function fetchAndParseSingleEPG(source) {
+  if (typeof pako === 'undefined') return Promise.resolve(null);
+  var url = source.url, timeout = source.timeout || 60000;
+  return xhrFetchBuffer(url, { timeout: timeout })
+    .then(function(buf) {
+      if (!buf) throw new Error('Empty');
+      var bytes = new Uint8Array(buf);
+      if (bytes.length < 500) throw new Error('Too small');
+      if (bytes[0] === 0x1f && bytes[1] === 0x8b) return chunkedUngzip(bytes).then(processXmlText);
+      return processXmlText(bytesToUtf8String(bytes));
+    })
+    .catch(function() {
+      return xhrFetchBuffer(CORS_PROXY + url, { timeout: 180000 }).then(function(buf) {
+        var bytes = new Uint8Array(buf);
+        if (bytes.length < 500) throw new Error('Too small via proxy');
+        if (bytes[0] === 0x1f && bytes[1] === 0x8b) return chunkedUngzip(bytes).then(processXmlText);
+        return processXmlText(bytesToUtf8String(bytes));
+      }).catch(function() { return null; });
+    });
+}
+
 /* ══════════════════════════════════════════════════════════════
-   Program lookup — READ-ONLY from cache. No fetching, no parsing.
-   If cache has no data → empty array → banner shows "No guide data".
-   This is what makes channel switching instant.
+   Cache read/write — stores compact format {t,d,s,e,ic}
+   readCacheForChannel converts to {title,description,start,end,icon}
+   cacheHasCurrentProgram handles BOTH field naming conventions
+   so this no longer always returns false (that was the bug).
    ══════════════════════════════════════════════════════════════ */
-function loadProgramsFromCache(ch) {
+function readCacheForChannel(chId) {
   try {
     var raw = localStorage.getItem(EPG_CACHE_KEY);
-    if (!raw) return [];
-    var cache = JSON.parse(raw);
-    if (!cache || !cache.data) return [];
-    var stored = cache.data[String(ch.id)];
-    if (!stored || !stored.length) return [];
+    if (!raw) return null;
+    var c = JSON.parse(raw);
+    if (!c || !c.data) return null;
+    var stored = c.data[String(chId)];
+    if (!stored || !stored.length) return null;
     var out = [];
     for (var i = 0; i < stored.length; i++) {
       var p = stored[i];
       out.push({ title: p.t, description: p.d, start: p.s, end: p.e, icon: p.ic || '' });
     }
     return out;
-  } catch (e) { return []; }
+  } catch (e) { return null; }
+}
+function cacheHasCurrentProgram(progs) {
+  if (!progs || !progs.length) return false;
+  var now = Date.now();
+  for (var i = 0; i < progs.length; i++) {
+    var p = progs[i];
+    /* Objects may use either {start,end} or {s,e} depending on origin */
+    var s = (p.start != null) ? p.start : (p.s != null ? p.s : null);
+    var e = (p.end != null)   ? p.end   : (p.e != null ? p.e : null);
+    if (s == null || e == null) continue;
+    if (s <= now && e > now) return true;
+  }
+  return false;
+}
+function mergeParsedIntoCache(parsed) {
+  try {
+    var raw = localStorage.getItem(EPG_CACHE_KEY);
+    var cache = raw ? JSON.parse(raw) : { fetchedAt: Date.now(), data: {} };
+    if (!cache.data) cache.data = {};
+    for (var id in parsed.byId) {
+      if (!parsed.byId.hasOwnProperty(id)) continue;
+      if (!cache.data[id]) cache.data[id] = [];
+      var existing = cache.data[id], seen = {};
+      for (var i = 0; i < existing.length; i++) seen[existing[i].s] = true;
+      var added = 0;
+      for (var j = 0; j < parsed.byId[id].length; j++) {
+        var prog = parsed.byId[id][j];
+        if (!seen[prog.s]) { existing.push({ t: prog.t, d: prog.d, s: prog.s, e: prog.e, ic: prog.ic || '' }); added++; }
+      }
+      if (added) existing.sort(function(a,b){ return a.s - b.s; });
+    }
+    cache.fetchedAt = Date.now();
+    localStorage.setItem(EPG_CACHE_KEY, JSON.stringify(cache));
+  } catch (e) { safeWarn('[epg] cache save failed: ' + e.message); }
+}
+function getProgramsFromParsed(parsed, ch) {
+  var chId = String(ch.id);
+  if (parsed.byId[chId] && parsed.byId[chId].length) {
+    return parsed.byId[chId].map(function(p){ return { title: p.t, description: p.d, start: p.s, end: p.e, icon: p.ic || '' }; });
+  }
+  var norm = normalizeChannelName(ch.name);
+  if (norm) {
+    var progs = parsed.byName[norm];
+    if (!progs) for (var nk in parsed.byName) if (parsed.byName.hasOwnProperty(nk) && (nk.indexOf(norm) !== -1 || norm.indexOf(nk) !== -1)) { progs = parsed.byName[nk]; break; }
+    if (progs && progs.length) return progs.map(function(p){ return { title: p.t, description: p.d, start: p.s, end: p.e, icon: p.ic || '' }; });
+  }
+  return null;
+}
+function fetchEPGUntilChannelFound(ch) {
+  return new Promise(function(resolve) {
+    var i = 0;
+    var accumulated = { byId: {}, byName: {} };
+    function next() {
+      if (i >= EPG_SOURCES.length) { resolve(accumulated); return; }
+      var src = EPG_SOURCES[i++];
+      fetchAndParseSingleEPG(src).then(function(parsed) {
+        if (parsed) {
+          for (var id in parsed.byId) {
+            if (!parsed.byId.hasOwnProperty(id)) continue;
+            if (!accumulated.byId[id]) accumulated.byId[id] = [];
+            accumulated.byId[id] = accumulated.byId[id].concat(parsed.byId[id]);
+          }
+          for (var nm in parsed.byName) {
+            if (!parsed.byName.hasOwnProperty(nm)) continue;
+            if (!accumulated.byName[nm]) accumulated.byName[nm] = [];
+            accumulated.byName[nm] = accumulated.byName[nm].concat(parsed.byName[nm]);
+          }
+          mergeParsedIntoCache(parsed);
+          if (getProgramsFromParsed(accumulated, ch)) { resolve(accumulated); return; }
+        }
+        next();
+      }).catch(function() { next(); });
+    }
+    next();
+  });
+}
+
+/* This is the fixed version — it uses cacheHasCurrentProgram which
+   now correctly handles both field naming conventions. When cache
+   is populated by the dashboard (normal case), this returns instantly. */
+function ensureProgramsForChannel(ch) {
+  var cached = readCacheForChannel(ch.id);
+  if (cached && cacheHasCurrentProgram(cached)) return Promise.resolve(cached);
+
+  return fetchEPGUntilChannelFound(ch).then(function(parsed) {
+    var progs = getProgramsFromParsed(parsed, ch);
+    return progs || cached || [];
+  }).catch(function() { return cached || []; });
 }
 
 /* ══════════════════════════════════════════════════════════════ Autoplay */
@@ -273,7 +501,8 @@ function attemptPlayback() {
   autoplayAttempted = true; hideTapToPlay();
   var p = videoEl.play();
   if (!p || !p.then) { setTimeout(function() { if (videoEl.paused && !isLoading) tryMutedPlayback(); }, 1500); return; }
-  p.then(function() { hideUnmuteBtn(); hideTapToPlay(); }).catch(function() { tryMutedPlayback(); });
+  p.then(function() { hideUnmuteBtn(); hideTapToPlay(); })
+   .catch(function() { tryMutedPlayback(); });
 }
 function tryMutedPlayback() {
   videoEl.muted = true;
@@ -288,7 +517,7 @@ tapToPlay.addEventListener('click', function(e) {
 });
 unmuteBtn.addEventListener('click', function(e) { e.stopPropagation(); videoEl.muted = false; if (videoEl.paused) videoEl.play().catch(function(){}); if (!videoEl.muted) hideUnmuteBtn(); });
 
-/* ══════════════════════════════════════════════════════════════ DTH banner */
+/* ══════════════════════════════════════════════════════════════ Program lookup */
 function findCurrentAndNext() {
   if (!channelPrograms || !channelPrograms.length) return { current: null, next: null };
   var now = Date.now(), current = null, next = null;
@@ -320,9 +549,9 @@ function updateDthBanner() {
   dthChName.textContent = currentChannel.name || 'Unknown';
   var cur = findCurrentAndNext();
   if (cur.current) { dthNowTime.textContent = formatRange(cur.current.s, cur.current.e); dthNowTitle.textContent = cur.current.p.title || 'No Title'; }
-  else { dthNowTime.textContent = ''; dthNowTitle.textContent = channelPrograms.length ? 'No current programme' : 'No guide data'; }
+  else { dthNowTime.textContent = ''; dthNowTitle.textContent = channelPrograms ? 'No current programme' : 'Loading guide…'; }
   if (cur.next) { dthNextTime.textContent = formatTimeOnly(cur.next.s); dthNextTitle.textContent = cur.next.p.title || 'No Title'; }
-  else { dthNextTime.textContent = ''; dthNextTitle.textContent = channelPrograms.length ? 'No upcoming' : ''; }
+  else { dthNextTime.textContent = ''; dthNextTitle.textContent = channelPrograms ? 'No upcoming' : ''; }
   updateProgress();
 }
 function showDthBanner(ms) { updateDthBanner(); dthBanner.classList.add('visible'); startProgressUpdates(); if (bannerHideTimer) clearTimeout(bannerHideTimer); if (ms && ms > 0) bannerHideTimer = setTimeout(hideDthBanner, ms); }
@@ -330,7 +559,9 @@ function hideDthBanner() { dthBanner.classList.remove('visible'); stopProgressUp
 function peekBanner(ms) { if (!dthBanner.classList.contains('visible')) showDthBanner(ms || 5000); }
 function startBannerRefreshTimer() { if (programUpdateTimer) clearInterval(programUpdateTimer); programUpdateTimer = setInterval(function() { if (dthBanner.classList.contains('visible')) updateDthBanner(); }, 60000); }
 
-/* ══════════════════════════════════════════════════════════════ Channel number typing */
+/* ══════════════════════════════════════════════════════════════
+   IN-PLACE channel switching — no page reload, no sticking on TV.
+   ══════════════════════════════════════════════════════════════ */
 function showChNumOverlay() { chNumValue.textContent = chNumBuffer || '—'; chNumOverlay.classList.add('visible'); }
 function hideChNumOverlay() { chNumOverlay.classList.remove('visible'); }
 function handleChNumDigit(digit) {
@@ -341,14 +572,20 @@ function handleChNumDigit(digit) {
   chNumTimer = setTimeout(autoSwitchByNumber, 1500);
 }
 function autoSwitchByNumber() {
-  var num = chNumBuffer; chNumBuffer = ''; clearTimeout(chNumTimer); hideChNumOverlay();
+  var num = chNumBuffer;
+  chNumBuffer = '';
+  clearTimeout(chNumTimer);
+  hideChNumOverlay();
   if (!num) return;
+
   var n = parseInt(num, 10);
   var all = [];
   try { all = JSON.parse(localStorage.getItem('allChannels') || '[]'); } catch (e) {}
   var found = null;
   for (var i = 0; i < all.length; i++) if (getChannelNumber(all[i]) === n) { found = all[i]; break; }
+
   if (found) { switchToChannel(found, n); return; }
+
   showToast('Looking up CH ' + n + '…');
   fetchChannelsFrom(0).then(function(chs) {
     try { localStorage.setItem('allChannels', JSON.stringify(chs)); } catch (e) {}
@@ -359,9 +596,11 @@ function autoSwitchByNumber() {
   }).catch(function() { showToast('Channel ' + num + ' not found', true); });
 }
 function switchToChannel(ch, num) {
+  /* Persist for back/forward — but DON'T reload the page */
   try { localStorage.setItem('currentChannel', JSON.stringify(ch)); } catch (e) {}
   showToast('Switching to CH ' + num + ' · ' + (ch.name || ''));
-  setTimeout(function() { window.location.href = 'jplayer.html?id=' + encodeURIComponent(ch.id); }, 300);
+  /* In-place switch — smooth on TV, no freeze */
+  playChannel(ch);
 }
 
 /* ══════════════════════════════════════════════════════════════ Cookies */
@@ -411,7 +650,7 @@ function findChannelById(id) {
   });
 }
 
-/* ══════════════════════════════════════════════════════════════ Player */
+/* ══════════════════════════════════════════════════════════════ Player init */
 function initPlayer() {
   if (typeof shaka === 'undefined' || !shaka.Player) { showPlaceholder('⚠️ Player failed to load.', true, false); return false; }
   try { if (shaka.polyfill && shaka.polyfill.installAll) shaka.polyfill.installAll(); } catch (e) {}
@@ -430,7 +669,7 @@ function initPlayer() {
   });
   try {
     var uiConfig = { addSeekBar: true, addBigPlayButton: true, controlPanelElements: ['play_pause', 'time_and_duration', 'spacer', 'mute', 'volume', 'quality', 'captions', 'playback_rate', 'picture_in_picture', 'fullscreen', 'overflow_menu'], overflowMenuButtons: ['quality', 'captions', 'playback_rate', 'picture_in_picture'] };
-    new shaka.ui.Overlay(shakaPlayer, videoContainer, videoEl, uiConfig);
+    shakaUI = new shaka.ui.Overlay(shakaPlayer, videoContainer, videoEl, uiConfig);
   } catch (e) { videoEl.setAttribute('controls', 'controls'); }
   syncTopBarWithShakaControls();
   return true;
@@ -452,23 +691,55 @@ function syncTopBarWithShakaControls() {
   check();
 }
 
+/* ══════════════════════════════════════════════════════════════
+   playChannel — supports in-place switching with generation token.
+   Each call bumps playGeneration. All async callbacks (cookies,
+   load success, load failure, EPG fetch) check the token and
+   silently discard themselves if they belong to a stale generation.
+   ══════════════════════════════════════════════════════════════ */
 function playChannel(channelData) {
-  if (!shakaPlayer || isLoading) return;
-  isLoading = true; autoplayAttempted = false; hideUnmuteBtn(); hideTapToPlay();
+  if (!shakaPlayer) return;
+
+  playGeneration++;
+  var myGen = playGeneration;
+
+  isLoading = true;
+  autoplayAttempted = false;
+  hideUnmuteBtn();
+  hideTapToPlay();
+
   currentChannel = channelData;
+  channelPrograms = null;  /* reset for new channel */
 
   var num = getChannelNumber(channelData);
   chNumEl.textContent = num !== null ? 'CH ' + num : '';
   titleEl.textContent = channelData.name || 'Unknown';
-
-  /* Read guide from cache — synchronous, fast, non-blocking */
-  channelPrograms = loadProgramsFromCache(channelData);
-
   showPlaceholder('Connecting to stream…', false, true);
 
-  shakaPlayer.unload().catch(function(){}).then(function() { return fetchCookiesForChannel(channelData); }).then(function(cookies) {
+  /* ── EPG load in parallel — does NOT block stream load ── */
+  ensureProgramsForChannel(channelData).then(function(progs) {
+    if (myGen !== playGeneration) return;  /* stale */
+    channelPrograms = progs || [];
+    updateDthBanner();  /* always refresh internal state */
+  }).catch(function() {
+    if (myGen !== playGeneration) return;
+    channelPrograms = [];
+  });
+
+  /* ── Stream load ── */
+  shakaPlayer.unload().catch(function(){}).then(function() {
+    if (myGen !== playGeneration) return null;
+    return fetchCookiesForChannel(channelData);
+  }).then(function(cookies) {
+    if (myGen !== playGeneration || !cookies) return;
+
     var streamUrls = cookies.streamUrls;
-    if (!streamUrls.length) { isLoading = false; showPlaceholder('⚠️ No stream URL.', true, false); return; }
+    if (!streamUrls.length) {
+      isLoading = false;
+      showPlaceholder('⚠️ No stream URL.', true, false);
+      return;
+    }
+
     var clearKeys = {};
     if (Array.isArray(channelData.keys)) for (var i = 0; i < channelData.keys.length; i++) { var k = channelData.keys[i]; if (k && k.keyId && k.key) clearKeys[k.keyId] = k.key; }
     else if (channelData.keyId && channelData.key) clearKeys[channelData.keyId] = channelData.key;
@@ -476,7 +747,15 @@ function playChannel(channelData) {
 
     var urlIdx = 0, loaded = false;
     function tryNextUrl() {
-      if (loaded || urlIdx >= streamUrls.length) { if (!loaded) { isLoading = false; activeCookie = ''; showPlaceholder('⚠️ Could not load this channel.', true, false); } return; }
+      if (myGen !== playGeneration) return;
+      if (loaded || urlIdx >= streamUrls.length) {
+        if (!loaded) {
+          isLoading = false;
+          activeCookie = '';
+          showPlaceholder('⚠️ Could not load this channel.', true, false);
+        }
+        return;
+      }
       var streamUrl = streamUrls[urlIdx++];
       var isJio = isJioPlLiveUrl(streamUrl);
       var rounds = [];
@@ -484,21 +763,31 @@ function playChannel(channelData) {
       else { if (cookies.primaryCookie) rounds.push(cookies.primaryCookie); if (rounds.length === 0) rounds.push(''); }
       var cIdx = 0;
       function tryNextCookie() {
+        if (myGen !== playGeneration) return;
         if (loaded || cIdx >= rounds.length) { tryNextUrl(); return; }
         activeCookie = rounds[cIdx++];
         shakaPlayer.load(streamUrl).then(function() {
-          loaded = true; isLoading = false; hidePlaceholder();
+          if (myGen !== playGeneration) return;  /* stale */
+          loaded = true;
+          isLoading = false;
+          hidePlaceholder();
           attemptPlayback();
-          setTimeout(function() { peekBanner(5000); }, 400);
-        }).catch(function() { tryNextCookie(); });
+          setTimeout(function() { if (myGen === playGeneration) peekBanner(5000); }, 400);
+        }).catch(function() {
+          if (myGen !== playGeneration) return;  /* stale */
+          tryNextCookie();
+        });
       }
       tryNextCookie();
     }
     tryNextUrl();
-  }).catch(function(e) { isLoading = false; showPlaceholder('⚠️ Error: ' + escapeHtml(e && e.message ? e.message : 'unknown'), true, false); });
+  }).catch(function(e) {
+    if (myGen !== playGeneration) return;
+    isLoading = false;
+    showPlaceholder('⚠️ Error: ' + escapeHtml(e && e.message ? e.message : 'unknown'), true, false);
+  });
 }
 
-/* ══════════════════════════════════════════════════════════════ Fit modes */
 var fitModes = [{ key: 'contain', label: 'FIT: CONTAIN' }, { key: 'cover', label: 'FULL: COVER' }, { key: 'stretch', label: 'FULL: STRETCH' }];
 var fitModeIndex = 0;
 function applyFitMode(index) { fitModeIndex = (index + fitModes.length) % fitModes.length; var mode = fitModes[fitModeIndex]; videoEl.className = 'fit-' + mode.key; fitBtn.innerHTML = mode.label; }
@@ -547,7 +836,11 @@ document.addEventListener('keydown', function(e) {
 videoEl.addEventListener('playing', function() { hidePlaceholder(); isLoading = false; if (videoEl.muted) showUnmuteBtn(); else hideUnmuteBtn(); });
 videoEl.addEventListener('loadedmetadata', function() {
   if (!autoplayAttempted) return;
-  setTimeout(function() { if (videoEl.paused && !isLoading && currentChannel) tryMutedPlayback(); }, 2000);
+  var myGen = playGeneration;
+  setTimeout(function() {
+    if (myGen !== playGeneration) return;
+    if (videoEl.paused && !isLoading && currentChannel) tryMutedPlayback();
+  }, 2000);
 });
 
 function boot() {
