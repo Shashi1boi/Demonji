@@ -294,7 +294,10 @@ function chunkedUngzip(bytes) {
       var inflator = new pako.Inflate({ to: 'string' });
       var chunks = [];
       inflator.onData = function(chunk) { chunks.push(chunk); };
-      inflator.onEnd = function(status) { if (status === 0) resolve(chunks.join('')); else reject(new Error('inflate failed ' + status)); };
+      inflator.onEnd = function(status) {
+        if (status === 0) resolve(chunks.join(''));
+        else reject(new Error('inflate failed ' + status));
+      };
       var offset = 0, CHUNK = 65536;
       function pushNext() {
         if (offset >= bytes.length) return;
@@ -574,6 +577,10 @@ function openDetails(ch) {
 }
 function closeDetails() { detailModal.classList.add('hidden'); currentDetailChannel = null; }
 
+/* ══════════════════════════════════════════════════════════════
+   Open player — just stores currentChannel + allChannels and
+   navigates. Player loads its own EPG.
+   ══════════════════════════════════════════════════════════════ */
 function openPlayer(ch) {
   try {
     localStorage.setItem('currentChannel', JSON.stringify(ch));
@@ -584,6 +591,10 @@ function openPlayer(ch) {
   catch (e) { window.location.href = url; }
 }
 
+/* ══════════════════════════════════════════════════════════════
+   Channel number typing — no popup until number is complete,
+   1.5s auto-commit, TV uses same-tab.
+   ══════════════════════════════════════════════════════════════ */
 function showChNumOverlay() { chNumValue.textContent = chNumBuffer || '—'; chNumOverlay.classList.add('visible'); }
 function hideChNumOverlay() { chNumOverlay.classList.remove('visible'); }
 function handleChNumDigit(digit) {
@@ -603,6 +614,7 @@ function autoPlayByNumber() {
   var n = parseInt(num, 10);
   var found = null;
   for (var i = 0; i < allChannels.length; i++) if (getChannelNumber(allChannels[i]) === n) { found = allChannels[i]; break; }
+
   if (!found) { showToast('Channel ' + num + ' not found', true); return; }
 
   showToast('Tuning to CH ' + n + ' · ' + (found.name || ''));
@@ -612,9 +624,15 @@ function autoPlayByNumber() {
   } catch (e) {}
 
   var url = 'jplayer.html?id=' + encodeURIComponent(found.id);
+
+  /* TV detection — popups steal focus mid-typing, use same-tab */
   var isTV = /Tizen|Web0S|webOS|SMART-TV|SmartTV|HbbTV|NetCast|BRAVIA|Android TV|AFT|FireTV|Hisense|Panasonic|Philips|Kepler/i.test(navigator.userAgent);
+
   if (isTV) { window.location.href = url; return; }
-  try { var w = window.open(url, '_blank'); if (w && !w.closed) { try { w.focus(); } catch (e) {} return; } } catch (e) {}
+  try {
+    var w = window.open(url, '_blank');
+    if (w && !w.closed) { try { w.focus(); } catch (e) {} return; }
+  } catch (e) {}
   window.location.href = url;
 }
 
@@ -622,7 +640,9 @@ function loadChannels() {
   gridEl.innerHTML = '<div class="msg"><div class="spinner"></div><div>Loading channels…</div></div>';
   var last = CHANNELS_CANDIDATES[CHANNELS_CANDIDATES.length - 1];
   fetchChannelsFrom(0)
-    .catch(function() { return xhrFetch(CORS_PROXY + last, { timeout: 25000 }).then(function(r){ return r.text(); }).then(function(t){ return parseChannelJson(t); }); })
+    .catch(function() {
+      return xhrFetch(CORS_PROXY + last, { timeout: 25000 }).then(function(r){ return r.text(); }).then(function(t){ return parseChannelJson(t); });
+    })
     .then(function(chs) {
       if (!chs || !chs.length) throw new Error('No channels');
       allChannels = chs;
@@ -648,6 +668,7 @@ searchEl.addEventListener('input', function() {
 document.addEventListener('keydown', function(e) {
   var k = e.keyCode, focused = document.activeElement;
   var inModal = !detailModal.classList.contains('hidden');
+
   if (inModal) {
     if (k === 27 || k === 8 || k === 10009) { e.preventDefault(); closeDetails(); return; }
     if (k === 13) {
@@ -658,8 +679,13 @@ document.addEventListener('keydown', function(e) {
     if (k === 39 && focused === dCancel) { e.preventDefault(); dWatch.focus(); return; }
     return;
   }
+
   var isNum = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
-  if (isNum && focused !== searchEl) { e.preventDefault(); handleChNumDigit(String.fromCharCode(k >= 96 ? k - 48 : k)); return; }
+  if (isNum && focused !== searchEl) {
+    e.preventDefault();
+    handleChNumDigit(String.fromCharCode(k >= 96 ? k - 48 : k));
+    return;
+  }
 
   if (focused && focused.classList && focused.classList.contains('cat-chip')) {
     var chips = categoriesEl.querySelectorAll('.cat-chip');
