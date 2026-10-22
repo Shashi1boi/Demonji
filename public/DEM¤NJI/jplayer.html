@@ -154,7 +154,6 @@ html, body { background: #000; width: 100%; height: 100%; overflow: hidden; font
 if (!Array.prototype.includes) Array.prototype.includes = function(x){ return this.indexOf(x) !== -1; };
 if (!Element.prototype.closest) { Element.prototype.closest = function(sel) { var el = this; while (el) { if (el.matches && el.matches(sel)) return el; el = el.parentElement; } return null; }; }
 var rAF = window.requestAnimationFrame || function(cb){ return setTimeout(function(){ cb(Date.now()); }, 16); };
-function safeWarn(){ try { console.warn.apply(console, arguments); } catch(e){} }
 
 function xhrFetch(url, opts) {
   opts = opts || {};
@@ -243,14 +242,6 @@ var autoplayAttempted = false;
 var chNumBuffer = '';
 var chNumTimer = null;
 var toastTimer = null;
-
-/* ══════════════════════════════════════════════════════════════
-   Generation counter — every playChannel() bumps this. Any async
-   callback that resolves later checks if it's still the active
-   generation; if not, it silently discards itself. This is what
-   makes in-place switching safe even with overlapping loads.
-   ══════════════════════════════════════════════════════════════ */
-var playGeneration = 0;
 
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function formatTimeOnly(ms) { var d = new Date(ms), h = d.getHours(), m = d.getMinutes(), ap = h >= 12 ? 'PM' : 'AM'; h = h % 12 || 12; return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap; }
@@ -381,12 +372,7 @@ function fetchAndParseSingleEPG(source) {
     });
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Cache read/write — stores compact format {t,d,s,e,ic}
-   readCacheForChannel converts to {title,description,start,end,icon}
-   cacheHasCurrentProgram handles BOTH field naming conventions
-   so this no longer always returns false (that was the bug).
-   ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════ Cache (fixed) */
 function readCacheForChannel(chId) {
   try {
     var raw = localStorage.getItem(EPG_CACHE_KEY);
@@ -408,9 +394,8 @@ function cacheHasCurrentProgram(progs) {
   var now = Date.now();
   for (var i = 0; i < progs.length; i++) {
     var p = progs[i];
-    /* Objects may use either {start,end} or {s,e} depending on origin */
-    var s = (p.start != null) ? p.start : (p.s != null ? p.s : null);
-    var e = (p.end != null)   ? p.end   : (p.e != null ? p.e : null);
+    var s = (p.start != null) ? p.start : ((p.s != null) ? p.s : null);
+    var e = (p.end != null) ? p.end : ((p.e != null) ? p.e : null);
     if (s == null || e == null) continue;
     if (s <= now && e > now) return true;
   }
@@ -435,7 +420,7 @@ function mergeParsedIntoCache(parsed) {
     }
     cache.fetchedAt = Date.now();
     localStorage.setItem(EPG_CACHE_KEY, JSON.stringify(cache));
-  } catch (e) { safeWarn('[epg] cache save failed: ' + e.message); }
+  } catch (e) {}
 }
 function getProgramsFromParsed(parsed, ch) {
   var chId = String(ch.id);
@@ -479,12 +464,20 @@ function fetchEPGUntilChannelFound(ch) {
   });
 }
 
-/* This is the fixed version — it uses cacheHasCurrentProgram which
-   now correctly handles both field naming conventions. When cache
-   is populated by the dashboard (normal case), this returns instantly. */
+/* Guide: use cache if it has a current programme. Only fetch if cache
+   is missing or stale AND has no current programme. Never blocks video. */
 function ensureProgramsForChannel(ch) {
   var cached = readCacheForChannel(ch.id);
   if (cached && cacheHasCurrentProgram(cached)) return Promise.resolve(cached);
+
+  /* Cache is fresh but just doesn't have this channel's current programme — no point re-fetching */
+  try {
+    var raw = localStorage.getItem(EPG_CACHE_KEY);
+    if (raw && cached) {
+      var c = JSON.parse(raw);
+      if (c && (Date.now() - c.fetchedAt) < EPG_CACHE_TTL_MS) return Promise.resolve(cached);
+    }
+  } catch (e) {}
 
   return fetchEPGUntilChannelFound(ch).then(function(parsed) {
     var progs = getProgramsFromParsed(parsed, ch);
@@ -549,9 +542,9 @@ function updateDthBanner() {
   dthChName.textContent = currentChannel.name || 'Unknown';
   var cur = findCurrentAndNext();
   if (cur.current) { dthNowTime.textContent = formatRange(cur.current.s, cur.current.e); dthNowTitle.textContent = cur.current.p.title || 'No Title'; }
-  else { dthNowTime.textContent = ''; dthNowTitle.textContent = channelPrograms ? 'No current programme' : 'Loading guide…'; }
+  else { dthNowTime.textContent = ''; dthNowTitle.textContent = channelPrograms && channelPrograms.length ? 'No current programme' : 'Loading guide…'; }
   if (cur.next) { dthNextTime.textContent = formatTimeOnly(cur.next.s); dthNextTitle.textContent = cur.next.p.title || 'No Title'; }
-  else { dthNextTime.textContent = ''; dthNextTitle.textContent = channelPrograms ? 'No upcoming' : ''; }
+  else { dthNextTime.textContent = ''; dthNextTitle.textContent = channelPrograms && channelPrograms.length ? 'No upcoming' : ''; }
   updateProgress();
 }
 function showDthBanner(ms) { updateDthBanner(); dthBanner.classList.add('visible'); startProgressUpdates(); if (bannerHideTimer) clearTimeout(bannerHideTimer); if (ms && ms > 0) bannerHideTimer = setTimeout(hideDthBanner, ms); }
@@ -560,7 +553,7 @@ function peekBanner(ms) { if (!dthBanner.classList.contains('visible')) showDthB
 function startBannerRefreshTimer() { if (programUpdateTimer) clearInterval(programUpdateTimer); programUpdateTimer = setInterval(function() { if (dthBanner.classList.contains('visible')) updateDthBanner(); }, 60000); }
 
 /* ══════════════════════════════════════════════════════════════
-   IN-PLACE channel switching — no page reload, no sticking on TV.
+   Channel number typing — reload-based switch (OLD working system)
    ══════════════════════════════════════════════════════════════ */
 function showChNumOverlay() { chNumValue.textContent = chNumBuffer || '—'; chNumOverlay.classList.add('visible'); }
 function hideChNumOverlay() { chNumOverlay.classList.remove('visible'); }
@@ -584,23 +577,13 @@ function autoSwitchByNumber() {
   var found = null;
   for (var i = 0; i < all.length; i++) if (getChannelNumber(all[i]) === n) { found = all[i]; break; }
 
-  if (found) { switchToChannel(found, n); return; }
-
-  showToast('Looking up CH ' + n + '…');
-  fetchChannelsFrom(0).then(function(chs) {
-    try { localStorage.setItem('allChannels', JSON.stringify(chs)); } catch (e) {}
-    var f2 = null;
-    for (var j = 0; j < chs.length; j++) if (getChannelNumber(chs[j]) === n) { f2 = chs[j]; break; }
-    if (f2) switchToChannel(f2, n);
-    else showToast('Channel ' + num + ' not found', true);
-  }).catch(function() { showToast('Channel ' + num + ' not found', true); });
-}
-function switchToChannel(ch, num) {
-  /* Persist for back/forward — but DON'T reload the page */
-  try { localStorage.setItem('currentChannel', JSON.stringify(ch)); } catch (e) {}
-  showToast('Switching to CH ' + num + ' · ' + (ch.name || ''));
-  /* In-place switch — smooth on TV, no freeze */
-  playChannel(ch);
+  if (found) {
+    try { localStorage.setItem('currentChannel', JSON.stringify(found)); } catch (e) {}
+    showToast('Switching to CH ' + n + ' · ' + (found.name || ''));
+    window.location.href = 'jplayer.html?id=' + encodeURIComponent(found.id);
+    return;
+  }
+  showToast('Channel ' + num + ' not found', true);
 }
 
 /* ══════════════════════════════════════════════════════════════ Cookies */
@@ -692,47 +675,33 @@ function syncTopBarWithShakaControls() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   playChannel — supports in-place switching with generation token.
-   Each call bumps playGeneration. All async callbacks (cookies,
-   load success, load failure, EPG fetch) check the token and
-   silently discard themselves if they belong to a stale generation.
+   playChannel — simple guard, no generation counter
    ══════════════════════════════════════════════════════════════ */
 function playChannel(channelData) {
-  if (!shakaPlayer) return;
-
-  playGeneration++;
-  var myGen = playGeneration;
-
+  if (!shakaPlayer || isLoading) return;
   isLoading = true;
   autoplayAttempted = false;
   hideUnmuteBtn();
   hideTapToPlay();
 
   currentChannel = channelData;
-  channelPrograms = null;  /* reset for new channel */
+  channelPrograms = null;
 
   var num = getChannelNumber(channelData);
   chNumEl.textContent = num !== null ? 'CH ' + num : '';
   titleEl.textContent = channelData.name || 'Unknown';
   showPlaceholder('Connecting to stream…', false, true);
 
-  /* ── EPG load in parallel — does NOT block stream load ── */
+  /* EPG — fire and forget, never blocks video */
   ensureProgramsForChannel(channelData).then(function(progs) {
-    if (myGen !== playGeneration) return;  /* stale */
     channelPrograms = progs || [];
-    updateDthBanner();  /* always refresh internal state */
-  }).catch(function() {
-    if (myGen !== playGeneration) return;
-    channelPrograms = [];
-  });
+    updateDthBanner();
+  }).catch(function() { channelPrograms = []; });
 
-  /* ── Stream load ── */
+  /* Stream */
   shakaPlayer.unload().catch(function(){}).then(function() {
-    if (myGen !== playGeneration) return null;
     return fetchCookiesForChannel(channelData);
   }).then(function(cookies) {
-    if (myGen !== playGeneration || !cookies) return;
-
     var streamUrls = cookies.streamUrls;
     if (!streamUrls.length) {
       isLoading = false;
@@ -747,7 +716,6 @@ function playChannel(channelData) {
 
     var urlIdx = 0, loaded = false;
     function tryNextUrl() {
-      if (myGen !== playGeneration) return;
       if (loaded || urlIdx >= streamUrls.length) {
         if (!loaded) {
           isLoading = false;
@@ -763,18 +731,15 @@ function playChannel(channelData) {
       else { if (cookies.primaryCookie) rounds.push(cookies.primaryCookie); if (rounds.length === 0) rounds.push(''); }
       var cIdx = 0;
       function tryNextCookie() {
-        if (myGen !== playGeneration) return;
         if (loaded || cIdx >= rounds.length) { tryNextUrl(); return; }
         activeCookie = rounds[cIdx++];
         shakaPlayer.load(streamUrl).then(function() {
-          if (myGen !== playGeneration) return;  /* stale */
           loaded = true;
           isLoading = false;
           hidePlaceholder();
           attemptPlayback();
-          setTimeout(function() { if (myGen === playGeneration) peekBanner(5000); }, 400);
+          setTimeout(function() { peekBanner(5000); }, 400);
         }).catch(function() {
-          if (myGen !== playGeneration) return;  /* stale */
           tryNextCookie();
         });
       }
@@ -782,7 +747,6 @@ function playChannel(channelData) {
     }
     tryNextUrl();
   }).catch(function(e) {
-    if (myGen !== playGeneration) return;
     isLoading = false;
     showPlaceholder('⚠️ Error: ' + escapeHtml(e && e.message ? e.message : 'unknown'), true, false);
   });
@@ -836,9 +800,7 @@ document.addEventListener('keydown', function(e) {
 videoEl.addEventListener('playing', function() { hidePlaceholder(); isLoading = false; if (videoEl.muted) showUnmuteBtn(); else hideUnmuteBtn(); });
 videoEl.addEventListener('loadedmetadata', function() {
   if (!autoplayAttempted) return;
-  var myGen = playGeneration;
   setTimeout(function() {
-    if (myGen !== playGeneration) return;
     if (videoEl.paused && !isLoading && currentChannel) tryMutedPlayback();
   }, 2000);
 });
