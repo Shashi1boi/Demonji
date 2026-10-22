@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
 <title>Channels</title>
-<!-- Speed up TCP handshake to EPG sources -->
 <link rel="preconnect" href="https://avkb.short.gy" crossorigin>
 <link rel="preconnect" href="https://epgshare01.online" crossorigin>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
@@ -20,6 +19,7 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
 #epgStatus { font-size: 11px; color: #888; width: 100%; margin-top: 4px; display: none; }
 #epgStatus.visible { display: block; }
 #epgStatus.error { color: #ef5350; }
+#epgStatus.warn { color: #f7a23f; }
 #categories { background: #0e0e0e; border-bottom: 1px solid #222; padding: 10px 16px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; flex-shrink: 0; scrollbar-width: none; }
 #categories::-webkit-scrollbar { display: none; }
 .cat-chip { display: inline-block; padding: 8px 16px; margin-right: 8px; background: #1a1a1a; border: 1px solid #2a2a2a; color: #ccc; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; white-space: nowrap; transition: background .15s, color .15s, border-color .15s; }
@@ -221,7 +221,7 @@ var EPG_SOURCES = [
   { url: 'https://avkb.short.gy/tsepg.xml.gz', name: 'AVKB TSEPG', timeout: 180000 },
   { url: 'https://epgshare01.online/epgshare01/epg_ripper_IN4.xml.gz', name: 'Open-EPG', timeout: 180000 }
 ];
-var EPG_CACHE_KEY = 'jtv_epg_cache_v5';
+var EPG_CACHE_KEY = 'jtv_epg_cache_v9';
 var EPG_CACHE_TTL_MS = 60 * 60 * 1000;
 
 var gridEl       = document.getElementById('grid');
@@ -247,14 +247,15 @@ var selectedCategory = 'all';
 var searchQuery = '';
 var cardMap = {};
 var currentDetailChannel = null;
-
 var chNumBuffer = '';
 var chNumTimer = null;
 var toastTimer = null;
 
 var epgByChannelId = {};
 var epgLoaded = false;
+var looseNorm2Ambiguous = {};   /* populated after allChannels loads */
 
+/* ══════════════════════════════════════════════════════════════ Utilities */
 function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function truncate(s, n) { if (!s) return ''; return s.length > n ? s.substring(0, n - 1) + '…' : s; }
 function formatTimeOnly(ms) {
@@ -265,13 +266,14 @@ function formatTimeOnly(ms) {
   return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap;
 }
 function formatRange(s, e) { return formatTimeOnly(s) + ' - ' + formatTimeOnly(e); }
-function setEpgStatus(text, isError) {
+function setEpgStatus(text, kind) {
   if (!epgStatusEl) return;
   if (!text) { epgStatusEl.classList.remove('visible'); epgStatusEl.textContent = ''; return; }
   epgStatusEl.textContent = text;
   epgStatusEl.classList.add('visible');
-  if (isError) epgStatusEl.classList.add('error');
-  else epgStatusEl.classList.remove('error');
+  epgStatusEl.classList.remove('error'); epgStatusEl.classList.remove('warn');
+  if (kind === 'error') epgStatusEl.classList.add('error');
+  else if (kind === 'warn') epgStatusEl.classList.add('warn');
 }
 function showToast(msg, isError) {
   toastEl.textContent = msg;
@@ -281,9 +283,6 @@ function showToast(msg, isError) {
   toastTimer = setTimeout(function(){ toastEl.classList.remove('visible'); }, 2500);
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Date / name helpers — unchanged from your original
-   ══════════════════════════════════════════════════════════════ */
 function parseEPGDate(dateStr) {
   if (!dateStr) return null;
   var parts = String(dateStr).trim().split(' ');
@@ -305,11 +304,28 @@ function parseEPGDate(dateStr) {
   return ms - offset;
 }
 
+/* ══════════════════════════════════════════════════════════════
+   Normalize — strict (safe, preserves distinguishing words)
+   ══════════════════════════════════════════════════════════════ */
 function normalizeChannelName(name) {
   if (!name) return '';
-  var cleaned = String(name).toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim();
-  cleaned = cleaned.replace(/\b(hd|sd|fhd|4k|plus|movies|music|news|tv|channel)\b/g, '').trim();
-  return cleaned;
+  var s = String(name).toLowerCase();
+  s = s.replace(/&/g, ' and ');
+  s = s.replace(/[^\w\s]/g, ' ');
+  s = s.replace(/\b(hd|sd|fhd|uhd|4k|8k|1080p|720p|1080i|720i|576p|480p|tv|channel)\b/g, ' ');
+  s = s.replace(/\s+/g, ' ').trim();
+  return s;
+}
+
+/* Loose — strips more words, used ONLY as fallback for empty channels */
+function normalizeChannelNameLoose(name) {
+  if (!name) return '';
+  var s = String(name).toLowerCase();
+  s = s.replace(/&/g, ' and ');
+  s = s.replace(/[^\w\s]/g, ' ');
+  s = s.replace(/\b(hd|sd|fhd|uhd|4k|8k|1080p|720p|1080i|720i|576p|480p|tv|channel|plus|movies|music|news|sports|gold|comedy|kids|family|classic|action|drama)\b/g, ' ');
+  s = s.replace(/\s+/g, ' ').trim();
+  return s;
 }
 
 function bytesToUtf8String(bytes) {
@@ -331,10 +347,6 @@ function bytesToUtf8String(bytes) {
   return result;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SPEED FIX #1 — Single-shot pako decompression
-   Drops the ~8s of rAF chunk yields. Same output.
-   ══════════════════════════════════════════════════════════════ */
 function chunkedUngzip(bytes) {
   return new Promise(function(resolve, reject) {
     if (typeof pako === 'undefined') { reject(new Error('pako not loaded')); return; }
@@ -349,11 +361,6 @@ function chunkedUngzip(bytes) {
   });
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SPEED FIX #2 — Regex XMLTV parser (~5-10× faster than DOMParser)
-   Produces the exact same {byId, byName} structure. Falls back to
-   DOMParser if the regex scan finds nothing.
-   ══════════════════════════════════════════════════════════════ */
 function decodeXmlEntities(s) {
   if (!s || s.indexOf('&') === -1) return s;
   return s.replace(/&(#x?[0-9a-fA-F]+|amp|lt|gt|quot|apos);/g, function(m, e) {
@@ -372,10 +379,16 @@ function decodeXmlEntities(s) {
   });
 }
 
-function fastParseXmltv(xmlText, label) {
+/* ══════════════════════════════════════════════════════════════
+   Regex XMLTV parser — also builds byLoose index (unique only)
+   ══════════════════════════════════════════════════════════════ */
+function processXmlText(xmlText, label) {
+  if (!xmlText || xmlText.length < 500) throw new Error('XML too small');
+  if (xmlText.indexOf('<tv') === -1 && xmlText.indexOf('<?xml') === -1) throw new Error('Not XMLTV');
+
   var t0 = Date.now();
 
-  /* Build channel id → display name map */
+  /* Channel id → display name */
   var channelIdToName = {};
   var chRe = /<channel\s+([^>]*?)>([\s\S]*?)<\/channel>/g;
   var cm;
@@ -387,7 +400,6 @@ function fastParseXmltv(xmlText, label) {
     if (dnM) channelIdToName[chId] = decodeXmlEntities(dnM[1]).trim();
   }
 
-  /* Scan programmes */
   var byId = {}, byName = {};
   var progCount = 0;
   var progRe = /<programme\s+([^>]*?)>([\s\S]*?)<\/programme>/g;
@@ -434,90 +446,41 @@ function fastParseXmltv(xmlText, label) {
   for (var k1 in byId) if (byId.hasOwnProperty(k1)) byId[k1].sort(function(a,b){ return a.s - b.s; });
   for (var k2 in byName) if (byName.hasOwnProperty(k2)) byName[k2].sort(function(a,b){ return a.s - b.s; });
 
-  safeLog('[epg:fast] ' + label + ' → ' + progCount + ' programmes, ' + Object.keys(byId).length + ' ids in ' + (Date.now() - t0) + 'ms');
-  return { byId: byId, byName: byName };
-}
-
-function processXmlText(xmlText, label) {
-  if (!xmlText || xmlText.length < 500) throw new Error('XML too small');
-  if (xmlText.indexOf('<tv') === -1 && xmlText.indexOf('<?xml') === -1) throw new Error('Not XMLTV');
-
-  /* Try fast regex parser first */
-  try {
-    var fastResult = fastParseXmltv(xmlText, label);
-    if (Object.keys(fastResult.byId).length > 0) return fastResult;
-    safeWarn('[epg] fast parser returned 0 channels → DOMParser fallback');
-  } catch (e) {
-    safeWarn('[epg] fast parser threw: ' + e.message + ' → DOMParser fallback');
+  /* Build byLoose — only unique loose keys */
+  var looseToIds = {};
+  for (var cid in channelIdToName) {
+    if (!byId[cid]) continue;
+    var loose = normalizeChannelNameLoose(channelIdToName[cid]);
+    if (!loose) continue;
+    if (!looseToIds[loose]) looseToIds[loose] = [];
+    looseToIds[loose].push(cid);
   }
-
-  /* DOMParser fallback */
-  var t0 = Date.now();
-  var xmlDoc = new DOMParser().parseFromString(xmlText, 'text/xml');
-  if (xmlDoc.getElementsByTagName('parsererror').length > 0) throw new Error('XML parse error');
-
-  var channelIdToName = {};
-  var channelNodes = xmlDoc.getElementsByTagName('channel');
-  for (var c = 0; c < channelNodes.length; c++) {
-    var chNode = channelNodes[c];
-    var id = chNode.getAttribute('id');
-    if (!id) continue;
-    var dnNode = chNode.getElementsByTagName('display-name')[0];
-    if (dnNode) channelIdToName[id] = dnNode.textContent.trim();
-  }
-
-  var byId = {}, byName = {};
-  var progNodes = xmlDoc.getElementsByTagName('programme');
-  for (var p = 0; p < progNodes.length; p++) {
-    var prog = progNodes[p];
-    var chId = prog.getAttribute('channel');
-    if (!chId) continue;
-    var startStr = prog.getAttribute('start');
-    var stopStr  = prog.getAttribute('stop');
-    if (!startStr) continue;
-    var startMs = parseEPGDate(startStr);
-    if (!startMs) continue;
-    var endMs = stopStr ? parseEPGDate(stopStr) : (startMs + 3600000);
-    if (!endMs) continue;
-    var titleNode = prog.getElementsByTagName('title')[0];
-    var descNode  = prog.getElementsByTagName('desc')[0];
-    var iconNode  = prog.getElementsByTagName('icon')[0];
-    var desc = descNode ? descNode.textContent.trim() : '';
-    if (desc.length > 300) desc = desc.substring(0, 300);
-    var entry = {
-      t: titleNode ? titleNode.textContent.trim() : 'No title',
-      d: desc, s: startMs, e: endMs,
-      ic: iconNode ? (iconNode.getAttribute('src') || '') : ''
-    };
-    if (!byId[chId]) byId[chId] = [];
-    byId[chId].push(entry);
-    var chName = channelIdToName[chId];
-    if (chName) {
-      var normKey = normalizeChannelName(chName);
-      if (normKey) {
-        if (!byName[normKey]) byName[normKey] = [];
-        byName[normKey].push(entry);
-      }
+  var byLoose = {};
+  for (var lk in looseToIds) {
+    if (looseToIds[lk].length === 1) {
+      byLoose[lk] = byId[looseToIds[lk][0]].slice();
     }
   }
-  for (var k1 in byId) if (byId.hasOwnProperty(k1)) byId[k1].sort(function(a,b){ return a.s - b.s; });
-  for (var k2 in byName) if (byName.hasOwnProperty(k2)) byName[k2].sort(function(a,b){ return a.s - b.s; });
-  safeLog('[epg:dom] ' + label + ' → ' + progNodes.length + ' programmes, ' + Object.keys(byId).length + ' ids in ' + (Date.now() - t0) + 'ms');
-  return { byId: byId, byName: byName };
+
+  safeLog('[epg] ' + label + ' → ' + progCount + ' progs, ' +
+          Object.keys(byId).length + ' ids, ' +
+          Object.keys(byName).length + ' strict names, ' +
+          Object.keys(byLoose).length + ' unique loose names in ' + (Date.now() - t0) + 'ms');
+
+  return { byId: byId, byName: byName, byLoose: byLoose };
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Fetch + decompress + parse one source — unchanged structure
-   ══════════════════════════════════════════════════════════════ */
 function fetchAndParseSingleEPG(source) {
-  if (typeof pako === 'undefined') return Promise.resolve(null);
+  if (typeof pako === 'undefined') { safeWarn('[epg] pako missing'); return Promise.resolve(null); }
   var url = source.url, name = source.name, timeout = source.timeout || 60000;
+  safeLog('[epg] fetching ' + url);
   var t0 = Date.now();
+
   return xhrFetchBuffer(url, { timeout: timeout })
     .then(function(buf) {
       if (!buf) throw new Error('Empty response');
       var bytes = new Uint8Array(buf);
-      safeLog('[epg] ' + name + ' downloaded ' + bytes.length + ' bytes in ' + (Date.now() - t0) + 'ms');
+      safeLog('[epg] ' + name + ' downloaded ' + bytes.length + ' bytes in ' + (Date.now()-t0) + 'ms');
       if (bytes.length < 500) throw new Error('Too small');
       if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
         return chunkedUngzip(bytes).then(function(xmlText) { return processXmlText(xmlText, name); });
@@ -525,7 +488,7 @@ function fetchAndParseSingleEPG(source) {
       return processXmlText(bytesToUtf8String(bytes), name);
     })
     .catch(function(e) {
-      safeWarn('[epg] ' + name + ' direct failed: ' + e.message + ' → proxy');
+      safeWarn('[epg] ' + name + ' failed: ' + e.message + ' — trying proxy');
       return xhrFetchBuffer(CORS_PROXY + url, { timeout: 180000 })
         .then(function(buf) {
           var bytes = new Uint8Array(buf);
@@ -535,13 +498,11 @@ function fetchAndParseSingleEPG(source) {
           }
           return processXmlText(bytesToUtf8String(bytes), name + ' (proxy)');
         })
-        .catch(function(e2) {
-          safeWarn('[epg] ' + name + ' proxy also failed: ' + e2.message);
-          return null;
-        });
+        .catch(function(e2) { safeWarn('[epg] ' + name + ' proxy failed: ' + e2.message); return null; });
     });
 }
 
+/* ══════════════════════════════════════════════════════════════ Cache */
 function loadCache() {
   try {
     var raw = localStorage.getItem(EPG_CACHE_KEY);
@@ -550,7 +511,11 @@ function loadCache() {
     if (!c || !c.data) return false;
     var fresh = (Date.now() - c.fetchedAt) < EPG_CACHE_TTL_MS;
     var n = 0;
-    for (var id in c.data) { if (c.data.hasOwnProperty(id)) { epgByChannelId[id] = c.data[id]; n++; } }
+    for (var id in c.data) {
+      if (!c.data.hasOwnProperty(id)) continue;
+      epgByChannelId[id] = c.data[id];
+      n++;
+    }
     epgLoaded = n > 0;
     safeLog('[cache] restored ' + n + ' channels (fresh=' + fresh + ')');
     return fresh && epgLoaded;
@@ -564,108 +529,130 @@ function saveCache() {
 }
 
 /* ══════════════════════════════════════════════════════════════
-   Merge — UNCHANGED logic (by-id then by-name then partial-name)
-   Only micro-optimized: hoist name keys to array, only run partial
-   scan for channels not yet matched.
+   Merge helpers
    ══════════════════════════════════════════════════════════════ */
-function mergeSource(result) {
-  if (!result) return;
+function mergeIntoChannel(channelId, progs) {
+  if (!progs || !progs.length) return 0;
+  if (!epgByChannelId[channelId]) epgByChannelId[channelId] = [];
+  var existing = epgByChannelId[channelId];
+  var seen = {};
+  for (var i = 0; i < existing.length; i++) seen[existing[i].s] = true;
+  var added = 0;
+  for (var j = 0; j < progs.length; j++) {
+    if (!seen[progs[j].s]) { existing.push(progs[j]); added++; }
+  }
+  if (added) existing.sort(function(a,b){ return a.s - b.s; });
+  return added;
+}
 
-  /* Merge by-id */
+/* ══════════════════════════════════════════════════════════════
+   MERGE — always merge (never skip). Three passes:
+     1. by-ID     — merge additional timestamps
+     2. by-Strict name — exact + partial, always merge
+     3. by-Loose  — only empty channels, only if unambiguous
+                    in both JioTV and EPG
+   ══════════════════════════════════════════════════════════════ */
+function mergeSource(result, sourceLabel) {
+  if (!result) return { byId: 0, strict: 0, loose: 0 };
+  var stats = { byId: 0, strict: 0, loose: 0 };
+
+  /* ── 1. By ID — always merge ── */
   var byId = result.byId;
   for (var id in byId) {
     if (!byId.hasOwnProperty(id)) continue;
-    if (!epgByChannelId[id]) epgByChannelId[id] = [];
-    var existing = epgByChannelId[id];
-    var seen = {};
-    for (var i = 0; i < existing.length; i++) seen[existing[i].s] = true;
-    var added = 0;
-    for (var j = 0; j < byId[id].length; j++) {
-      if (!seen[byId[id][j].s]) { existing.push(byId[id][j]); added++; }
-    }
-    if (added) existing.sort(function(a,b){ return a.s - b.s; });
+    if (mergeIntoChannel(String(id), byId[id]) > 0) stats.byId++;
   }
 
-  /* Merge by-name for channels not yet matched by id */
+  /* ── 2. By strict name — always merge ── */
   var byName = result.byName;
   var nameKeys = Object.keys(byName);
-  for (var i2 = 0; i2 < allChannels.length; i2++) {
-    var ch = allChannels[i2];
+  for (var i = 0; i < allChannels.length; i++) {
+    var ch = allChannels[i];
     var id2 = String(ch.id);
-    if (epgByChannelId[id2] && epgByChannelId[id2].length) continue;
-    var norm = normalizeChannelName(ch.name);
-    if (!norm) continue;
-    var progs = byName[norm];
+    var strictNorm = normalizeChannelName(ch.name);
+    if (!strictNorm) continue;
+
+    var progs = byName[strictNorm];
     if (!progs) {
       for (var nk = 0; nk < nameKeys.length; nk++) {
         var key = nameKeys[nk];
-        if (key.indexOf(norm) !== -1 || norm.indexOf(key) !== -1) { progs = byName[key]; break; }
+        if (key.indexOf(strictNorm) !== -1 || strictNorm.indexOf(key) !== -1) {
+          progs = byName[key]; break;
+        }
       }
     }
-    if (progs && progs.length) epgByChannelId[id2] = progs.slice();
+    if (progs && progs.length) {
+      if (mergeIntoChannel(id2, progs) > 0) stats.strict++;
+    }
   }
+
+  /* ── 3. By loose name — only for empty channels, only if unambiguous ── */
+  var byLoose = result.byLoose;
+  if (byLoose) {
+    for (var j = 0; j < allChannels.length; j++) {
+      var ch2 = allChannels[j];
+      var id3 = String(ch2.id);
+      if (epgByChannelId[id3] && epgByChannelId[id3].length) continue;   /* has data already */
+      var looseNorm = normalizeChannelNameLoose(ch2.name);
+      if (!looseNorm) continue;
+      if (looseNorm2Ambiguous[looseNorm]) continue;    /* shared by >1 JioTV channel → skip */
+      var looseProgs = byLoose[looseNorm];
+      if (looseProgs && looseProgs.length) {
+        if (mergeIntoChannel(id3, looseProgs) > 0) stats.loose++;
+      }
+    }
+  }
+
+  safeLog('[merge:' + sourceLabel + '] byId=' + stats.byId +
+          ' strict=' + stats.strict + ' loose=' + stats.loose +
+          ' → totalChannels=' + Object.keys(epgByChannelId).length);
+  return stats;
 }
 
-/* ══════════════════════════════════════════════════════════════
-   SPEED FIX #3 — PARALLEL source loading + cache after each source
-   ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════ Load all EPG */
 function loadAllEPG() {
-  var total = EPG_SOURCES.length;
-  var completed = 0;
+  var idx = 0;
   var t0 = Date.now();
-  var loadedCount = 0;
+  var totalSources = EPG_SOURCES.length;
+  var failed = [];
 
-  setEpgStatus('Loading guide (' + total + ' sources in parallel)…');
-  safeLog('[epg] loading ' + total + ' sources in parallel');
-
-  function onSourceDone() {
-    completed++;
-    if (completed >= total) {
+  function next() {
+    if (idx >= totalSources) {
       epgLoaded = Object.keys(epgByChannelId).length > 0;
       saveCache();
-      var elapsed = Date.now() - t0;
+      var elapsed = ((Date.now() - t0) / 1000).toFixed(1);
       var chCount = Object.keys(epgByChannelId).length;
       if (epgLoaded) {
-        setEpgStatus('Guide ready (' + chCount + ' ch, ' + (elapsed / 1000).toFixed(1) + 's)');
+        if (failed.length) setEpgStatus('Guide ready — ' + chCount + ' ch (' + failed.join(', ') + ' unavailable)', 'warn');
+        else setEpgStatus('Guide ready — ' + chCount + ' ch (' + elapsed + 's)');
       } else {
-        setEpgStatus('Guide unavailable — channels only', true);
+        setEpgStatus('Guide unavailable — channels only', 'error');
       }
-      setTimeout(function(){ setEpgStatus(''); }, 4000);
+      setTimeout(function(){ setEpgStatus(''); }, 5000);
       refreshAllCardsEpg();
-      safeLog('[epg] all done — ' + chCount + ' channels in ' + elapsed + 'ms');
-    } else {
-      setEpgStatus('Guide ' + completed + '/' + total + ' loaded (' + loadedCount + ' ch)…');
+      safeLog('[epg] ALL DONE — ' + chCount + ' channels in ' + elapsed + 's');
+      return;
     }
-  }
+    var src = EPG_SOURCES[idx]; idx++;
+    setEpgStatus('Guide ' + idx + '/' + totalSources + ': ' + src.name + '…');
 
-  for (var i = 0; i < total; i++) {
-    (function(src, srcIndex) {
-      fetchAndParseSingleEPG(src).then(function(result) {
-        if (result && Object.keys(result.byId).length) {
-          mergeSource(result);
-          epgLoaded = Object.keys(epgByChannelId).length > 0;
-          loadedCount = Object.keys(epgByChannelId).length;
-          /* Progressive UI update as each source arrives */
-          refreshAllCardsEpg();
-          /* Cache after each source — so refresh is instant even if the
-             other source is still downloading */
-          saveCache();
-          safeLog('[epg] source ' + (srcIndex + 1) + ' merged — ' + loadedCount + ' channels so far');
-        } else {
-          safeWarn('[epg] source ' + (srcIndex + 1) + ' returned no programmes');
-        }
-        onSourceDone();
-      })['catch'](function(e) {
-        safeWarn('[epg] source ' + (srcIndex + 1) + ' threw: ' + (e && e.message));
-        onSourceDone();
-      });
-    })(EPG_SOURCES[i], i);
+    fetchAndParseSingleEPG(src).then(function(result) {
+      if (result && Object.keys(result.byId).length) {
+        mergeSource(result, src.name);
+        epgLoaded = Object.keys(epgByChannelId).length > 0;
+        refreshAllCardsEpg();
+        saveCache();
+      } else {
+        failed.push(src.name);
+        safeWarn('[epg] ' + src.name + ' returned no data');
+      }
+      setTimeout(next, 200);
+    });
   }
+  next();
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Everything below — UNCHANGED from your original file
-   ══════════════════════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════════════════════ EPG lookups */
 function getCurrentProgram(progs) {
   if (!progs || !progs.length) return null;
   var now = Date.now();
@@ -730,6 +717,7 @@ function refreshAllCardsEpg() {
   rAF(step);
 }
 
+/* ══════════════════════════════════════════════════════════════ Channel JSON */
 function parseChannelJson(text) {
   var c = String(text).trim();
   if (c.charCodeAt(0) === 0xFEFF) c = c.slice(1);
@@ -745,6 +733,7 @@ function fetchChannelsFrom(idx) {
     .catch(function(){ return fetchChannelsFrom(idx + 1); });
 }
 
+/* ══════════════════════════════════════════════════════════════ Render cards */
 function buildCardHtml(ch, idx) {
   var cat = ch.category || ch.group || 'Other';
   var num = getChannelNumber(ch);
@@ -902,15 +891,7 @@ function closeDetails() {
   currentDetailChannel = null;
 }
 
-function getPlayerUrl(ch) {
-  var loc = window.location;
-  var origin = loc.protocol + '//' + loc.host;
-  var path = loc.pathname;
-  var dir = path.substring(0, path.lastIndexOf('/') + 1);
-  return origin + dir + 'jplayer.html?id=' + encodeURIComponent(ch.id);
-}
-
-function saveChannelToStorage(ch) {
+function openPlayer(ch) {
   try {
     localStorage.setItem('currentChannel', JSON.stringify(ch));
     localStorage.setItem('allChannels', JSON.stringify(allChannels));
@@ -926,17 +907,9 @@ function saveChannelToStorage(ch) {
       localStorage.setItem('channelPrograms', JSON.stringify(serializable));
     } else localStorage.removeItem('channelPrograms');
   } catch (e) {}
-}
-
-function openPlayer(ch) {
-  saveChannelToStorage(ch);
-  var url = getPlayerUrl(ch);
-  try {
-    var w = window.open(url, '_blank');
-    if (!w) window.location.href = url;
-  } catch (e) {
-    window.location.href = url;
-  }
+  var url = 'jplayer.html?id=' + encodeURIComponent(ch.id);
+  try { var w = window.open(url, '_blank'); if (!w) window.location.href = url; }
+  catch (e) { window.location.href = url; }
 }
 
 function showChNumOverlay() {
@@ -974,6 +947,21 @@ function cancelChNum() {
   hideChNumOverlay();
 }
 
+/* Precompute which JioTV channels share a loose key */
+function computeLooseAmbiguity() {
+  var counts = {};
+  for (var i = 0; i < allChannels.length; i++) {
+    var lk = normalizeChannelNameLoose(allChannels[i].name);
+    if (!lk) continue;
+    counts[lk] = (counts[lk] || 0) + 1;
+  }
+  looseNorm2Ambiguous = {};
+  for (var k in counts) {
+    if (counts[k] > 1) looseNorm2Ambiguous[k] = true;
+  }
+  safeLog('[loose] ambiguous keys: ' + Object.keys(looseNorm2Ambiguous).length);
+}
+
 function loadChannels() {
   gridEl.innerHTML = '<div class="msg"><div class="spinner"></div><div>Loading channels…</div></div>';
   var last = CHANNELS_CANDIDATES[CHANNELS_CANDIDATES.length - 1];
@@ -987,6 +975,7 @@ function loadChannels() {
       if (!chs || !chs.length) throw new Error('No channels');
       allChannels = chs;
       renderCategories();
+      computeLooseAmbiguity();
       var cacheFresh = loadCache();
       renderAllCards(function() {
         if (cacheFresh) {
