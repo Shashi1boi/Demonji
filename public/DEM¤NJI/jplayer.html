@@ -38,6 +38,7 @@ html,body { background:#000; width:100%; height:100%; overflow:hidden; font-fami
 .dth-now-time { color:#a0b8c8; font-size:11px; }
 .dth-now-title { font-size:14px; font-weight:bold; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .dth-now-meta { font-size:11px; color:#7cd0f5; }
+.dth-warn { font-size:10px; color:#f7a23f; margin-top:4px; }
 .dth-progress { height:4px; background:rgba(255,255,255,0.12); border-radius:2px; overflow:hidden; margin-top:4px; }
 .dth-progress-fill { height:100%; background:linear-gradient(90deg, #66bb6a 0%, #4fc3f7 100%); border-radius:2px; width:0%; }
 .dth-next { display:flex; align-items:center; gap:8px; font-size:12px; padding:4px 10px; background:rgba(79,195,247,0.05); border-left:3px solid #4fc3f7; border-radius:6px; }
@@ -77,6 +78,7 @@ html,body { background:#000; width:100%; height:100%; overflow:hidden; font-fami
 .guide-title { font-size:13px; color:#ddd; flex:1; }
 .guide-row.live .guide-time { color:#66bb6a; } .guide-row.live .guide-title { color:#fff; font-weight:bold; }
 .guide-row.past { opacity:0.5; }
+.guide-day-header { padding:12px 0 6px; font-size:11px; color:#4fc3f7; font-weight:bold; text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid #2a4a5a; margin-bottom:4px; }
 .airing-tag { background:#66bb6a; color:#fff; font-size:9px; font-weight:bold; padding:1px 5px; border-radius:3px; }
 .mini-channel-strip { display:flex; flex-wrap:wrap; gap:8px; }
 .mini-ch { padding:8px 12px; background:#1a2530; border:1px solid #2a3a4a; color:#ddd; border-radius:8px; font-size:12px; font-weight:bold; cursor:pointer; font-family:inherit; }
@@ -111,6 +113,7 @@ html,body { background:#000; width:100%; height:100%; overflow:hidden; font-fami
             <div class="dth-now-header"><span class="dth-now-label" id="dthNowLabel">● LIVE</span><span class="dth-now-time" id="dthNowTime"></span></div>
             <div class="dth-now-title" id="dthNowTitle"></div>
             <div class="dth-now-meta" id="dthNowMeta"></div>
+            <div class="dth-warn" id="dthWarn" style="display:none"></div>
             <div class="dth-progress"><div class="dth-progress-fill" id="dthProgressFill"></div></div>
           </div>
           <div class="dth-next"><span class="dth-next-label">○ NEXT</span><span class="dth-next-time" id="dthNextTime"></span><span class="dth-next-title" id="dthNextTitle"></span></div>
@@ -164,8 +167,9 @@ var CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
 var COOKIE_PRIMARY = "https://allinonereborn2.online/jstrweb2/cookies.json";
 var COOKIE_STAR_SPORTS = "https://allinonereborn2.online/jtv-fetch/jstarcookie/cookie.json";
 var RECENT_KEY = 'jtv_recents_v1';
-var EPG_CACHE_KEY = 'jtv_epg_cache_v17';
+var EPG_CACHE_KEY = 'jtv_epg_cache_v18';
 var OVERRUN_GRACE_MS = 45 * 60 * 1000;
+var EXHAUST_EXTEND_MS = 60 * 60 * 1000;
 
 var videoEl = document.getElementById('video'), videoContainer = document.getElementById('videoContainer'), topBar = document.getElementById('topBar');
 var chNumEl = document.getElementById('chNum'), titleEl = document.getElementById('title');
@@ -175,7 +179,7 @@ var phBackBtn = document.getElementById('phBackBtn'), phRetryBtn = document.getE
 var dthBanner = document.getElementById('dthBanner'), dthLogoBox = document.getElementById('dthLogoBox'), dthLogo = document.getElementById('dthLogo');
 var dthChNum = document.getElementById('dthChNum'), dthChName = document.getElementById('dthChName'), dthNowBox = document.getElementById('dthNowBox');
 var dthNowLabel = document.getElementById('dthNowLabel'), dthNowTime = document.getElementById('dthNowTime'), dthNowTitle = document.getElementById('dthNowTitle');
-var dthNowMeta = document.getElementById('dthNowMeta'), dthProgressFill = document.getElementById('dthProgressFill');
+var dthNowMeta = document.getElementById('dthNowMeta'), dthWarn = document.getElementById('dthWarn'), dthProgressFill = document.getElementById('dthProgressFill');
 var dthNextTime = document.getElementById('dthNextTime'), dthNextTitle = document.getElementById('dthNextTitle');
 var tapToPlay = document.getElementById('tapToPlay'), unmuteBtn = document.getElementById('unmuteBtn');
 var chNumOverlay = document.getElementById('chNumOverlay'), chNumValue = document.getElementById('chNumValue'), toastEl = document.getElementById('toast');
@@ -194,6 +198,16 @@ var chNumBuffer = '', chNumTimer = null, toastTimer = null;
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function formatTimeOnly(ms){ var d = new Date(ms), h = d.getHours(), m = d.getMinutes(); var ap = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12; return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap; }
 function formatRange(s, e){ return formatTimeOnly(s) + ' - ' + formatTimeOnly(e); }
+function formatDayLabel(ms){
+  var d = new Date(ms), now = new Date();
+  var dDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  var nDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  var diff = Math.round((dDay - nDay) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  if (diff === -1) return 'Yesterday';
+  return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+}
 function getQueryParam(name){ var q = window.location.search.substring(1).split('&'); for (var i = 0; i < q.length; i++) { var kv = q[i].split('='); if (decodeURIComponent(kv[0]) === name) return decodeURIComponent(kv[1] || ''); } return null; }
 function isJioPlLiveUrl(url){ try { var a = document.createElement('a'); a.href = url; return a.hostname.toLowerCase() === 'jiotvpllive.cdn.jio.com'; } catch (e) { return false; } }
 function fetchWithFallback(url, opts){ return xhrFetch(url, opts).catch(function(){ return xhrFetch(CORS_PROXY + url, opts); }); }
@@ -239,20 +253,16 @@ function getProgramState(progs, now) {
   var strict = null;
   for (var i = 0; i < progs.length; i++) {
     var p = progs[i];
-    if (getS(p) <= now && getE(p) > now) {
-      if (!strict || getS(p) > getS(strict)) strict = p;
-    }
+    if (getS(p) <= now && getE(p) > now) { if (!strict || getS(p) > getS(strict)) strict = p; }
   }
-  if (strict) return { p: strict, s: getS(strict), e: getE(strict), state: 'live', strict: true };
+  if (strict) return { p: strict, s: getS(strict), e: getE(strict), actualEnd: getE(strict), state: 'live', strict: true, exhausted: false };
 
   var grace = null;
   for (var g = 0; g < progs.length; g++) {
     var pg = progs[g];
-    if (getS(pg) <= now && getE(pg) <= now && (now - getE(pg)) < OVERRUN_GRACE_MS) {
-      if (!grace || getE(pg) > getE(grace)) grace = pg;
-    }
+    if (getS(pg) <= now && getE(pg) <= now && (now - getE(pg)) < OVERRUN_GRACE_MS) { if (!grace || getE(pg) > getE(grace)) grace = pg; }
   }
-  if (grace) return { p: grace, s: getS(grace), e: getE(grace), state: 'live', strict: false };
+  if (grace) return { p: grace, s: getS(grace), e: getE(grace), actualEnd: getE(grace), state: 'live', strict: false, exhausted: false };
 
   var closest = null, closestDist = Infinity, closestPast = false;
   for (var m = 0; m < progs.length; m++) {
@@ -266,8 +276,10 @@ function getProgramState(progs, now) {
       closestDist = dist; closest = c; closestPast = isPast;
     }
   }
-  if (closest) return { p: closest, s: getS(closest), e: getE(closest), state: 'live', strict: false };
-  return null;
+  if (!closest) return null;
+  var exhausted = closestPast && (now - getE(closest)) > OVERRUN_GRACE_MS;
+  var displayEnd = exhausted ? Math.max(getE(closest), now + EXHAUST_EXTEND_MS) : getE(closest);
+  return { p: closest, s: getS(closest), e: displayEnd, actualEnd: getE(closest), state: 'live', strict: false, exhausted: exhausted };
 }
 function getNextProgram(progs, current, now) {
   if (!progs || !progs.length) return null;
@@ -320,10 +332,17 @@ function updateDthBannerTitles(curOverride) {
     if (cur.current.p.episode) meta.push(cur.current.p.episode);
     if (cur.current.p.genre) meta.push(cur.current.p.genre);
     dthNowMeta.textContent = meta.join(' · ');
+    if (cur.current.exhausted) {
+      dthWarn.style.display = 'block';
+      dthWarn.textContent = '⚠ Guide data ends ' + formatTimeOnly(cur.current.actualEnd) + ' — refresh pending';
+    } else {
+      dthWarn.style.display = 'none';
+    }
   } else {
     dthNowTime.textContent = '';
     dthNowTitle.textContent = channelPrograms ? 'No guide data' : 'Loading guide…';
     dthNowMeta.textContent = '';
+    dthWarn.style.display = 'none';
   }
   if (cur.next) { dthNextTime.textContent = formatTimeOnly(cur.next.s); dthNextTitle.textContent = cur.next.p.title || 'No Title'; }
   else { dthNextTime.textContent = ''; dthNextTitle.textContent = channelPrograms ? 'No upcoming' : ''; }
@@ -335,20 +354,14 @@ function showDthBanner(ms) {
   if (ms && ms > 0) bannerHideTimer = setTimeout(hideDthBanner, ms);
 }
 function hideDthBanner(){ dthBanner.classList.remove('visible'); stopProgressUpdates(); if (bannerHideTimer) { clearTimeout(bannerHideTimer); bannerHideTimer = null; } }
-/* peekBanner — show banner OR extend its visible timer. This makes the banner
-   behave just like the Shaka controls: any interaction (arrow key, mouse move,
-   tap) wakes it up and keeps it visible for `ms` before it fades again. */
 function peekBanner(ms){
   ms = ms || 5000;
-  if (!dthBanner.classList.contains('visible')) {
-    showDthBanner(ms);
-  } else {
-    if (bannerHideTimer) clearTimeout(bannerHideTimer);
-    bannerHideTimer = setTimeout(hideDthBanner, ms);
-  }
+  if (!dthBanner.classList.contains('visible')) showDthBanner(ms);
+  else { if (bannerHideTimer) clearTimeout(bannerHideTimer); bannerHideTimer = setTimeout(hideDthBanner, ms); }
 }
 function startBannerRefreshTimer(){ if (programUpdateTimer) clearInterval(programUpdateTimer); programUpdateTimer = setInterval(function() { if (dthBanner.classList.contains('visible')) updateDthBanner(); }, 15000); }
 
+/* ════════ FULL GUIDE — 3 days with day headers (no midnight cutoff) ════════ */
 function openGuide() {
   if (!currentChannel) return;
   var num = getChannelNumber(currentChannel);
@@ -356,11 +369,31 @@ function openGuide() {
   var progs = channelPrograms || [];
   if (!progs.length) { guideBody.innerHTML = '<div style="color:#888;padding:20px;text-align:center">No guide data for this channel.</div>'; }
   else {
-    var now = Date.now(), st = getProgramState(progs, now), actualLive = st && st.strict ? st.p : null, body = '';
-    for (var i = 0; i < progs.length; i++) {
-      var p = progs[i];
+    var now = Date.now();
+    var st = getProgramState(progs, now);
+    var actualLive = st && st.strict ? st.p : null;
+
+    /* Show from start of today through end of 2 more days */
+    var rangeStart = new Date(); rangeStart.setHours(0,0,0,0);
+    var rangeStartMs = rangeStart.getTime();
+    var rangeEndMs = rangeStartMs + 3 * 86400000;
+    var filtered = progs.filter(function(p){
       var s = p.start instanceof Date ? p.start.getTime() : p.start;
       var e = p.end instanceof Date ? p.end.getTime() : p.end;
+      return e > rangeStartMs && s < rangeEndMs;
+    });
+    if (!filtered.length) filtered = progs.slice(0, 60);
+
+    var body = '', lastDayKey = '';
+    for (var i = 0; i < filtered.length; i++) {
+      var p = filtered[i];
+      var s = p.start instanceof Date ? p.start.getTime() : p.start;
+      var e = p.end instanceof Date ? p.end.getTime() : p.end;
+      var dayKey = new Date(s).toDateString();
+      if (dayKey !== lastDayKey) {
+        body += '<div class="guide-day-header">' + formatDayLabel(s) + '</div>';
+        lastDayKey = dayKey;
+      }
       var isLive = actualLive && actualLive === p;
       var isPast = e <= now;
       var cls = isLive ? ' live' : (isPast ? ' past' : '');
@@ -497,8 +530,6 @@ function initPlayer() {
   syncTopBar();
   return true;
 }
-
-/* ════════ AUTO-HIDE — pure mirror of Shaka's own controls state ════════ */
 function syncTopBar() {
   var last = null, attempts = 0;
   function check() {
@@ -513,9 +544,7 @@ function syncTopBar() {
                    ctrl.offsetParent === null ||
                    cs.visibility === 'hidden' ||
                    parseFloat(cs.opacity) === 0;
-      } catch (e) {
-        isHidden = ctrl.classList.contains('shaka-hidden');
-      }
+      } catch (e) { isHidden = ctrl.classList.contains('shaka-hidden'); }
       if (isHidden !== last) {
         last = isHidden;
         if (isHidden) topBar.classList.add('hidden');
@@ -525,7 +554,6 @@ function syncTopBar() {
   }
   check();
 }
-
 function scheduleReconnect() {
   if (!currentChannel || reconnectAttempts >= 3) { if (reconnectAttempts >= 3) showToast('Could not reconnect', true); return; }
   reconnectAttempts++;
@@ -591,55 +619,28 @@ statsModal.addEventListener('click', function(e){ if (e.target === statsModal) s
 videoContainer.addEventListener('click', function(e) { if (e.target.closest && (e.target.closest('.shaka-overlays-container') || e.target.closest('#unmuteBtn') || e.target.closest('#tapToPlay'))) return; peekBanner(5000); });
 videoContainer.addEventListener('touchstart', function(e) { if (e.target.closest && (e.target.closest('.shaka-overlays-container') || e.target.closest('#unmuteBtn') || e.target.closest('#tapToPlay'))) return; peekBanner(5000); }, { passive: true });
 
-/* ═══════════ KEYBOARD — arrow keys wake the banner (like Shaka controls),
-   single-key shortcuts remain, NO custom top-bar focus navigation. ═══════════ */
 document.addEventListener('keydown', function(e) {
   var k = e.keyCode;
-
   var inOverlay = !guideModal.classList.contains('hidden') || !miniModal.classList.contains('hidden') || !helpModal.classList.contains('hidden') || !statsModal.classList.contains('hidden');
   if (inOverlay) {
-    if (k === 27 || k === 8 || k === 10009) {
-      e.preventDefault();
-      guideModal.classList.add('hidden'); miniModal.classList.add('hidden'); helpModal.classList.add('hidden'); statsModal.classList.add('hidden');
-    }
+    if (k === 27 || k === 8 || k === 10009) { e.preventDefault(); guideModal.classList.add('hidden'); miniModal.classList.add('hidden'); helpModal.classList.add('hidden'); statsModal.classList.add('hidden'); }
     return;
   }
-
-  /* Arrow keys — wake banner AND let Shaka also see them (no preventDefault).
-     Mirrors how Shaka's own controls reappear on any arrow press. */
-  if (k === 37 || k === 38 || k === 39 || k === 40) {
-    peekBanner(5000);
-    return;
-  }
-
+  if (k === 37 || k === 38 || k === 39 || k === 40) { peekBanner(5000); return; }
   var isNumKey = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
   if (isNumKey) { e.preventDefault(); handleChNumDigit(String.fromCharCode(k >= 96 ? k - 48 : k)); return; }
   if (k === 13 && chNumBuffer) { e.preventDefault(); clearTimeout(chNumTimer); commitChNum(); return; }
   if ((k === 27 || k === 8) && chNumBuffer) { e.preventDefault(); cancelChNum(); return; }
-
   if (k === 71) { e.preventDefault(); openGuide(); return; }
   if (k === 76) { e.preventDefault(); openMiniGuide(); return; }
   if (k === 73) { e.preventDefault(); openStats(); return; }
   if (k === 72) { e.preventDefault(); helpModal.classList.remove('hidden'); return; }
-
   if (k === 33) { e.preventDefault(); switchChannelByOffset(1); return; }
   if (k === 34) { e.preventDefault(); switchChannelByOffset(-1); return; }
   if (k === 8) { e.preventDefault(); switchToPreviousChannel(); return; }
-
-  if ((k === 187 || k === 107) && !e.ctrlKey && !e.metaKey) {
-    e.preventDefault();
-    if (videoEl.volume < 1) videoEl.volume = Math.min(1, videoEl.volume + 0.1);
-    showToast('Volume ' + Math.round(videoEl.volume * 100) + '%');
-    return;
-  }
-  if ((k === 189 || k === 109) && !e.ctrlKey && !e.metaKey) {
-    e.preventDefault();
-    if (videoEl.volume > 0) videoEl.volume = Math.max(0, videoEl.volume - 0.1);
-    showToast('Volume ' + Math.round(videoEl.volume * 100) + '%');
-    return;
-  }
+  if ((k === 187 || k === 107) && !e.ctrlKey && !e.metaKey) { e.preventDefault(); if (videoEl.volume < 1) videoEl.volume = Math.min(1, videoEl.volume + 0.1); showToast('Volume ' + Math.round(videoEl.volume * 100) + '%'); return; }
+  if ((k === 189 || k === 109) && !e.ctrlKey && !e.metaKey) { e.preventDefault(); if (videoEl.volume > 0) videoEl.volume = Math.max(0, videoEl.volume - 0.1); showToast('Volume ' + Math.round(videoEl.volume * 100) + '%'); return; }
   if (k === 77) { e.preventDefault(); videoEl.muted = !videoEl.muted; showToast(videoEl.muted ? 'Muted' : 'Unmuted'); return; }
-
   if (k === 70) { e.preventDefault(); applyFitMode(fitModeIndex + 1); return; }
   if (k === 27 || k === 461) { e.preventDefault(); goBack(); return; }
 });
