@@ -9,7 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/shaka-player@2.5.5/dist/shaka-player.ui.min.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-html, body { background:#000; width:100%; height:100%; overflow:hidden; font-family:Arial,Helvetica,sans-serif; color:#eee; -webkit-user-select:none; user-select:none; }
+html,body { background:#000; width:100%; height:100%; overflow:hidden; font-family:Arial,Helvetica,sans-serif; color:#eee; -webkit-user-select:none; user-select:none; }
 #playerWrapper { position:fixed; top:0; left:0; right:0; bottom:0; background:#000; }
 #videoContainer { position:absolute; top:0; left:0; right:0; bottom:0; background:#000; overflow:hidden; }
 #video { width:100%; height:100%; background:#000; object-fit:contain; display:block; }
@@ -33,14 +33,8 @@ html, body { background:#000; width:100%; height:100%; overflow:hidden; font-fam
 .dth-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; }
 .dth-ch-name { font-size:18px; font-weight:bold; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
 .dth-now { background:rgba(79,195,247,0.07); border-left:3px solid #66bb6a; border-radius:6px; padding:8px 10px; display:flex; flex-direction:column; gap:4px; }
-.dth-now.recent { border-left-color:#f7a23f; }
-.dth-now.upcoming { border-left-color:#4fc3f7; }
-.dth-now.far-past, .dth-now.far-future { border-left-color:#555; }
 .dth-now-header { display:flex; align-items:center; gap:8px; font-size:11px; }
 .dth-now-label { color:#66bb6a; font-weight:bold; flex-shrink:0; }
-.dth-now.recent .dth-now-label { color:#f7a23f; }
-.dth-now.upcoming .dth-now-label { color:#4fc3f7; }
-.dth-now.far-past .dth-now-label, .dth-now.far-future .dth-now-label { color:#888; }
 .dth-now-time { color:#a0b8c8; font-size:11px; }
 .dth-now-title { font-size:14px; font-weight:bold; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .dth-now-meta { font-size:11px; color:#7cd0f5; }
@@ -114,7 +108,7 @@ html, body { background:#000; width:100%; height:100%; overflow:hidden; font-fam
         <div class="dth-info">
           <div class="dth-ch-name" id="dthChName">Loading…</div>
           <div class="dth-now" id="dthNowBox">
-            <div class="dth-now-header"><span class="dth-now-label" id="dthNowLabel">● NOW</span><span class="dth-now-time" id="dthNowTime"></span></div>
+            <div class="dth-now-header"><span class="dth-now-label" id="dthNowLabel">● LIVE</span><span class="dth-now-time" id="dthNowTime"></span></div>
             <div class="dth-now-title" id="dthNowTitle"></div>
             <div class="dth-now-meta" id="dthNowMeta"></div>
             <div class="dth-progress"><div class="dth-progress-fill" id="dthProgressFill"></div></div>
@@ -169,7 +163,8 @@ var CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
 var COOKIE_PRIMARY = "https://allinonereborn2.online/jstrweb2/cookies.json";
 var COOKIE_STAR_SPORTS = "https://allinonereborn2.online/jtv-fetch/jstarcookie/cookie.json";
 var RECENT_KEY = 'jtv_recents_v1';
-var EPG_CACHE_KEY = 'jtv_epg_cache_v15';
+var EPG_CACHE_KEY = 'jtv_epg_cache_v17';
+var OVERRUN_GRACE_MS = 45 * 60 * 1000;
 
 var videoEl = document.getElementById('video'), videoContainer = document.getElementById('videoContainer'), topBar = document.getElementById('topBar');
 var chNumEl = document.getElementById('chNum'), titleEl = document.getElementById('title');
@@ -195,9 +190,6 @@ var autoplayAttempted = false, reconnectAttempts = 0, reconnectTimer = null;
 var lastChannelId = null, lastProgramKey = '';
 var chNumBuffer = '', chNumTimer = null, toastTimer = null;
 
-var STATE_RECENT_MS = 6 * 3600000;
-var STATE_UPCOMING_MS = 12 * 3600000;
-
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function formatTimeOnly(ms){ var d = new Date(ms), h = d.getHours(), m = d.getMinutes(); var ap = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12; return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap; }
 function formatRange(s, e){ return formatTimeOnly(s) + ' - ' + formatTimeOnly(e); }
@@ -213,7 +205,6 @@ function tryMutedPlayback() { videoEl.muted = true; var p = videoEl.play(); if (
 tapToPlay.addEventListener('click', function(e){ e.stopPropagation(); tapToPlay.classList.add('hidden'); videoEl.muted = false; videoEl.play().then(function(){ unmuteBtn.classList.add('hidden'); }).catch(function(){ videoEl.muted = true; videoEl.play(); }); });
 unmuteBtn.addEventListener('click', function(e){ e.stopPropagation(); videoEl.muted = false; if (videoEl.paused) videoEl.play(); unmuteBtn.classList.add('hidden'); });
 
-/* ════════ Programs load + fill gaps ════════ */
 function loadChannelPrograms() {
   try {
     var raw = localStorage.getItem('channelPrograms');
@@ -237,78 +228,79 @@ function getProgramsFromCache(cache, ch) {
   if (num && num[1] !== idStr && cache.data[num[1]] && cache.data[num[1]].length) return cache.data[num[1]];
   return null;
 }
+
+/* ════════ ⭐ UNIFIED LIVE STATE ════════ */
 function getProgramState(progs, now) {
   if (!progs || !progs.length) return null;
   now = now || Date.now();
-  var live = null;
+  var getS = function(p) { return p.start instanceof Date ? p.start.getTime() : p.start; };
+  var getE = function(p) { return p.end instanceof Date ? p.end.getTime() : p.end; };
+
+  var strict = null;
   for (var i = 0; i < progs.length; i++) {
     var p = progs[i];
-    var s = p.start instanceof Date ? p.start.getTime() : p.start;
-    var e = p.end instanceof Date ? p.end.getTime() : p.end;
-    if (s <= now && e > now) { if (!live || s > live.s) live = { p: p, s: s, e: e }; }
+    if (getS(p) <= now && getE(p) > now) {
+      if (!strict || getS(p) > getS(strict)) strict = p;
+    }
   }
-  if (live) return { p: live.p, s: live.s, e: live.e, state: 'live' };
-  var recent = null;
-  for (var j = 0; j < progs.length; j++) {
-    var q = progs[j];
-    var qs = q.start instanceof Date ? q.start.getTime() : q.start;
-    var qe = q.end instanceof Date ? q.end.getTime() : q.end;
-    if (qe <= now && (now - qe) <= STATE_RECENT_MS) { if (!recent || qe > recent.e) recent = { p: q, s: qs, e: qe }; }
+  if (strict) return { p: strict, s: getS(strict), e: getE(strict), state: 'live', strict: true };
+
+  var grace = null;
+  for (var g = 0; g < progs.length; g++) {
+    var pg = progs[g];
+    if (getS(pg) <= now && getE(pg) <= now && (now - getE(pg)) < OVERRUN_GRACE_MS) {
+      if (!grace || getE(pg) > getE(grace)) grace = pg;
+    }
   }
-  if (recent) return { p: recent.p, s: recent.s, e: recent.e, state: 'recent' };
-  var upcoming = null;
-  for (var k = 0; k < progs.length; k++) {
-    var u = progs[k];
-    var us = u.start instanceof Date ? u.start.getTime() : u.start;
-    var ue = u.end instanceof Date ? u.end.getTime() : u.end;
-    if (us > now && (us - now) <= STATE_UPCOMING_MS) { if (!upcoming || us < upcoming.s) upcoming = { p: u, s: us, e: ue }; }
-  }
-  if (upcoming) return { p: upcoming.p, s: upcoming.s, e: upcoming.e, state: 'upcoming' };
+  if (grace) return { p: grace, s: getS(grace), e: getE(grace), state: 'live', strict: false };
+
   var closest = null, closestDist = Infinity, closestPast = false;
   for (var m = 0; m < progs.length; m++) {
     var c = progs[m];
-    var cs = c.start instanceof Date ? c.start.getTime() : c.start;
-    var ce = c.end instanceof Date ? c.end.getTime() : c.end;
-    var dist = cs > now ? (cs - now) : (ce < now ? (now - ce) : 0);
-    if (dist < closestDist) { closestDist = dist; closest = { p: c, s: cs, e: ce }; closestPast = ce < now; }
+    var cs = getS(c), ce = getE(c);
+    var dist, isPast;
+    if (ce <= now) { dist = now - ce; isPast = true; }
+    else if (cs > now) { dist = cs - now; isPast = false; }
+    else continue;
+    if (dist < closestDist || (dist === closestDist && isPast && !closestPast)) {
+      closestDist = dist; closest = c; closestPast = isPast;
+    }
   }
-  if (closest) return { p: closest.p, s: closest.s, e: closest.e, state: closestPast ? 'far-past' : 'far-future' };
+  if (closest) return { p: closest, s: getS(closest), e: getE(closest), state: 'live', strict: false };
   return null;
 }
-function getStrictLive(progs, now) { var r = getProgramState(progs, now); return r && r.state === 'live' ? r : null; }
-function getNextProgram(progs, afterMs) {
+function getNextProgram(progs, current, now) {
   if (!progs || !progs.length) return null;
-  var ref = afterMs || Date.now(), best = null;
+  now = now || Date.now();
+  var best = null;
   for (var i = 0; i < progs.length; i++) {
     var p = progs[i];
+    if (current && p === current) continue;
     var s = p.start instanceof Date ? p.start.getTime() : p.start;
-    if (s > ref && (!best || s < best.s)) best = { p: p, s: s, e: p.end instanceof Date ? p.end.getTime() : p.end };
+    if (s > now && (!best || s < best.s)) best = { p: p, s: s, e: p.end instanceof Date ? p.end.getTime() : p.end };
   }
   return best;
 }
-function stateLabel(state) {
-  if (state === 'live') return { text: '● NOW', cls: '' };
-  if (state === 'recent') return { text: '◑ RECENT', cls: 'recent' };
-  if (state === 'upcoming') return { text: '◐ NEXT', cls: 'upcoming' };
-  if (state === 'far-past') return { text: '⊖ PREVIOUS', cls: 'far-past' };
-  if (state === 'far-future') return { text: '⊕ LATER', cls: 'far-future' };
-  return { text: '', cls: '' };
+function progProgress(st) {
+  if (!st || !st.strict) return null;
+  var total = st.e - st.s;
+  if (total <= 0) return null;
+  return Math.max(0, Math.min(100, ((Date.now() - st.s) / total) * 100));
 }
 function findCurrentAndNext() {
   if (!channelPrograms || !channelPrograms.length) return { current: null, next: null };
   var now = Date.now();
   var current = getProgramState(channelPrograms, now);
-  var next = current ? getNextProgram(channelPrograms, current.e) : getNextProgram(channelPrograms, now);
+  var next = current ? getNextProgram(channelPrograms, current.p, now) : getNextProgram(channelPrograms, null, now);
   return { current: current, next: next };
 }
 function updateProgress() {
   if (!channelPrograms || !channelPrograms.length) return;
   var cur = findCurrentAndNext();
-  var key = (cur.current ? cur.current.state + '|' + cur.current.p.title + '|' + cur.current.s : '') + '|' + (cur.next ? cur.next.s + '|' + cur.next.p.title : '');
+  var key = (cur.current ? cur.current.p.title + '|' + cur.current.s : '') + '|' + (cur.next ? cur.next.s + '|' + cur.next.p.title : '');
   if (key !== lastProgramKey) { lastProgramKey = key; updateDthBannerTitles(cur); }
-  if (!cur.current || cur.current.state !== 'live') { dthProgressFill.style.width = '0%'; return; }
-  var total = cur.current.e - cur.current.s;
-  dthProgressFill.style.width = Math.max(0, Math.min(100, ((Date.now() - cur.current.s) / total) * 100)).toFixed(1) + '%';
+  var prog = progProgress(cur.current);
+  dthProgressFill.style.width = (prog !== null ? prog.toFixed(1) : '0') + '%';
 }
 function startProgressUpdates(){ stopProgressUpdates(); updateProgress(); progressTimer = setInterval(updateProgress, 1000); }
 function stopProgressUpdates(){ if (progressTimer) { clearInterval(progressTimer); progressTimer = null; } }
@@ -320,11 +312,8 @@ function updateDthBannerTitles(curOverride) {
   else { dthLogo.style.display = 'none'; dthLogoBox.classList.add('no-logo'); }
   dthChName.textContent = currentChannel.name || 'Unknown';
   var cur = curOverride || findCurrentAndNext();
-  dthNowBox.classList.remove('recent', 'upcoming', 'far-past', 'far-future');
+  dthNowLabel.textContent = '● LIVE';
   if (cur.current) {
-    var lbl = stateLabel(cur.current.state);
-    if (lbl.cls) dthNowBox.classList.add(lbl.cls);
-    dthNowLabel.textContent = lbl.text;
     dthNowTime.textContent = formatRange(cur.current.s, cur.current.e);
     dthNowTitle.textContent = cur.current.p.title || 'No Title';
     var meta = [];
@@ -332,7 +321,6 @@ function updateDthBannerTitles(curOverride) {
     if (cur.current.p.genre) meta.push(cur.current.p.genre);
     dthNowMeta.textContent = meta.join(' · ');
   } else {
-    dthNowLabel.textContent = '● NOW';
     dthNowTime.textContent = '';
     dthNowTitle.textContent = channelPrograms ? 'No guide data' : 'Loading guide…';
     dthNowMeta.textContent = '';
@@ -350,7 +338,6 @@ function hideDthBanner(){ dthBanner.classList.remove('visible'); stopProgressUpd
 function peekBanner(ms){ if (!dthBanner.classList.contains('visible')) showDthBanner(ms || 5000); }
 function startBannerRefreshTimer(){ if (programUpdateTimer) clearInterval(programUpdateTimer); programUpdateTimer = setInterval(function() { if (dthBanner.classList.contains('visible')) updateDthBanner(); }, 15000); }
 
-/* ════════ Guide overlay ════════ */
 function openGuide() {
   if (!currentChannel) return;
   var num = getChannelNumber(currentChannel);
@@ -358,12 +345,12 @@ function openGuide() {
   var progs = channelPrograms || [];
   if (!progs.length) { guideBody.innerHTML = '<div style="color:#888;padding:20px;text-align:center">No guide data for this channel.</div>'; }
   else {
-    var now = Date.now(), strictLive = getStrictLive(progs, now), body = '';
+    var now = Date.now(), st = getProgramState(progs, now), actualLive = st && st.strict ? st.p : null, body = '';
     for (var i = 0; i < progs.length; i++) {
       var p = progs[i];
       var s = p.start instanceof Date ? p.start.getTime() : p.start;
       var e = p.end instanceof Date ? p.end.getTime() : p.end;
-      var isLive = strictLive && strictLive.p === p;
+      var isLive = actualLive && actualLive === p;
       var isPast = e <= now;
       var cls = isLive ? ' live' : (isPast ? ' past' : '');
       var badge = isLive ? ' <span class="airing-tag">● AIRING</span>' : '';
@@ -480,7 +467,7 @@ function fetchChannelsFrom(idx) {
   return xhrFetch(CHANNELS_CANDIDATES[idx], { timeout: 20000 }).then(function(r){ return r.text(); }).then(function(t){ var p = parseChannelJson(t); if (p && p.length) return p; throw new Error('Empty'); }).catch(function(){ return fetchChannelsFrom(idx + 1); });
 }
 function findChannelById(id) {
-  return fetchChannelsFrom(0).then(function(list){ for (var i = 0; i < list.length; i++) if (String(list[i].id) === String(id)) return list[i]; throw new Error('Channel not found'); });
+  return fetchChannelsFrom(0).then(function(list){ for (var i = 0; i < list.length; i++) if (String(list[i].id) === String(id)) return list[i]; throw new Error('Not found'); });
 }
 function initPlayer() {
   if (typeof shaka === 'undefined' || !shaka.Player) { showPlaceholder('⚠️ Player failed to load.', true, false); return false; }
