@@ -6,6 +6,7 @@
 <meta name="referrer" content="no-referrer">
 <title>Channels</title>
 <link rel="preconnect" href="https://avkb.short.gy" crossorigin>
+<link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
@@ -28,6 +29,7 @@ html,body { background:#0a0a0a; color:#eee; font-family:Arial,Helvetica,sans-ser
 .cat-chip.fav-chip { border-color:#b8850f; color:#ffc94a; } .cat-chip.fav-chip.active { background:#3a2a10; border-color:#ffc94a; color:#fff; }
 .cat-chip.recent-chip { border-color:#6a3a8a; color:#c090e0; } .cat-chip.recent-chip.active { background:#2a1a3a; border-color:#c090e0; color:#fff; }
 .cat-chip.live-chip { border-color:#2a7a3a; color:#66d684; } .cat-chip.live-chip.active { background:#1a3a20; border-color:#66d684; color:#fff; }
+.cat-chip.cu-chip { border-color:#1565c0; color:#64b5f6; } .cat-chip.cu-chip.active { background:#0a2a4a; border-color:#64b5f6; color:#fff; }
 #wrap { height:calc(100vh - 130px); height:calc(100dvh - 130px); overflow-y:auto; overflow-x:hidden; padding:14px; padding-bottom:calc(20px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling:touch; }
 #grid { display:flex; flex-wrap:wrap; margin:-6px; }
 .card { box-sizing:border-box; padding:12px; margin:6px; width:calc(100% - 12px); background:#161616; border:2px solid transparent; border-radius:10px; cursor:pointer; outline:none; display:flex; flex-direction:column; gap:10px; position:relative; }
@@ -41,7 +43,10 @@ html,body { background:#0a0a0a; color:#eee; font-family:Arial,Helvetica,sans-ser
 .card-meta { flex:1; min-width:0; }
 .card-name { font-size:15px; font-weight:bold; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .card-num { display:inline-block; padding:1px 7px; margin-right:6px; background:#1e3a4a; border:1px solid #2f5a70; color:#7cd0f5; border-radius:4px; font-size:11px; font-weight:bold; vertical-align:middle; }
+.card-hd { display:inline-block; padding:1px 5px; margin-left:5px; background:#c62828; color:#fff; border-radius:3px; font-size:9px; font-weight:bold; vertical-align:middle; letter-spacing:.5px; }
+.card-cu { display:inline-block; padding:1px 5px; margin-left:4px; background:#1565c0; color:#fff; border-radius:3px; font-size:9px; font-weight:bold; vertical-align:middle; letter-spacing:.5px; }
 .card-cat { font-size:11px; color:#7ab8d6; margin-top:2px; text-transform:uppercase; font-weight:bold; }
+.card-lang { font-size:11px; color:#a0b8c8; text-transform:capitalize; font-weight:normal; }
 .card-epg { padding:10px 12px; background:rgba(255,255,255,0.03); border-radius:8px; border-left:3px solid #66bb6a; min-height:56px; }
 .epg-now-row { display:flex; align-items:center; gap:8px; font-size:11px; color:#888; margin-bottom:4px; }
 .epg-now-label { display:inline-block; padding:2px 6px; background:#66bb6a; color:#fff; border-radius:3px; font-size:10px; font-weight:bold; letter-spacing:.5px; }
@@ -72,6 +77,9 @@ html,body { background:#0a0a0a; color:#eee; font-family:Arial,Helvetica,sans-ser
 .detail-meta { flex:1; min-width:0; }
 .detail-num { font-size:12px; color:#4fc3f7; font-weight:bold; margin-bottom:2px; }
 .detail-name { font-size:20px; font-weight:bold; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.detail-tags { margin-top:3px; font-size:11px; color:#7ab8d6; }
+.detail-tags .tag-hd { display:inline-block; padding:1px 6px; margin-right:5px; background:#c62828; color:#fff; border-radius:3px; font-size:9px; font-weight:bold; letter-spacing:.5px; }
+.detail-tags .tag-cu { display:inline-block; padding:1px 6px; margin-right:5px; background:#1565c0; color:#fff; border-radius:3px; font-size:9px; font-weight:bold; letter-spacing:.5px; }
 .detail-cat { font-size:11px; color:#7ab8d6; text-transform:uppercase; margin-top:2px; }
 .detail-close { background:transparent; border:1px solid #333; color:#eee; width:44px; height:44px; border-radius:8px; font-size:24px; cursor:pointer; flex-shrink:0; }
 .detail-tabs { display:flex; border-bottom:1px solid #2a2a2a; background:#101010; }
@@ -123,14 +131,20 @@ html,body { background:#0a0a0a; color:#eee; font-family:Arial,Helvetica,sans-ser
 <div id="header">
   <h1>📺 JTV</h1>
   <div id="searchWrap"><input id="search" type="search" placeholder="Search channels or shows…" autocomplete="off"></div>
-  <select id="sortSelect"><option value="default">Sort: Default</option><option value="number">Sort: Number</option><option value="name">Sort: Name A-Z</option><option value="category">Sort: Category</option></select>
+  <select id="sortSelect">
+    <option value="default">Sort: Default</option>
+    <option value="number">Sort: Number</option>
+    <option value="name">Sort: Name A-Z</option>
+    <option value="category">Sort: Category</option>
+    <option value="language">Sort: Language</option>
+  </select>
   <button class="hdr-btn" id="viewBtn" type="button">▦ Grid</button>
   <button class="hdr-btn" id="refreshBtn" type="button">⟳ EPG</button>
   <button class="hdr-btn" id="helpBtn" type="button">?</button>
   <div id="epgStatus"></div>
 </div>
 <div id="categories"></div>
-<div id="wrap"><div id="grid"><div class="msg"><div class="spinner"></div><div>Loading channels…</div></div></div></div>
+<div id="wrap"><div id="grid"><div class="msg"><div class="spinner"></div><div>Loading channels & catalog…</div></div></div></div>
 
 <div id="chNumOverlay"><div class="num-label">Channel</div><div class="num-value" id="chNumValue"></div></div>
 
@@ -138,7 +152,12 @@ html,body { background:#0a0a0a; color:#eee; font-family:Arial,Helvetica,sans-ser
   <div class="detail-panel">
     <div class="detail-header">
       <img class="detail-logo" id="dLogo" src="" alt="" onerror="this.style.visibility='hidden'">
-      <div class="detail-meta"><div class="detail-num" id="dNum"></div><div class="detail-name" id="dName"></div><div class="detail-cat" id="dCat"></div></div>
+      <div class="detail-meta">
+        <div class="detail-num" id="dNum"></div>
+        <div class="detail-name" id="dName"></div>
+        <div class="detail-tags" id="dTags"></div>
+        <div class="detail-cat" id="dCat"></div>
+      </div>
       <button class="detail-close" id="dClose" tabindex="0" type="button">×</button>
     </div>
     <div class="detail-tabs"><button class="detail-tab active" id="dTabInfo" type="button">Now / Next</button><button class="detail-tab" id="dTabGuide" type="button">Full Guide</button></div>
@@ -200,6 +219,7 @@ function xhrFetchBuffer(url, opts) {
 }
 
 var CHANNELS_CANDIDATES = ['/jstr4web.json', 'https://jjtvxweb.pages.dev/jstr4web.json'];
+var CATALOG_URL = 'https://raw.githubusercontent.com/mitthu786/tvepg/refs/heads/main/jiotv/jiodata.json';
 var CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
 var EPG_URL = 'https://avkb.short.gy/jioepg.xml.gz';
 var EPG_CACHE_KEY = 'jtv_epg_cache_v18';
@@ -212,7 +232,7 @@ var gridEl = document.getElementById('grid'), searchEl = document.getElementById
 var wrapEl = document.getElementById('wrap'), epgStatusEl = document.getElementById('epgStatus');
 var chNumOverlay = document.getElementById('chNumOverlay'), chNumValue = document.getElementById('chNumValue');
 var detailModal = document.getElementById('detailModal'), helpModal = document.getElementById('helpModal');
-var dLogo = document.getElementById('dLogo'), dNum = document.getElementById('dNum'), dName = document.getElementById('dName'), dCat = document.getElementById('dCat');
+var dLogo = document.getElementById('dLogo'), dNum = document.getElementById('dNum'), dName = document.getElementById('dName'), dCat = document.getElementById('dCat'), dTags = document.getElementById('dTags');
 var dBody = document.getElementById('dBody'), dClose = document.getElementById('dClose'), dCancel = document.getElementById('dCancel'), dWatch = document.getElementById('dWatch');
 var dTabInfo = document.getElementById('dTabInfo'), dTabGuide = document.getElementById('dTabGuide');
 var toastEl = document.getElementById('toast'), sortSelect = document.getElementById('sortSelect'), viewBtn = document.getElementById('viewBtn');
@@ -284,19 +304,12 @@ function toggleFavorite(chId){
 }
 function addRecent(chId){ chId = String(chId); recents = [chId].concat(recents.filter(function(x){ return x !== chId; })).slice(0, 20); saveRecents(); }
 
-/* ════════ ROBUST EPG DATE PARSER ════════
-   Handles: YYYYMMDDHHMMSS +HHMM | +HH:MM | +HHMM | Z | ISO | YYYYMMDDHHMM (12-digit) */
+/* ════════ EPG date parser ════════ */
 function parseEPGDate(dateStr) {
   if (!dateStr) return null;
   var s = String(dateStr).trim();
   if (!s) return null;
-
-  /* ISO / RFC with explicit Z suffix */
-  if (/Z$/.test(s)) {
-    try { var dZ = new Date(s).getTime(); if (!isNaN(dZ)) return dZ; } catch(e){}
-  }
-
-  /* XMLTV 14-digit */
+  if (/Z$/.test(s)) { try { var dZ = new Date(s).getTime(); if (!isNaN(dZ)) return dZ; } catch(e){} }
   var m = s.match(/^(\d{14})/);
   if (m) {
     var dt = m[1], rest = s.substring(14).trim(), tz = '+0530';
@@ -314,15 +327,8 @@ function parseEPGDate(dateStr) {
     var th2 = parseInt(tz.substr(1,2), 10) || 0, tm2 = parseInt(tz.substr(3,2), 10) || 0;
     return ms - (th2 * 3600 + tm2 * 60) * 1000 * sg2;
   }
-
-  /* 12-digit (no seconds) — append "00" and retry */
   var m12 = s.match(/^(\d{12})/);
-  if (m12) {
-    var s14 = m12[1] + '00' + s.substring(12);
-    return parseEPGDate(s14);
-  }
-
-  /* Fall back to native Date (ISO/RFC) */
+  if (m12) return parseEPGDate(m12[1] + '00' + s.substring(12));
   try { var d = new Date(s).getTime(); if (!isNaN(d)) return d; } catch(e){}
   return null;
 }
@@ -355,6 +361,86 @@ function decodeXmlEntities(s) {
   });
 }
 
+/* ════════ Channel catalog fetch + merge ════════ */
+function fetchStreamChannels() {
+  var last = CHANNELS_CANDIDATES[CHANNELS_CANDIDATES.length - 1];
+  return fetchChannelsFrom(0).catch(function() {
+    return xhrFetch(CORS_PROXY + last, { timeout: 25000 })
+      .then(function(r){ return r.text(); })
+      .then(function(t){ return parseChannelJson(t); });
+  });
+}
+function fetchCatalogMeta() {
+  return xhrFetch(CATALOG_URL, { timeout: 25000 })
+    .then(function(r){ return r.text(); })
+    .then(function(t) {
+      var d = JSON.parse(t);
+      if (Array.isArray(d)) return d;
+      if (d && Array.isArray(d.channels)) return d.channels;
+      return [];
+    })
+    .catch(function() {
+      safeLog('[catalog] direct failed — trying proxy');
+      return xhrFetch(CORS_PROXY + CATALOG_URL, { timeout: 30000 })
+        .then(function(r){ return r.text(); })
+        .then(function(t) {
+          var d = JSON.parse(t);
+          return Array.isArray(d) ? d : (d && Array.isArray(d.channels) ? d.channels : []);
+        })
+        .catch(function() { safeLog('[catalog] unavailable — stream metadata only'); return null; });
+    });
+}
+function mergeChannelMetadata(streamChannels, catalogChannels) {
+  var byId = {}, nameLists = {};
+  for (var i = 0; i < catalogChannels.length; i++) {
+    var c = catalogChannels[i]; if (!c) continue;
+    var cid = (c.channel_id != null) ? String(c.channel_id) : null;
+    if (cid) byId[cid] = c;
+    if (c.channel_name) {
+      var norm = normalizeChannelName(c.channel_name);
+      if (norm) { if (!nameLists[norm]) nameLists[norm] = []; nameLists[norm].push(c); }
+    }
+  }
+  var byName = {};
+  for (var n in nameLists) if (nameLists[n].length === 1) byName[n] = nameLists[n][0];
+
+  var merged = [];
+  for (var j = 0; j < streamChannels.length; j++) {
+    var s = streamChannels[j];
+    var idStr = String(s.id);
+    var numId = extractNumericId(idStr);
+    var meta = byId[idStr] || (numId ? byId[numId] : null);
+    if (!meta && s.name) {
+      var sn = normalizeChannelName(s.name);
+      if (sn && byName[sn]) meta = byName[sn];
+    }
+
+    var isHD = false, isCatchup = false;
+    if (meta) {
+      isHD = String(meta.isHD || '').toLowerCase() === 'true';
+      isCatchup = String(meta.isCatchupAvailable || '').toLowerCase() === 'true';
+    }
+
+    merged.push({
+      /* Stream fields preserved exactly */
+      id: s.id, url: s.url, url1: s.url1, url2: s.url2, url3: s.url3,
+      keyId: s.keyId, key: s.key, keys: s.keys,
+      /* Metadata: prefer catalog, fall back to stream */
+      name: (meta && meta.channel_name) || s.name || 'Unknown',
+      logo: (meta && meta.logoUrl) || s.logo || '',
+      category: (meta && meta.channelCategoryId) || s.category || s.group || 'Other',
+      language: (meta && meta.channelLanguageId) || '',
+      isHD: isHD, isCatchup: isCatchup,
+      hasCatalog: !!meta
+    });
+  }
+  var withMeta = 0;
+  for (var k = 0; k < merged.length; k++) if (merged[k].hasCatalog) withMeta++;
+  safeLog('[catalog] merged ' + withMeta + '/' + merged.length + ' channels with jiodata metadata');
+  return merged;
+}
+
+/* ════════ EPG channel lookup ════════ */
 function buildChannelLookup() {
   var byId = {}, byNumeric = {}, nameLists = {}, looseLists = {};
   for (var i = 0; i < allChannels.length; i++) {
@@ -379,6 +465,7 @@ function findMatchingChannel(lookup, xmltvId, xmltvName) {
   return null;
 }
 
+/* ════════ XMLTV parser ════════ */
 function processXmlText(xmlText, label) {
   if (!xmlText || xmlText.length < 500) throw new Error('XML too small');
   var t0 = Date.now(), idToName = {};
@@ -465,7 +552,7 @@ function fetchAndParseEPG() {
     });
 }
 
-/* ════════ Cache — trim to -12h / +48h; content freshness check ════════ */
+/* ════════ Cache ════════ */
 function saveCache() {
   var now = Date.now(), minS = now - 12 * 3600000;
   var attempts = [48, 24, 12];
@@ -509,39 +596,25 @@ function clearCacheAndRefresh() {
   loadEPG();
 }
 
-/* ════════ Program state — returns displayed-end extension when source exhausted ════════ */
+/* ════════ Program state ════════ */
 function getProgramState(progs, now) {
   if (!progs || !progs.length) return null;
   now = now || Date.now();
-
   var strict = null;
-  for (var i = 0; i < progs.length; i++) {
-    var p = progs[i];
-    if (p.s <= now && p.e > now) { if (!strict || p.s > strict.s) strict = p; }
-  }
+  for (var i = 0; i < progs.length; i++) { var p = progs[i]; if (p.s <= now && p.e > now) { if (!strict || p.s > strict.s) strict = p; } }
   if (strict) return { p: strict, s: strict.s, e: strict.e, actualEnd: strict.e, state: 'live', strict: true, exhausted: false };
-
   var grace = null;
-  for (var g = 0; g < progs.length; g++) {
-    var pg = progs[g];
-    if (pg.s <= now && pg.e <= now && (now - pg.e) < OVERRUN_GRACE_MS) { if (!grace || pg.e > grace.e) grace = pg; }
-  }
+  for (var g = 0; g < progs.length; g++) { var pg = progs[g]; if (pg.s <= now && pg.e <= now && (now - pg.e) < OVERRUN_GRACE_MS) { if (!grace || pg.e > grace.e) grace = pg; } }
   if (grace) return { p: grace, s: grace.s, e: grace.e, actualEnd: grace.e, state: 'live', strict: false, exhausted: false };
-
   var closest = null, closestDist = Infinity, closestPast = false;
   for (var m = 0; m < progs.length; m++) {
-    var c = progs[m];
-    var dist, isPast;
+    var c = progs[m]; var dist, isPast;
     if (c.e <= now) { dist = now - c.e; isPast = true; }
     else if (c.s > now) { dist = c.s - now; isPast = false; }
     else continue;
-    if (dist < closestDist || (dist === closestDist && isPast && !closestPast)) {
-      closestDist = dist; closest = c; closestPast = isPast;
-    }
+    if (dist < closestDist || (dist === closestDist && isPast && !closestPast)) { closestDist = dist; closest = c; closestPast = isPast; }
   }
   if (!closest) return null;
-
-  /* Source exhausted → display end extended so the card keeps ticking */
   var exhausted = closestPast && (now - closest.e) > OVERRUN_GRACE_MS;
   var displayEnd = exhausted ? Math.max(closest.e, now + EXHAUST_EXTEND_MS) : closest.e;
   return { p: closest, s: closest.s, e: displayEnd, actualEnd: closest.e, state: 'live', strict: false, exhausted: exhausted };
@@ -550,11 +623,7 @@ function getNextProgram(progs, current, now) {
   if (!progs || !progs.length) return null;
   now = now || Date.now();
   var best = null;
-  for (var i = 0; i < progs.length; i++) {
-    var p = progs[i];
-    if (current && p === current) continue;
-    if (p.s > now && (!best || p.s < best.s)) best = p;
-  }
+  for (var i = 0; i < progs.length; i++) { var p = progs[i]; if (current && p === current) continue; if (p.s > now && (!best || p.s < best.s)) best = p; }
   return best;
 }
 function getChannelNumber(ch) {
@@ -614,14 +683,19 @@ function fetchChannelsFrom(idx) {
     .catch(function(){ return fetchChannelsFrom(idx + 1); });
 }
 
+/* ════════ Card render with HD / CU / Language ════════ */
 function buildCardHtml(ch, idx) {
-  var cat = ch.category || ch.group || 'Other';
+  var cat = ch.category || 'Other';
   var num = getChannelNumber(ch);
   var numHtml = num !== null ? '<span class="card-num">' + num + '</span>' : '';
   var starActive = favorites[String(ch.id)] ? ' active' : '';
+  var hdBadge = ch.isHD ? '<span class="card-hd">HD</span>' : '';
+  var cuBadge = ch.isCatchup ? '<span class="card-cu">↺ CU</span>' : '';
+  var langHtml = ch.language ? '<span class="card-lang">' + escapeHtml(ch.language) + '</span>' : '';
+  var catRow = escapeHtml(cat) + (langHtml ? ' · ' + langHtml : '');
   return '<div class="card" tabindex="0" data-idx="' + idx + '" data-chid="' + escapeHtml(String(ch.id)) + '">' +
     '<button class="card-star' + starActive + '" data-chid="' + escapeHtml(String(ch.id)) + '" type="button">★</button>' +
-    '<div class="card-top"><img class="card-logo" src="' + escapeHtml(ch.logo || '') + '" alt="" onerror="this.style.visibility=\'hidden\'"><div class="card-meta"><div class="card-name">' + numHtml + escapeHtml(ch.name || 'Unknown') + '</div><div class="card-cat">' + escapeHtml(cat) + '</div></div></div>' +
+    '<div class="card-top"><img class="card-logo" src="' + escapeHtml(ch.logo || '') + '" alt="" onerror="this.style.visibility=\'hidden\'"><div class="card-meta"><div class="card-name">' + numHtml + escapeHtml(ch.name || 'Unknown') + hdBadge + cuBadge + '</div><div class="card-cat">' + catRow + '</div></div></div>' +
     buildEpgBlockHtml(ch) +
     '<div class="card-actions"><button class="card-btn" type="button">▶ Watch</button></div>' +
   '</div>';
@@ -656,22 +730,25 @@ function buildCardMap() {
   }
 }
 
+/* ════════ Sort / filter ════════ */
 function sortChannels(arr) {
   var copy = arr.slice();
   if (sortMode === 'number') copy.sort(function(a,b){ var na = getChannelNumber(a), nb = getChannelNumber(b); if (na === null && nb === null) return (a.name || '').localeCompare(b.name || ''); if (na === null) return 1; if (nb === null) return -1; return na - nb; });
   else if (sortMode === 'name') copy.sort(function(a,b){ return (a.name || '').localeCompare(b.name || ''); });
-  else if (sortMode === 'category') copy.sort(function(a,b){ var ca = (a.category || a.group || 'Other').toLowerCase(); var cb = (b.category || b.group || 'Other').toLowerCase(); if (ca !== cb) return ca.localeCompare(cb); return (a.name || '').localeCompare(b.name || ''); });
+  else if (sortMode === 'category') copy.sort(function(a,b){ var ca = (a.category || 'Other').toLowerCase(); var cb = (b.category || 'Other').toLowerCase(); if (ca !== cb) return ca.localeCompare(cb); return (a.name || '').localeCompare(b.name || ''); });
+  else if (sortMode === 'language') copy.sort(function(a,b){ var la = (a.language || '').toLowerCase(); var lb = (b.language || '').toLowerCase(); if (la !== lb) return la.localeCompare(lb); return (a.name || '').localeCompare(b.name || ''); });
   return copy;
 }
 function channelMatches(ch, q, cat) {
-  var chCat = ch.category || ch.group || 'Other';
+  var chCat = ch.category || 'Other';
   if (cat === 'favorites') { if (!favorites[String(ch.id)]) return false; }
   else if (cat === 'recents') { if (recents.indexOf(String(ch.id)) === -1) return false; }
   else if (cat === 'live') { if (!epgByChannelId[String(ch.id)]) return false; }
+  else if (cat === 'catchup') { if (!ch.isCatchup) return false; }
   else if (cat !== 'all' && chCat !== cat) return false;
   if (q) {
-    var nameLow = (ch.name || '').toLowerCase(), catLow = chCat.toLowerCase();
-    if (nameLow.indexOf(q) === -1 && catLow.indexOf(q) === -1) {
+    var nameLow = (ch.name || '').toLowerCase(), catLow = chCat.toLowerCase(), langLow = (ch.language || '').toLowerCase();
+    if (nameLow.indexOf(q) === -1 && catLow.indexOf(q) === -1 && langLow.indexOf(q) === -1) {
       var progs = epgByChannelId[String(ch.id)];
       if (!progs) return false;
       var found = false;
@@ -692,12 +769,13 @@ function applyFilter() {
 }
 function renderCategories() {
   var set = {};
-  for (var i = 0; i < allChannels.length; i++) { var cat = allChannels[i].category || allChannels[i].group || 'Other'; set[cat] = true; }
+  for (var i = 0; i < allChannels.length; i++) { var cat = allChannels[i].category || 'Other'; set[cat] = true; }
   var cats = ['all']; for (var k in set) if (set.hasOwnProperty(k)) cats.push(k);
   cats.sort(function(a,b){ if(a==='all') return -1; if(b==='all') return 1; return a.toLowerCase().localeCompare(b.toLowerCase()); });
   var html = '<button class="cat-chip fav-chip' + (selectedCategory==='favorites'?' active':'') + '" data-cat="favorites" type="button">★ Favorites</button>';
   html += '<button class="cat-chip recent-chip' + (selectedCategory==='recents'?' active':'') + '" data-cat="recents" type="button">🕐 Recent</button>';
   html += '<button class="cat-chip live-chip' + (selectedCategory==='live'?' active':'') + '" data-cat="live" type="button">● Live</button>';
+  html += '<button class="cat-chip cu-chip' + (selectedCategory==='catchup'?' active':'') + '" data-cat="catchup" type="button">↺ Catch-Up</button>';
   html += '<button class="cat-chip' + (selectedCategory==='all'?' active':'') + '" data-cat="all" type="button">All</button>';
   for (var j = 0; j < cats.length; j++) { if (cats[j] === 'all') continue; var a = cats[j] === selectedCategory ? ' active' : ''; html += '<button class="cat-chip' + a + '" data-cat="' + escapeHtml(cats[j]) + '" type="button">' + escapeHtml(cats[j]) + '</button>'; }
   categoriesEl.innerHTML = html;
@@ -705,13 +783,18 @@ function renderCategories() {
   for (var c = 0; c < chips.length; c++) (function(chip){ chip.addEventListener('click', function(){ selectedCategory = chip.getAttribute('data-cat'); renderCategories(); applyFilter(); wrapEl.scrollTop = 0; }); })(chips[c]);
 }
 
+/* ════════ Detail modal ════════ */
 function openDetails(ch) {
   currentDetailChannel = ch; currentDetailTab = 'info';
   dTabInfo.classList.add('active'); dTabGuide.classList.remove('active');
   var num = getChannelNumber(ch);
   dNum.textContent = num !== null ? 'CH ' + num : '';
   dName.textContent = ch.name || 'Unknown';
-  dCat.textContent = ch.category || ch.group || 'Other';
+  dCat.textContent = (ch.category || 'Other') + (ch.language ? ' · ' + ch.language : '');
+  var tagsHtml = '';
+  if (ch.isHD) tagsHtml += '<span class="tag-hd">HD</span>';
+  if (ch.isCatchup) tagsHtml += '<span class="tag-cu">↺ Catch-Up</span>';
+  dTags.innerHTML = tagsHtml;
   dLogo.src = ch.logo || ''; dLogo.style.visibility = ch.logo ? 'visible' : 'hidden';
   renderDetailBody(); detailModal.classList.remove('hidden');
 }
@@ -739,31 +822,22 @@ function renderInfoTab(ch) {
   else body += '<div class="detail-show none"><div class="show-label">● LIVE</div><div class="show-title">Loading guide…</div></div>';
   dBody.innerHTML = body;
 }
-
-/* ════════ FULL GUIDE — now shows 3 days with day headers ════════ */
 function renderGuideTab(ch) {
   var progs = epgByChannelId[String(ch.id)] || [];
   if (!progs.length) { dBody.innerHTML = '<div class="msg" style="padding:30px">No guide data for this channel.</div>'; return; }
   var now = Date.now();
   var st = getProgramState(progs);
   var actualLive = st && st.strict ? st.p : null;
-
-  /* Show from start of today through end of 2 more days */
   var rangeStart = new Date(); rangeStart.setHours(0,0,0,0);
   var rangeStartMs = rangeStart.getTime();
   var rangeEndMs = rangeStartMs + 3 * 86400000;
-
   var filtered = progs.filter(function(p){ return p.e > rangeStartMs && p.s < rangeEndMs; });
   if (!filtered.length) filtered = progs.slice(0, 60);
-
   var body = '', lastDayKey = '';
   for (var i = 0; i < filtered.length; i++) {
     var p = filtered[i];
     var dayKey = new Date(p.s).toDateString();
-    if (dayKey !== lastDayKey) {
-      body += '<div class="timeline-day-header">' + formatDayLabel(p.s) + '</div>';
-      lastDayKey = dayKey;
-    }
+    if (dayKey !== lastDayKey) { body += '<div class="timeline-day-header">' + formatDayLabel(p.s) + '</div>'; lastDayKey = dayKey; }
     var isLive = actualLive && actualLive === p;
     var isPast = p.e <= now;
     var cls = isLive ? ' live' : (isPast ? ' past' : '');
@@ -774,6 +848,7 @@ function renderGuideTab(ch) {
 }
 function closeDetails(){ detailModal.classList.add('hidden'); currentDetailChannel = null; }
 
+/* ════════ Player handoff — merged object preserved ════════ */
 function openPlayer(ch) {
   addRecent(ch.id);
   try {
@@ -790,6 +865,7 @@ function openPlayer(ch) {
   try { var w = window.open(url, '_blank'); if (!w) window.location.href = url; } catch (e) { window.location.href = url; }
 }
 
+/* ════════ Number pad overlay ════════ */
 function showChNumOverlay(){ chNumValue.textContent = chNumBuffer || '—'; chNumOverlay.classList.add('visible'); }
 function hideChNumOverlay(){ chNumOverlay.classList.remove('visible'); }
 function handleChNumDigit(digit) { if (chNumBuffer.length >= 4) chNumBuffer = ''; chNumBuffer += digit; showChNumOverlay(); clearTimeout(chNumTimer); chNumTimer = setTimeout(commitChNum, 1200); }
@@ -802,16 +878,13 @@ function commitChNum() {
 }
 function cancelChNum(){ chNumBuffer = ''; clearTimeout(chNumTimer); hideChNumOverlay(); }
 
-/* ════════ Source info helper ════════ */
+/* ════════ EPG helpers ════════ */
 function computeEpgRange() {
   var oldest = Infinity, newest = 0;
   for (var id in epgByChannelId) {
     if (!epgByChannelId.hasOwnProperty(id)) continue;
     var progs = epgByChannelId[id];
-    for (var i = 0; i < progs.length; i++) {
-      if (progs[i].s < oldest) oldest = progs[i].s;
-      if (progs[i].e > newest) newest = progs[i].e;
-    }
+    for (var i = 0; i < progs.length; i++) { if (progs[i].s < oldest) oldest = progs[i].s; if (progs[i].e > newest) newest = progs[i].e; }
   }
   return { oldest: oldest, newest: newest };
 }
@@ -820,8 +893,6 @@ function countLive() {
   for (var i = 0; i < allChannels.length; i++) if (epgByChannelId[String(allChannels[i].id)]) c++;
   return c;
 }
-
-/* ════════ Auto-refresh at 00:02 + retry every 30 min if source still stale ════════ */
 function scheduleMidnightRefresh() {
   if (midnightTimer) clearTimeout(midnightTimer);
   var now = new Date();
@@ -835,31 +906,23 @@ function scheduleMidnightRefresh() {
     exhaustRetryTimer = setTimeout(function checkStale() {
       var r = computeEpgRange();
       if (r.newest < Date.now() + 60 * 60 * 1000) {
-        safeLog('[epg] source still stale — retrying');
-        clearCacheAndRefresh();
+        safeLog('[epg] source still stale — retrying'); clearCacheAndRefresh();
         exhaustRetryTimer = setTimeout(checkStale, 30 * 60 * 1000);
-      } else {
-        scheduleMidnightRefresh();
-      }
+      } else { scheduleMidnightRefresh(); }
     }, 30 * 60 * 1000);
   }, delay);
 }
-
-/* ════════ Load EPG ════════ */
 function loadEPG() {
   var t0 = Date.now();
   setEpgStatus('Loading guide (jioepg)…');
   fetchAndParseEPG().then(function(result) {
     if (result && Object.keys(result.data).length) {
       epgByChannelId = result.data; epgLoaded = true; saveCache();
-
-      var range = computeEpgRange();
-      var now = Date.now();
+      var range = computeEpgRange(), now = Date.now();
       var hoursTotal = ((range.newest - range.oldest) / 3600000).toFixed(1);
       var hoursAhead = ((range.newest - now) / 3600000).toFixed(1);
       safeLog('[epg] range: ' + new Date(range.oldest).toLocaleString() + ' → ' + new Date(range.newest).toLocaleString());
       safeLog('[epg] ' + hoursTotal + 'h total, ' + hoursAhead + 'h ahead of now');
-
       var elapsed = ((Date.now() - t0) / 1000).toFixed(1);
       var live = countLive(), total = allChannels.length;
       var pct = Math.round((live / total) * 100);
@@ -867,10 +930,8 @@ function loadEPG() {
       setEpgStatus('Guide: ' + live + '/' + total + ' ch (' + pct + '%) · ends in ' + hoursAhead + 'h · ' + elapsed + 's', kind);
       setTimeout(function(){ setEpgStatus(''); }, 12000);
       refreshAllCardsEpg();
-
-      /* Detect source exhaustion */
       if (range.newest < now + 60 * 60 * 1000) {
-        safeLog('[epg] source exhausted (ends in <1h) — will retry in 15 min');
+        safeLog('[epg] source exhausted — retry in 15 min');
         if (exhaustRetryTimer) clearTimeout(exhaustRetryTimer);
         exhaustRetryTimer = setTimeout(function(){ safeLog('[epg] retrying stale source'); clearCacheAndRefresh(); }, 15 * 60 * 1000);
       }
@@ -882,22 +943,22 @@ function loadEPG() {
   });
 }
 
-/* ════════ Load channels ════════ */
+/* ════════ Load channels + catalog in parallel ════════ */
 function loadChannels() {
-  gridEl.innerHTML = '<div class="msg"><div class="spinner"></div><div>Loading channels…</div></div>';
-  var last = CHANNELS_CANDIDATES[CHANNELS_CANDIDATES.length - 1];
-  fetchChannelsFrom(0)
-    .catch(function() { return xhrFetch(CORS_PROXY + last, { timeout: 25000 }).then(function(r){ return r.text(); }).then(function(t){ return parseChannelJson(t); }); })
-    .then(function(chs) {
-      if (!chs || !chs.length) throw new Error('No channels');
-      allChannels = chs; displayedChannels = chs.slice();
+  gridEl.innerHTML = '<div class="msg"><div class="spinner"></div><div>Loading channels & catalog…</div></div>';
+  Promise.all([fetchStreamChannels(), fetchCatalogMeta()])
+    .then(function(results) {
+      var streams = results[0];
+      var catalog = results[1] || [];
+      if (!streams || !streams.length) throw new Error('No channels');
+      allChannels = mergeChannelMetadata(streams, catalog);
+      displayedChannels = allChannels.slice();
       loadPrefs(); renderCategories();
       var cacheFresh = loadCache();
       renderAllCards(function() {
         if (cacheFresh) {
           refreshAllCardsEpg();
-          var live = countLive();
-          var range = computeEpgRange();
+          var live = countLive(), range = computeEpgRange();
           var hoursAhead = ((range.newest - Date.now()) / 3600000).toFixed(1);
           setEpgStatus('Cache: ' + live + '/' + allChannels.length + ' ch · ends in ' + hoursAhead + 'h');
           setTimeout(function(){ setEpgStatus(''); }, 5000);
@@ -907,7 +968,9 @@ function loadChannels() {
       if (progressUpdateTimer) clearInterval(progressUpdateTimer);
       progressUpdateTimer = setInterval(function(){ refreshAllCardsEpg(); }, 30000);
     })
-    .catch(function() { gridEl.innerHTML = '<div class="msg err">⚠️ Could not load channels.<br><button onclick="location.reload()">Retry</button></div>'; });
+    .catch(function(e) {
+      gridEl.innerHTML = '<div class="msg err">⚠️ Could not load channels.<br><div style="color:#888;font-size:12px;margin-top:10px">' + escapeHtml(e.message || '') + '</div><button onclick="location.reload()">Retry</button></div>';
+    });
 }
 
 /* ════════ Wiring ════════ */
