@@ -9,12 +9,12 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; -webkit-box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-html, body { background:#0a0a0a; color:#eee; font-family:Arial,Helvetica,sans-serif; width:100%; height:100%; overflow:hidden; -webkit-user-select:none; user-select:none; }
+html,body { background:#0a0a0a; color:#eee; font-family:Arial,Helvetica,sans-serif; width:100%; height:100%; overflow:hidden; -webkit-user-select:none; user-select:none; }
 #header { background:#111; border-bottom:1px solid #222; padding:12px 20px; padding-top:calc(12px + env(safe-area-inset-top)); display:flex; align-items:center; gap:12px; flex-wrap:wrap; flex-shrink:0; }
 #header h1 { font-size:20px; font-weight:bold; color:#4fc3f7; white-space:nowrap; margin:0; }
 #searchWrap { flex:1; min-width:200px; }
 #search { width:100%; padding:12px 16px; font-size:16px; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:6px; outline:none; font-family:inherit; }
-#search:focus { border-color:#4fc3f7; background:#202020; }
+#search:focus { border-color:#4fc3f7; }
 #epgStatus { font-size:11px; color:#888; width:100%; margin-top:4px; display:none; }
 #epgStatus.visible { display:block; } #epgStatus.error { color:#ef5350; } #epgStatus.warn { color:#f7a23f; } #epgStatus.ok { color:#66bb6a; }
 .hdr-btn { padding:9px 12px; background:#1a1a1a; border:1px solid #333; color:#ddd; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer; outline:none; font-family:inherit; white-space:nowrap; }
@@ -35,23 +35,16 @@ html, body { background:#0a0a0a; color:#eee; font-family:Arial,Helvetica,sans-se
 .card:focus { background:#1a2a35; border-color:#4fc3f7; box-shadow:0 0 0 2px rgba(79,195,247,0.3); }
 .card.compact { padding:10px; gap:6px; } .card.compact .card-epg, .card.compact .card-actions { display:none; } .card.compact .card-logo { width:40px; height:40px; } .card.compact .card-name { font-size:13px; }
 .card-star { position:absolute; top:8px; right:8px; background:transparent; border:none; color:#444; font-size:20px; line-height:1; cursor:pointer; padding:4px 6px; outline:none; z-index:2; }
-.card-star:hover { color:#ffc94a; transform:scale(1.15); } .card-star.active { color:#ffc94a; }
+.card-star:hover { color:#ffc94a; } .card-star.active { color:#ffc94a; }
 .card-top { display:flex; align-items:center; gap:12px; min-width:0; padding-right:24px; }
 .card-logo { width:48px; height:48px; border-radius:8px; object-fit:contain; background:#222; flex-shrink:0; }
 .card-meta { flex:1; min-width:0; }
 .card-name { font-size:15px; font-weight:bold; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .card-num { display:inline-block; padding:1px 7px; margin-right:6px; background:#1e3a4a; border:1px solid #2f5a70; color:#7cd0f5; border-radius:4px; font-size:11px; font-weight:bold; vertical-align:middle; }
 .card-cat { font-size:11px; color:#7ab8d6; margin-top:2px; text-transform:uppercase; font-weight:bold; }
-.card-epg { padding:10px 12px; background:rgba(255,255,255,0.03); border-radius:8px; border-left:3px solid #4fc3f7; min-height:56px; }
-.card-epg.live { border-left-color:#66bb6a; }
-.card-epg.recent { border-left-color:#f7a23f; }
-.card-epg.upcoming { border-left-color:#4fc3f7; }
-.card-epg.far-past, .card-epg.far-future { border-left-color:#555; }
+.card-epg { padding:10px 12px; background:rgba(255,255,255,0.03); border-radius:8px; border-left:3px solid #66bb6a; min-height:56px; }
 .epg-now-row { display:flex; align-items:center; gap:8px; font-size:11px; color:#888; margin-bottom:4px; }
-.epg-now-label { display:inline-block; padding:2px 6px; background:#66bb6a; color:#fff; border-radius:3px; font-size:10px; font-weight:bold; }
-.epg-now-label.recent { background:#f7a23f; color:#001018; }
-.epg-now-label.upcoming { background:#4fc3f7; color:#001018; }
-.epg-now-label.far-past, .epg-now-label.far-future { background:#444; color:#bbb; }
+.epg-now-label { display:inline-block; padding:2px 6px; background:#66bb6a; color:#fff; border-radius:3px; font-size:10px; font-weight:bold; letter-spacing:.5px; }
 .epg-now-time { color:#aaa; font-size:11px; }
 .epg-now-title { font-size:13px; color:#ddd; font-weight:bold; line-height:1.35; margin-bottom:4px; }
 .epg-now-desc { font-size:11px; color:#777; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
@@ -87,12 +80,10 @@ html, body { background:#0a0a0a; color:#eee; font-family:Arial,Helvetica,sans-se
 .detail-show { padding:14px; background:#1c1c1c; border-radius:10px; margin-bottom:12px; border:1px solid #262626; }
 .detail-show.now { border-left:4px solid #66bb6a; }
 .detail-show.next { border-left:4px solid #4fc3f7; }
-.detail-show.recent { border-left:4px solid #f7a23f; }
 .detail-show.none { border-left:4px solid #444; opacity:0.7; }
 .show-label { font-size:11px; font-weight:bold; text-transform:uppercase; margin-bottom:6px; }
 .detail-show.now .show-label { color:#66bb6a; }
 .detail-show.next .show-label { color:#4fc3f7; }
-.detail-show.recent .show-label { color:#f7a23f; }
 .detail-show.none .show-label { color:#666; }
 .show-title { font-size:16px; font-weight:bold; color:#fff; line-height:1.3; margin-bottom:6px; }
 .show-meta-row { font-size:11px; color:#8aa; margin-bottom:6px; }
@@ -209,9 +200,10 @@ function xhrFetchBuffer(url, opts) {
 var CHANNELS_CANDIDATES = ['/jstr4web.json', 'https://jjtvxweb.pages.dev/jstr4web.json'];
 var CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
 var EPG_URL = 'https://avkb.short.gy/jioepg.xml.gz';
-var EPG_CACHE_KEY = 'jtv_epg_cache_v15';
+var EPG_CACHE_KEY = 'jtv_epg_cache_v17';
 var EPG_CACHE_TTL_MS = 4 * 60 * 60 * 1000;
 var FAV_KEY = 'jtv_favorites_v1', RECENT_KEY = 'jtv_recents_v1', PREF_KEY = 'jtv_prefs_v1';
+var OVERRUN_GRACE_MS = 45 * 60 * 1000;
 
 var gridEl = document.getElementById('grid'), searchEl = document.getElementById('search'), categoriesEl = document.getElementById('categories');
 var wrapEl = document.getElementById('wrap'), epgStatusEl = document.getElementById('epgStatus');
@@ -244,8 +236,6 @@ function showToast(msg, isError){
   if (isError) toastEl.classList.add('error'); else toastEl.classList.remove('error');
   clearTimeout(toastTimer); toastTimer = setTimeout(function(){ toastEl.classList.remove('visible'); }, 2500);
 }
-
-/* ════════ ID / name helpers ════════ */
 function extractNumericId(id) { if (!id) return null; var m = String(id).match(/(\d{1,6})\s*$/); return m ? m[1] : null; }
 function normalizeChannelName(name) {
   if (!name) return '';
@@ -259,8 +249,6 @@ function normalizeChannelNameLoose(name) {
   s = s.replace(/\b(hd|sd|fhd|uhd|4k|8k|1080p|720p|1080i|720i|576p|480p|tv|channel|plus|movies|music|news|sports|gold|comedy|kids|family|classic|action|drama|entertainment|lifestyle|devotional|regional|national|international)\b/g, ' ');
   return s.replace(/\s+/g, ' ').trim();
 }
-
-/* ════════ Prefs ════════ */
 function loadPrefs(){
   try { favorites = JSON.parse(localStorage.getItem(FAV_KEY) || '{}'); } catch(e){ favorites = {}; }
   try { recents = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch(e){ recents = []; }
@@ -282,15 +270,12 @@ function toggleFavorite(chId){
 }
 function addRecent(chId){ chId = String(chId); recents = [chId].concat(recents.filter(function(x){ return x !== chId; })).slice(0, 20); saveRecents(); }
 
-/* ════════ EPG date parse ════════ */
 function parseEPGDate(dateStr) {
   if (!dateStr) return null;
   var s = String(dateStr).trim();
   var m = s.match(/^(\d{14})/);
   if (m) {
-    var dt = m[1];
-    var tzPart = s.substring(14).trim();
-    var tz = '+0530';
+    var dt = m[1], tzPart = s.substring(14).trim(), tz = '+0530';
     if (tzPart) {
       var tzm = tzPart.match(/([+-])(\d{1,2}):?(\d{2})?/);
       if (tzm) { var sign = tzm[1] === '-' ? -1 : 1; var tzH = parseInt(tzm[2], 10) || 0; var tzM = parseInt(tzm[3] || '0', 10) || 0; tz = (sign < 0 ? '-' : '+') + (tzH < 10 ? '0' : '') + tzH + (tzM < 10 ? '0' : '') + tzM; }
@@ -322,8 +307,8 @@ function bytesToUtf8String(bytes) {
 }
 function chunkedUngzip(bytes) {
   return new Promise(function(resolve, reject) {
-    if (typeof pako === 'undefined') { reject(new Error('pako not loaded')); return; }
-    try { var inflator = new pako.Inflate({ to: 'string', chunkSize: 1024 * 1024 }); inflator.push(bytes, true); if (inflator.err) { reject(new Error('inflate failed')); return; } resolve(inflator.result); } catch (e) { reject(e); }
+    if (typeof pako === 'undefined') { reject(new Error('pako')); return; }
+    try { var inflator = new pako.Inflate({ to: 'string', chunkSize: 1024 * 1024 }); inflator.push(bytes, true); if (inflator.err) { reject(new Error('inflate')); return; } resolve(inflator.result); } catch (e) { reject(e); }
   });
 }
 function decodeXmlEntities(s) {
@@ -336,7 +321,6 @@ function decodeXmlEntities(s) {
   });
 }
 
-/* ════════ Channel lookup ════════ */
 function buildChannelLookup() {
   var byId = {}, byNumeric = {}, nameLists = {}, looseLists = {};
   for (var i = 0; i < allChannels.length; i++) {
@@ -361,11 +345,9 @@ function findMatchingChannel(lookup, xmltvId, xmltvName) {
   return null;
 }
 
-/* ════════ XMLTV parser ════════ */
 function processXmlText(xmlText, label) {
   if (!xmlText || xmlText.length < 500) throw new Error('XML too small');
-  var t0 = Date.now();
-  var idToName = {};
+  var t0 = Date.now(), idToName = {};
   var chRe = /<channel\s+([^>]*?)>([\s\S]*?)<\/channel>/g, cm;
   while ((cm = chRe.exec(xmlText)) !== null) {
     var idM = cm[1].match(/\bid="([^"]*)"/); if (!idM) continue;
@@ -404,14 +386,12 @@ function processXmlText(xmlText, label) {
     rawByChannel[rawId].push(entry);
     progCount++;
   }
-  var lookup = buildChannelLookup();
-  var result = {}, matched = 0, unmatched = 0, unmatchedSamples = [];
+  var lookup = buildChannelLookup(), result = {}, matched = 0, unmatched = 0;
   for (var rawId in rawByChannel) {
     if (!rawByChannel.hasOwnProperty(rawId)) continue;
-    var progs = rawByChannel[rawId];
-    var dispName = idToName[rawId] || '';
+    var progs = rawByChannel[rawId], dispName = idToName[rawId] || '';
     var ch = findMatchingChannel(lookup, rawId, dispName);
-    if (!ch) { unmatched++; if (unmatchedSamples.length < 5) unmatchedSamples.push(rawId); continue; }
+    if (!ch) { unmatched++; continue; }
     var key = String(ch.id);
     if (!result[key]) result[key] = [];
     for (var p = 0; p < progs.length; p++) result[key].push(progs[p]);
@@ -422,16 +402,14 @@ function processXmlText(xmlText, label) {
     result[k].sort(function(a,b){ return a.s - b.s; });
     var seen = {}, deduped = [];
     for (var i = 0; i < result[k].length; i++) {
-      var pr = result[k][i];
-      var dk = pr.s + '|' + (pr.t || '').toLowerCase().trim();
+      var pr = result[k][i], dk = pr.s + '|' + (pr.t || '').toLowerCase().trim();
       if (!seen[dk]) { seen[dk] = true; deduped.push(pr); }
     }
     result[k] = deduped;
     for (var j = 0; j < result[k].length - 1; j++) if (result[k][j].e < result[k][j+1].s) result[k][j].e = result[k][j+1].s;
   }
-  safeLog('[epg] ' + label + ': ' + progCount + ' progs, badStart=' + badStart + ' badStop=' + badStop + ', matched=' + matched + ' → ' + Object.keys(result).length + ' channels, unmatched=' + unmatched);
-  if (unmatchedSamples.length) safeLog('[epg] unmatched: ' + unmatchedSamples.join(', '));
-  return { data: result, programCount: progCount, matched: matched, unmatched: unmatched, badStart: badStart, badStop: badStop };
+  safeLog('[epg] ' + label + ': ' + progCount + ' progs, badStart=' + badStart + ' badStop=' + badStop + ', matched=' + matched + ' → ' + Object.keys(result).length + ' ch');
+  return { data: result, programCount: progCount, matched: matched, unmatched: unmatched };
 }
 function fetchAndParseEPG() {
   if (typeof pako === 'undefined') return Promise.resolve(null);
@@ -444,18 +422,15 @@ function fetchAndParseEPG() {
       return processXmlText(bytesToUtf8String(bytes), 'jioepg');
     })
     .catch(function() {
-      return xhrFetchBuffer(CORS_PROXY + EPG_URL, { timeout: 180000 })
-        .then(function(buf) {
-          var bytes = new Uint8Array(buf);
-          if (bytes.length < 500) throw new Error('Too small');
-          if (bytes[0] === 0x1f && bytes[1] === 0x8b) return chunkedUngzip(bytes).then(function(x){ return processXmlText(x, 'jioepg (proxy)'); });
-          return processXmlText(bytesToUtf8String(bytes), 'jioepg (proxy)');
-        })
-        .catch(function(){ return null; });
+      return xhrFetchBuffer(CORS_PROXY + EPG_URL, { timeout: 180000 }).then(function(buf) {
+        var bytes = new Uint8Array(buf);
+        if (bytes.length < 500) throw new Error('Too small');
+        if (bytes[0] === 0x1f && bytes[1] === 0x8b) return chunkedUngzip(bytes).then(function(x){ return processXmlText(x, 'jioepg (proxy)'); });
+        return processXmlText(bytesToUtf8String(bytes), 'jioepg (proxy)');
+      }).catch(function(){ return null; });
     });
 }
 
-/* ════════ Cache ════════ */
 function saveCache() {
   var now = Date.now(), minS = now - 12 * 3600000;
   var attempts = [48, 24, 12];
@@ -467,7 +442,7 @@ function saveCache() {
       for (var i = 0; i < arr.length; i++) if (arr[i].e >= minS && arr[i].s < maxS) filt.push(arr[i]);
       if (filt.length) { out[key] = filt; cnt += filt.length; }
     }
-    try { localStorage.setItem(EPG_CACHE_KEY, JSON.stringify({ v: 15, fetchedAt: now, hours: attempts[a], data: out })); safeLog('[cache] saved ' + Object.keys(out).length + ' ch / ' + cnt + ' progs'); return; } catch (e) {}
+    try { localStorage.setItem(EPG_CACHE_KEY, JSON.stringify({ v: 17, fetchedAt: now, hours: attempts[a], data: out })); return; } catch (e) {}
   }
 }
 function loadCache() {
@@ -475,7 +450,7 @@ function loadCache() {
     var raw = localStorage.getItem(EPG_CACHE_KEY);
     if (!raw) return false;
     var c = JSON.parse(raw);
-    if (!c || !c.data || c.v !== 15) return false;
+    if (!c || !c.data || c.v !== 17) return false;
     var fresh = (Date.now() - c.fetchedAt) < EPG_CACHE_TTL_MS;
     var n = 0;
     for (var id in c.data) { if (!c.data.hasOwnProperty(id)) continue; epgByChannelId[id] = c.data[id]; n++; }
@@ -491,54 +466,59 @@ function clearCacheAndRefresh() {
   loadEPG();
 }
 
-/* ════════ Program state (5 tiers) ════════ */
-var STATE_RECENT_MS = 6 * 3600000;   /* 6h */
-var STATE_UPCOMING_MS = 12 * 3600000; /* 12h */
-
+/* ════════ ⭐ UNIFIED LIVE STATE — picks best program, always "live" ════════ */
 function getProgramState(progs, now) {
   if (!progs || !progs.length) return null;
   now = now || Date.now();
+  var getS = function(p) { return p.start instanceof Date ? p.start.getTime() : p.s; };
+  var getE = function(p) { return p.end instanceof Date ? p.end.getTime() : p.e; };
 
-  /* 1. Strict live */
-  var live = null;
+  /* 1. STRICT — program window covers now */
+  var strict = null;
   for (var i = 0; i < progs.length; i++) {
     var p = progs[i];
-    if (p.s <= now && p.e > now) { if (!live || p.s > live.s) live = p; }
+    var ps = p.s, pe = p.e;   /* jtv uses .s/.e */
+    if (ps <= now && pe > now) {
+      if (!strict || ps > strict.s) strict = p;
+    }
   }
-  if (live) return { p: live, state: 'live' };
+  if (strict) return { p: strict, s: strict.s, e: strict.e, state: 'live', strict: true };
 
-  /* 2. Recent — ended within 6h */
-  var recent = null;
-  for (var j = 0; j < progs.length; j++) {
-    var q = progs[j];
-    if (q.e <= now && (now - q.e) <= STATE_RECENT_MS) { if (!recent || q.e > recent.e) recent = q; }
+  /* 2. OVERRUN GRACE — ended within 45 min */
+  var grace = null;
+  for (var g = 0; g < progs.length; g++) {
+    var pg = progs[g];
+    if (pg.s <= now && pg.e <= now && (now - pg.e) < OVERRUN_GRACE_MS) {
+      if (!grace || pg.e > grace.e) grace = pg;
+    }
   }
-  if (recent) return { p: recent, state: 'recent' };
+  if (grace) return { p: grace, s: grace.s, e: grace.e, state: 'live', strict: false };
 
-  /* 3. Upcoming — starts within 12h */
-  var upcoming = null;
-  for (var k = 0; k < progs.length; k++) {
-    var u = progs[k];
-    if (u.s > now && (u.s - now) <= STATE_UPCOMING_MS) { if (!upcoming || u.s < upcoming.s) upcoming = u; }
-  }
-  if (upcoming) return { p: upcoming, state: 'upcoming' };
-
-  /* 4/5. Closest — always show something if we have data */
+  /* 3. CLOSEST — nearest program in either direction */
   var closest = null, closestDist = Infinity, closestPast = false;
   for (var m = 0; m < progs.length; m++) {
     var c = progs[m];
-    var dist = c.s > now ? (c.s - now) : (c.e < now ? (now - c.e) : 0);
-    if (dist < closestDist) { closestDist = dist; closest = c; closestPast = c.e < now; }
+    var dist, isPast;
+    if (c.e <= now) { dist = now - c.e; isPast = true; }
+    else if (c.s > now) { dist = c.s - now; isPast = false; }
+    else continue;
+    if (dist < closestDist || (dist === closestDist && isPast && !closestPast)) {
+      closestDist = dist; closest = c; closestPast = isPast;
+    }
   }
-  if (closest) return { p: closest, state: closestPast ? 'far-past' : 'far-future' };
+  if (closest) return { p: closest, s: closest.s, e: closest.e, state: 'live', strict: false };
+
   return null;
 }
-function getStrictLive(progs, now) { var r = getProgramState(progs, now); return r && r.state === 'live' ? r : null; }
-function getCurrentProgram(progs, now) { var r = getProgramState(progs, now); return r ? r.p : null; }
-function getNextProgram(progs, afterMs) {
+function getNextProgram(progs, current, now) {
   if (!progs || !progs.length) return null;
-  var ref = afterMs || Date.now(), best = null;
-  for (var i = 0; i < progs.length; i++) { var p = progs[i]; if (p.s > ref && (!best || p.s < best.s)) best = p; }
+  now = now || Date.now();
+  var best = null;
+  for (var i = 0; i < progs.length; i++) {
+    var p = progs[i];
+    if (current && p === current) continue;
+    if (p.s > now && (!best || p.s < best.s)) best = p;
+  }
   return best;
 }
 function getChannelNumber(ch) {
@@ -548,38 +528,27 @@ function getChannelNumber(ch) {
   if (typeof id === 'string') { var n = parseInt(id, 10); if (!isNaN(n) && String(n) === id) return n; }
   return null;
 }
-function progProgress(state) {
-  if (!state || state.state !== 'live') return 0;
-  var total = state.p.e - state.p.s;
-  if (total <= 0) return 0;
-  return Math.max(0, Math.min(100, ((Date.now() - state.p.s) / total) * 100));
+function progProgress(st) {
+  if (!st || !st.strict) return null;
+  var total = st.e - st.s;
+  if (total <= 0) return null;
+  return Math.max(0, Math.min(100, ((Date.now() - st.s) / total) * 100));
 }
 
-/* ════════ Card EPG ════════ */
-function stateLabel(state) {
-  if (state === 'live') return { text: '● NOW', cls: '' };
-  if (state === 'recent') return { text: '◑ RECENT', cls: 'recent' };
-  if (state === 'upcoming') return { text: '◐ NEXT', cls: 'upcoming' };
-  if (state === 'far-past') return { text: '⊖ PREVIOUS', cls: 'far-past' };
-  if (state === 'far-future') return { text: '⊕ LATER', cls: 'far-future' };
-  return { text: '', cls: '' };
-}
 function buildEpgBlockHtml(ch) {
   if (!epgLoaded) return '<div class="card-epg"><div class="epg-empty">Loading guide…</div></div>';
   var progs = epgByChannelId[String(ch.id)];
   var st = getProgramState(progs);
-  if (!st) return '<div class="card-epg"><div class="epg-empty">' + (progs && progs.length ? 'No guide data' : 'No guide data') + '</div></div>';
-  var p = st.p, lbl = stateLabel(st.state);
-  var html = '<div class="card-epg ' + st.state + '">';
-  html += '<div class="epg-now-row"><span class="epg-now-label ' + lbl.cls + '">' + lbl.text + '</span><span class="epg-now-time">' + formatRange(p.s, p.e) + '</span></div>';
+  if (!st) return '<div class="card-epg"><div class="epg-empty">No guide data</div></div>';
+  var p = st.p, prog = progProgress(st);
+  var html = '<div class="card-epg">';
+  html += '<div class="epg-now-row"><span class="epg-now-label">● LIVE</span><span class="epg-now-time">' + formatRange(p.s, p.e) + '</span></div>';
   html += '<div class="epg-now-title">' + escapeHtml(p.t || 'No Title') + '</div>';
   if (p.ep || p.g) html += '<div class="epg-now-meta">' + (p.ep ? escapeHtml(p.ep) : '') + (p.ep && p.g ? ' · ' : '') + (p.g ? escapeHtml(p.g) : '') + '</div>';
   if (p.d) html += '<div class="epg-now-desc">' + escapeHtml(truncate(p.d, 120)) + '</div>';
-  if (st.state === 'live') {
-    html += '<div class="epg-progress"><div class="epg-progress-fill" style="width:' + progProgress(st).toFixed(1) + '%"></div></div>';
-    var next = getNextProgram(progs, p.e);
-    if (next) html += '<div class="epg-next-mini">Next: <b>' + escapeHtml(truncate(next.t, 40)) + '</b> at ' + formatTimeOnly(next.s) + '</div>';
-  }
+  if (prog !== null) html += '<div class="epg-progress"><div class="epg-progress-fill" style="width:' + prog.toFixed(1) + '%"></div></div>';
+  var next = getNextProgram(progs, p);
+  if (next) html += '<div class="epg-next-mini">Next: <b>' + escapeHtml(truncate(next.t, 40)) + '</b> at ' + formatTimeOnly(next.s) + '</div>';
   return html + '</div>';
 }
 function updateCardEpg(id) {
@@ -594,7 +563,6 @@ function refreshAllCardsEpg() {
   rAF(step);
 }
 
-/* ════════ Channel JSON ════════ */
 function parseChannelJson(text) {
   var c = String(text).trim();
   if (c.charCodeAt(0) === 0xFEFF) c = c.slice(1);
@@ -609,7 +577,6 @@ function fetchChannelsFrom(idx) {
     .catch(function(){ return fetchChannelsFrom(idx + 1); });
 }
 
-/* ════════ Cards ════════ */
 function buildCardHtml(ch, idx) {
   var cat = ch.category || ch.group || 'Other';
   var num = getChannelNumber(ch);
@@ -627,8 +594,7 @@ function renderAllCards(onDone) {
   gridEl.innerHTML = '';
   var list = displayedChannels;
   function step() {
-    var end = Math.min(i + batch, list.length);
-    var html = '';
+    var end = Math.min(i + batch, list.length), html = '';
     for (; i < end; i++) html += buildCardHtml(list[i], i);
     gridEl.insertAdjacentHTML('beforeend', html);
     if (i < list.length) rAF(step);
@@ -653,7 +619,6 @@ function buildCardMap() {
   }
 }
 
-/* ════════ Sort / filter ════════ */
 function sortChannels(arr) {
   var copy = arr.slice();
   if (sortMode === 'number') copy.sort(function(a,b){ var na = getChannelNumber(a), nb = getChannelNumber(b); if (na === null && nb === null) return (a.name || '').localeCompare(b.name || ''); if (na === null) return 1; if (nb === null) return -1; return na - nb; });
@@ -665,7 +630,7 @@ function channelMatches(ch, q, cat) {
   var chCat = ch.category || ch.group || 'Other';
   if (cat === 'favorites') { if (!favorites[String(ch.id)]) return false; }
   else if (cat === 'recents') { if (recents.indexOf(String(ch.id)) === -1) return false; }
-  else if (cat === 'live') { var st = getProgramState(epgByChannelId[String(ch.id)]); if (!st || st.state !== 'live') return false; }
+  else if (cat === 'live') { if (!epgByChannelId[String(ch.id)]) return false; }
   else if (cat !== 'all' && chCat !== cat) return false;
   if (q) {
     var nameLow = (ch.name || '').toLowerCase(), catLow = chCat.toLowerCase();
@@ -703,7 +668,6 @@ function renderCategories() {
   for (var c = 0; c < chips.length; c++) (function(chip){ chip.addEventListener('click', function(){ selectedCategory = chip.getAttribute('data-cat'); renderCategories(); applyFilter(); wrapEl.scrollTop = 0; }); })(chips[c]);
 }
 
-/* ════════ Detail modal ════════ */
 function openDetails(ch) {
   currentDetailChannel = ch; currentDetailTab = 'info';
   dTabInfo.classList.add('active'); dTabGuide.classList.remove('active');
@@ -718,31 +682,29 @@ function renderDetailBody() { if (!currentDetailChannel) return; if (currentDeta
 function renderInfoTab(ch) {
   var progs = epgByChannelId[String(ch.id)] || [];
   var st = getProgramState(progs);
-  var next = st ? getNextProgram(progs, st.p.e) : getNextProgram(progs, Date.now());
   var body = '';
   if (st) {
-    var cls = st.state === 'live' ? 'now' : (st.state === 'recent' ? 'recent' : (st.state === 'upcoming' ? 'next' : 'none'));
-    var lbl = stateLabel(st.state).text;
-    body += '<div class="detail-show ' + cls + '"><div class="show-label">' + lbl + ' · ' + formatRange(st.p.s, st.p.e) + '</div><div class="show-title">' + escapeHtml(st.p.t || 'No Title') + '</div>';
-    if (st.p.ep || st.p.g) body += '<div class="show-meta-row">' + (st.p.ep ? escapeHtml(st.p.ep) : '') + (st.p.g ? ' · ' + escapeHtml(st.p.g) : '') + '</div>';
-    if (st.p.ic) body += '<div class="show-image"><img src="' + escapeHtml(st.p.ic) + '" onerror="this.parentNode.style.display=\'none\'"></div>';
-    if (st.p.d) body += '<div class="show-desc">' + escapeHtml(st.p.d) + '</div>';
-    if (st.state === 'live') body += '<div class="epg-progress"><div class="epg-progress-fill" style="width:' + progProgress(st).toFixed(1) + '%"></div></div>';
+    var p = st.p, prog = progProgress(st);
+    body += '<div class="detail-show now"><div class="show-label">● LIVE · ' + formatRange(p.s, p.e) + '</div><div class="show-title">' + escapeHtml(p.t || 'No Title') + '</div>';
+    if (p.ep || p.g) body += '<div class="show-meta-row">' + (p.ep ? escapeHtml(p.ep) : '') + (p.g ? ' · ' + escapeHtml(p.g) : '') + '</div>';
+    if (p.ic) body += '<div class="show-image"><img src="' + escapeHtml(p.ic) + '" onerror="this.parentNode.style.display=\'none\'"></div>';
+    if (p.d) body += '<div class="show-desc">' + escapeHtml(p.d) + '</div>';
+    if (prog !== null) body += '<div class="epg-progress"><div class="epg-progress-fill" style="width:' + prog.toFixed(1) + '%"></div></div>';
     body += '</div>';
-  } else if (epgLoaded) body += '<div class="detail-show none"><div class="show-label">● NOW</div><div class="show-title">No guide data for this channel</div></div>';
-  else body += '<div class="detail-show none"><div class="show-label">● NOW</div><div class="show-title">Loading guide…</div></div>';
-  if (next) {
-    body += '<div class="detail-show next"><div class="show-label">○ NEXT · ' + formatRange(next.s, next.e) + '</div><div class="show-title">' + escapeHtml(next.t || 'No Title') + '</div>';
-    if (next.d) body += '<div class="show-desc">' + escapeHtml(next.d) + '</div>';
-    body += '</div>';
-  }
+    var next = getNextProgram(progs, p);
+    if (next) {
+      body += '<div class="detail-show next"><div class="show-label">○ NEXT · ' + formatRange(next.s, next.e) + '</div><div class="show-title">' + escapeHtml(next.t || 'No Title') + '</div>';
+      if (next.d) body += '<div class="show-desc">' + escapeHtml(next.d) + '</div>';
+      body += '</div>';
+    }
+  } else if (epgLoaded) body += '<div class="detail-show none"><div class="show-label">● LIVE</div><div class="show-title">No guide data for this channel</div></div>';
+  else body += '<div class="detail-show none"><div class="show-label">● LIVE</div><div class="show-title">Loading guide…</div></div>';
   dBody.innerHTML = body;
 }
 function renderGuideTab(ch) {
   var progs = epgByChannelId[String(ch.id)] || [];
   if (!progs.length) { dBody.innerHTML = '<div class="msg" style="padding:30px">No guide data for this channel.</div>'; return; }
-  var now = Date.now();
-  var strictLive = getStrictLive(progs, now);
+  var now = Date.now(), st = getProgramState(progs), strict = st ? st.strict : false, actualLive = strict ? st.p : null;
   var todayStart = new Date(); todayStart.setHours(0,0,0,0);
   var todayEnd = todayStart.getTime() + 86400000;
   var filtered = progs.filter(function(p){ return p.e > todayStart.getTime() && p.s < todayEnd; });
@@ -750,7 +712,7 @@ function renderGuideTab(ch) {
   var body = '';
   for (var i = 0; i < filtered.length; i++) {
     var p = filtered[i];
-    var isLive = strictLive && strictLive.p === p;
+    var isLive = actualLive && actualLive === p;
     var isPast = p.e <= now;
     var cls = isLive ? ' live' : (isPast ? ' past' : '');
     var badge = isLive ? ' <span class="airing-tag">● AIRING</span>' : '';
@@ -760,7 +722,6 @@ function renderGuideTab(ch) {
 }
 function closeDetails(){ detailModal.classList.add('hidden'); currentDetailChannel = null; }
 
-/* ════════ Player launch ════════ */
 function openPlayer(ch) {
   addRecent(ch.id);
   try {
@@ -777,7 +738,6 @@ function openPlayer(ch) {
   try { var w = window.open(url, '_blank'); if (!w) window.location.href = url; } catch (e) { window.location.href = url; }
 }
 
-/* ════════ Channel number overlay ════════ */
 function showChNumOverlay(){ chNumValue.textContent = chNumBuffer || '—'; chNumOverlay.classList.add('visible'); }
 function hideChNumOverlay(){ chNumOverlay.classList.remove('visible'); }
 function handleChNumDigit(digit) { if (chNumBuffer.length >= 4) chNumBuffer = ''; chNumBuffer += digit; showChNumOverlay(); clearTimeout(chNumTimer); chNumTimer = setTimeout(commitChNum, 1200); }
@@ -790,27 +750,11 @@ function commitChNum() {
 }
 function cancelChNum(){ chNumBuffer = ''; clearTimeout(chNumTimer); hideChNumOverlay(); }
 
-/* ════════ Coverage stats ════════ */
-function countCoverage() {
-  var now = Date.now(), withData = 0, live = 0, recent = 0, upcoming = 0, farPast = 0, farFuture = 0;
-  for (var i = 0; i < allChannels.length; i++) {
-    var progs = epgByChannelId[String(allChannels[i].id)];
-    if (progs && progs.length) {
-      withData++;
-      var st = getProgramState(progs, now);
-      if (st) {
-        if (st.state === 'live') live++;
-        else if (st.state === 'recent') recent++;
-        else if (st.state === 'upcoming') upcoming++;
-        else if (st.state === 'far-past') farPast++;
-        else if (st.state === 'far-future') farFuture++;
-      }
-    }
-  }
-  return { withData: withData, live: live, recent: recent, upcoming: upcoming, farPast: farPast, farFuture: farFuture };
+function countLive() {
+  var c = 0;
+  for (var i = 0; i < allChannels.length; i++) if (epgByChannelId[String(allChannels[i].id)]) c++;
+  return c;
 }
-
-/* ════════ Load EPG ════════ */
 function loadEPG() {
   var t0 = Date.now();
   setEpgStatus('Loading guide (jioepg)…');
@@ -818,21 +762,19 @@ function loadEPG() {
     if (result && Object.keys(result.data).length) {
       epgByChannelId = result.data; epgLoaded = true; saveCache();
       var elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-      var cov = countCoverage(), total = allChannels.length;
-      var pct = Math.round((cov.withData / total) * 100);
+      var live = countLive(), total = allChannels.length;
+      var pct = Math.round((live / total) * 100);
       var kind = pct >= 60 ? 'ok' : (pct >= 30 ? 'warn' : 'error');
-      setEpgStatus('Guide: ' + cov.withData + '/' + total + ' ch (' + pct + '%) · ' + cov.live + ' live · ' + cov.recent + ' recent · ' + cov.upcoming + ' next · ' + cov.farPast + ' past · ' + cov.farFuture + ' future · ' + elapsed + 's', kind);
-      setTimeout(function(){ setEpgStatus(''); }, 14000);
+      setEpgStatus('Guide: ' + live + '/' + total + ' channels live (' + pct + '%) · ' + elapsed + 's', kind);
+      setTimeout(function(){ setEpgStatus(''); }, 12000);
       refreshAllCardsEpg();
-      safeLog('[epg] DONE — ' + cov.withData + '/' + total + ' ch · live=' + cov.live + ' recent=' + cov.recent + ' upcoming=' + cov.upcoming + ' farPast=' + cov.farPast + ' farFuture=' + cov.farFuture);
+      safeLog('[epg] DONE — ' + live + '/' + total + ' live');
     } else {
       setEpgStatus('Guide unavailable — channels only', 'error');
       setTimeout(function(){ setEpgStatus(''); }, 5000);
     }
   });
 }
-
-/* ════════ Load channels ════════ */
 function loadChannels() {
   gridEl.innerHTML = '<div class="msg"><div class="spinner"></div><div>Loading channels…</div></div>';
   var last = CHANNELS_CANDIDATES[CHANNELS_CANDIDATES.length - 1];
@@ -846,9 +788,9 @@ function loadChannels() {
       renderAllCards(function() {
         if (cacheFresh) {
           refreshAllCardsEpg();
-          var cov = countCoverage();
-          setEpgStatus('Cache: ' + cov.withData + '/' + allChannels.length + ' · ' + cov.live + ' live · ' + cov.recent + ' recent · ' + cov.upcoming + ' next · ' + cov.farPast + ' past · ' + cov.farFuture + ' future');
-          setTimeout(function(){ setEpgStatus(''); }, 6000);
+          var live = countLive();
+          setEpgStatus('Cache: ' + live + '/' + allChannels.length + ' channels live');
+          setTimeout(function(){ setEpgStatus(''); }, 5000);
         } else loadEPG();
       });
       if (progressUpdateTimer) clearInterval(progressUpdateTimer);
@@ -857,7 +799,6 @@ function loadChannels() {
     .catch(function() { gridEl.innerHTML = '<div class="msg err">⚠️ Could not load channels.<br><button onclick="location.reload()">Retry</button></div>'; });
 }
 
-/* ════════ Wiring ════════ */
 var searchTimer = null;
 searchEl.addEventListener('input', function() { clearTimeout(searchTimer); searchTimer = setTimeout(function() { searchQuery = searchEl.value.trim().toLowerCase(); applyFilter(); wrapEl.scrollTop = 0; }, 150); });
 sortSelect.addEventListener('change', function() { sortMode = sortSelect.value; savePrefs(); applyFilter(); });
