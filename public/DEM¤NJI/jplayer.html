@@ -4,136 +4,117 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<meta name="format-detection" content="telephone=no">
 <title>Player</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@2.5.5/dist/controls.css">
 <script src="https://cdn.jsdelivr.net/npm/shaka-player@2.5.5/dist/shaka-player.ui.min.js"></script>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { background: #000; width: 100%; height: 100%; overflow: hidden; font-family: Arial, Helvetica, sans-serif; color: #eee; -webkit-user-select: none; user-select: none; -webkit-text-size-adjust: 100%; }
-#playerWrapper { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #000; overflow: hidden; }
-#videoContainer { position: absolute; top: 0; left: 0; right: 0; bottom: 0; width: 100%; height: 100%; background: #000; overflow: hidden; }
-#video { width: 100%; height: 100%; background: #000; object-fit: contain; object-position: center center; display: block; }
-#video.fit-contain { object-fit: contain !important; }
-#video.fit-cover { object-fit: cover !important; }
-#video.fit-stretch { object-fit: fill !important; }
-#topBar { position: absolute; top: 0; left: 0; right: 0; z-index: 10; padding: 12px 16px; padding-top: calc(12px + env(safe-area-inset-top)); padding-left: calc(16px + env(safe-area-inset-left)); padding-right: calc(16px + env(safe-area-inset-right)); background: linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0)); display: flex; align-items: center; gap: 10px; transition: opacity .3s ease, visibility .3s ease; pointer-events: none; }
-#topBar.hidden { opacity: 0; visibility: hidden; }
-.top-btn { pointer-events: auto; background: rgba(255,255,255,0.14); border: 1px solid rgba(255,255,255,0.28); color: #fff; border-radius: 8px; padding: 10px 14px; min-height: 44px; font-size: 14px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; white-space: nowrap; transition: background .15s, border-color .15s; flex-shrink: 0; }
-.top-btn:hover { background: rgba(255,255,255,0.22); }
-.top-btn:focus { background: rgba(30,90,120,0.9); border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79,195,247,0.4); }
-#titleWrap { flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; gap: 8px; pointer-events: none; }
-#chNum { display: inline-block; padding: 3px 9px; background: rgba(79,195,247,0.18); border: 1px solid rgba(79,195,247,0.5); color: #7cd0f5; border-radius: 6px; font-size: 13px; font-weight: bold; letter-spacing: 1px; flex-shrink: 0; }
-#chNum:empty { display: none; }
-#title { font-size: 16px; font-weight: bold; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.9); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
-#dthBanner { position: absolute; bottom: 100px; left: 16px; right: 16px; z-index: 15; background: linear-gradient(135deg, rgba(12,22,32,0.97) 0%, rgba(18,35,50,0.94) 100%); border: 1px solid rgba(79,195,247,0.35); border-radius: 14px; padding: 14px 18px; box-shadow: 0 8px 32px rgba(0,0,0,0.7); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); transform: translateY(30px); opacity: 0; visibility: hidden; pointer-events: none; transition: transform .3s ease, opacity .3s ease, visibility .3s ease; cursor: pointer; }
-#dthBanner.visible { transform: translateY(0); opacity: 1; visibility: visible; pointer-events: auto; }
-.dth-row { display: flex; gap: 16px; align-items: flex-start; }
-.dth-logo-box { width: 100px; height: 100px; border-radius: 10px; background: #0a0a0a; border: 1px solid rgba(79,195,247,0.25); position: relative; flex-shrink: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-.dth-logo { max-width: 78px; max-height: 62px; object-fit: contain; display: block; }
-.dth-ch-num { position: absolute; bottom: 0; left: 0; right: 0; text-align: center; font-size: 11px; font-weight: bold; color: #7cd0f5; background: rgba(0,0,0,0.88); padding: 3px 0; letter-spacing: 1.5px; border-top: 1px solid rgba(79,195,247,0.25); }
-.dth-logo-box.no-logo .dth-logo { display: none; }
-.dth-logo-box.no-logo .dth-ch-num { position: static; font-size: 22px; font-weight: bold; background: transparent; color: #4fc3f7; border: none; letter-spacing: 1px; padding: 0; }
-.dth-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-.dth-ch-name { font-size: 18px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 3px rgba(0,0,0,0.8); line-height: 1.2; }
-.dth-now { background: rgba(79,195,247,0.07); border-left: 3px solid #66bb6a; border-radius: 6px; padding: 8px 10px; display: flex; flex-direction: column; gap: 4px; }
-.dth-now-header { display: flex; align-items: center; gap: 8px; font-size: 11px; }
-.dth-now-label { color: #66bb6a; font-weight: bold; letter-spacing: 1px; flex-shrink: 0; }
-.dth-now-time { color: #a0b8c8; font-size: 11px; }
-.dth-now-title { font-size: 14px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.3; }
-.dth-now-meta { font-size: 11px; color: #7cd0f5; }
-.dth-progress { height: 4px; background: rgba(255,255,255,0.12); border-radius: 2px; overflow: hidden; margin-top: 4px; }
-.dth-progress-fill { height: 100%; background: linear-gradient(90deg, #66bb6a 0%, #4fc3f7 100%); border-radius: 2px; width: 0%; transition: width 1s linear; }
-.dth-next { display: flex; align-items: center; gap: 8px; font-size: 12px; padding: 4px 10px; background: rgba(79,195,247,0.05); border-left: 3px solid #4fc3f7; border-radius: 6px; opacity: 0.9; }
-.dth-next-label { color: #4fc3f7; font-weight: bold; font-size: 11px; letter-spacing: 1px; flex-shrink: 0; }
-.dth-next-time { color: #9bbdd0; font-size: 11px; flex-shrink: 0; }
-.dth-next-title { color: #e0e8ee; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-weight: bold; }
-.dth-hint { font-size: 10px; color: #7a8a95; text-align: right; margin-top: 4px; letter-spacing: 0.5px; }
-#placeholder { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #000; color: #888; text-align: center; padding: 24px; font-size: 15px; line-height: 1.6; }
-#placeholder.hidden { display: none; }
-#placeholder .ph-actions { margin-top: 22px; display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
-#placeholder button { background: #2a2a2a; border: none; color: #eee; padding: 12px 22px; min-height: 44px; border-radius: 8px; font-size: 15px; cursor: pointer; font-family: inherit; outline: none; }
-#placeholder button:hover { background: #3a3a3a; }
-#placeholder button:focus { background: #1e5a78; box-shadow: 0 0 0 2px rgba(79,195,247,0.4); }
-.spinner { display: inline-block; width: 34px; height: 34px; border: 3px solid #333; border-top-color: #4fc3f7; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
-@keyframes spin { to { transform: rotate(360deg); } }
-#tapToPlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.4); cursor: pointer; }
-#tapToPlay.hidden { display: none; }
-.tap-play-inner { display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 30px 50px; background: rgba(10,20,28,0.92); border: 2px solid #4fc3f7; border-radius: 20px; box-shadow: 0 8px 32px rgba(0,0,0,0.7); }
-.tap-play-icon { width: 80px; height: 80px; border-radius: 50%; background: #4fc3f7; color: #001018; display: flex; align-items: center; justify-content: center; font-size: 40px; padding-left: 8px; transition: transform .15s; }
-.tap-play-text { font-size: 18px; font-weight: bold; color: #fff; }
-#tapToPlay:hover .tap-play-icon { transform: scale(1.08); }
-#unmuteBtn { position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 30; display: flex; align-items: center; gap: 10px; padding: 12px 22px; background: rgba(220,53,69,0.95); border: 2px solid rgba(255,255,255,0.4); color: #fff; border-radius: 30px; font-size: 15px; font-weight: bold; font-family: inherit; cursor: pointer; outline: none; box-shadow: 0 4px 20px rgba(0,0,0,0.6); animation: pulseUnmute 1.8s ease-in-out infinite; }
-#unmuteBtn.hidden { display: none; }
-#unmuteBtn:hover, #unmuteBtn:focus { background: rgba(240,70,85,1); }
-@keyframes pulseUnmute { 0%,100% { box-shadow: 0 4px 20px rgba(0,0,0,0.6), 0 0 0 0 rgba(220,53,69,0.7); } 50% { box-shadow: 0 4px 20px rgba(0,0,0,0.6), 0 0 0 10px rgba(220,53,69,0); } }
-.unmute-icon { font-size: 20px; }
-#chNumOverlay { position: fixed; top: 22%; left: 50%; transform: translateX(-50%); min-width: 200px; padding: 20px 40px; background: rgba(10,20,28,0.96); border: 3px solid #4fc3f7; border-radius: 18px; text-align: center; z-index: 2000; pointer-events: none; display: none; box-shadow: 0 8px 32px rgba(0,0,0,0.7); }
-#chNumOverlay.visible { display: block; }
-#chNumOverlay .num-label { font-size: 12px; color: #7ab8d6; letter-spacing: 2px; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; }
-#chNumOverlay .num-value { font-size: 72px; color: #fff; font-weight: bold; line-height: 1; letter-spacing: 4px; text-shadow: 0 2px 10px rgba(79,195,247,0.6); }
-#toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(30,30,30,0.95); color: #fff; padding: 12px 22px; border-radius: 8px; border: 1px solid #4fc3f7; font-size: 14px; z-index: 2500; opacity: 0; transition: opacity .25s; pointer-events: none; max-width: 90vw; text-align: center; }
-#toast.visible { opacity: 1; }
-#toast.error { border-color: #ef5350; color: #ffc7c7; }
-.overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.92); z-index: 1800; display: flex; align-items: center; justify-content: center; padding: 16px; }
-.overlay.hidden { display: none; }
-.overlay-panel { background: #121a24; border-radius: 14px; max-width: 700px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; border: 1px solid #2a3a4a; overflow: hidden; }
-.overlay-panel h2 { padding: 16px 20px; border-bottom: 1px solid #2a3a4a; font-size: 17px; color: #4fc3f7; background: #0e1620; }
-.overlay-body { overflow-y: auto; padding: 14px 20px; flex: 1; }
-.overlay-footer { padding: 12px 20px; border-top: 1px solid #2a3a4a; background: #0e1620; display: flex; gap: 10px; }
-.overlay-footer button { flex: 1; padding: 12px; background: #2a2a2a; color: #eee; border: 1px solid #444; border-radius: 8px; font-size: 14px; font-weight: bold; font-family: inherit; cursor: pointer; outline: none; }
-.overlay-footer button:hover { background: #3a3a3a; border-color: #4fc3f7; }
-.guide-row { display: flex; gap: 12px; padding: 9px 0; border-bottom: 1px solid #1a2530; }
-.guide-row:last-child { border-bottom: none; }
-.guide-time { font-size: 12px; color: #7cd0f5; font-weight: bold; min-width: 95px; flex-shrink: 0; }
-.guide-title { font-size: 13px; color: #ddd; flex: 1; }
-.guide-row.live .guide-time { color: #66bb6a; }
-.guide-row.live .guide-title { color: #fff; font-weight: bold; }
-.guide-row.past { opacity: 0.5; }
-.airing-tag { background: #66bb6a; color: #fff; font-size: 9px; font-weight: bold; padding: 1px 5px; border-radius: 3px; letter-spacing: .5px; }
-.overlap-tag { color: #7a8a95; font-size: 10px; }
-.mini-channel-strip { display: flex; flex-wrap: wrap; gap: 8px; }
-.mini-ch { padding: 8px 12px; background: #1a2530; border: 1px solid #2a3a4a; color: #ddd; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; }
-.mini-ch:hover { background: #22303e; border-color: #4fc3f7; }
-.mini-ch.active { background: #1e5a78; border-color: #4fc3f7; color: #fff; }
-.mini-ch-num { color: #7cd0f5; font-family: monospace; margin-right: 6px; }
-.help-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1a2530; font-size: 13px; }
-.help-row:last-child { border-bottom: none; }
-.help-key { background: #1e2a35; border: 1px solid #2f4a5f; border-radius: 4px; padding: 2px 8px; color: #7cd0f5; font-family: monospace; font-size: 12px; }
-.help-desc { color: #ccc; }
-.stats-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1a2530; font-size: 13px; }
-.stats-row:last-child { border-bottom: none; }
-.stats-label { color: #8aa; }
-.stats-value { color: #7cd0f5; font-family: monospace; font-weight: bold; }
-.shaka-controls-container { font-size: 14px; }
-.shaka-bottom-controls { padding-bottom: calc(8px + env(safe-area-inset-bottom)) !important; padding-left: calc(12px + env(safe-area-inset-left)) !important; padding-right: calc(12px + env(safe-area-inset-right)) !important; }
-.shaka-seek-bar-container { height: 6px; }
-@media (min-width: 1280px) { .shaka-controls-container { font-size: 18px; } .shaka-seek-bar-container { height: 8px; } #chNum { font-size: 15px; padding: 4px 10px; } #title { font-size: 22px; } #dthBanner { bottom: 120px; padding: 18px 24px; gap: 20px; } .dth-logo-box { width: 120px; height: 120px; } .dth-logo { max-width: 96px; max-height: 76px; } .dth-ch-name { font-size: 22px; } .dth-now-title { font-size: 17px; } }
-@media (max-width: 480px) { #topBar { gap: 8px; padding: 10px 12px; padding-top: calc(10px + env(safe-area-inset-top)); } #chNum { font-size: 11px; padding: 2px 7px; } #title { font-size: 13px; } .top-btn { padding: 10px 12px; min-height: 42px; font-size: 13px; } #dthBanner { bottom: 80px; left: 10px; right: 10px; padding: 10px 12px; } .dth-logo-box { width: 70px; height: 70px; } .dth-logo { max-width: 56px; max-height: 46px; } .dth-ch-name { font-size: 14px; } .dth-now-title { font-size: 12px; } #unmuteBtn { font-size: 13px; padding: 10px 18px; } .tap-play-icon { width: 64px; height: 64px; font-size: 32px; } .tap-play-text { font-size: 15px; } #chNumOverlay .num-value { font-size: 56px; } }
-@media (max-height: 480px) and (orientation: landscape) { #topBar { padding: 8px 12px; padding-top: calc(8px + env(safe-area-inset-top)); } .top-btn { padding: 8px 12px; min-height: 38px; font-size: 12px; } #dthBanner { bottom: 70px; padding: 8px 12px; } .dth-logo-box { width: 64px; height: 64px; } }
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { background:#000; width:100%; height:100%; overflow:hidden; font-family:Arial,Helvetica,sans-serif; color:#eee; -webkit-user-select:none; user-select:none; }
+#playerWrapper { position:fixed; top:0; left:0; right:0; bottom:0; background:#000; }
+#videoContainer { position:absolute; top:0; left:0; right:0; bottom:0; background:#000; overflow:hidden; }
+#video { width:100%; height:100%; background:#000; object-fit:contain; display:block; }
+#video.fit-contain { object-fit:contain !important; } #video.fit-cover { object-fit:cover !important; } #video.fit-stretch { object-fit:fill !important; }
+#topBar { position:absolute; top:0; left:0; right:0; z-index:10; padding:12px 16px; padding-top:calc(12px + env(safe-area-inset-top)); background:linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0)); display:flex; align-items:center; gap:10px; transition:opacity .3s, visibility .3s; pointer-events:none; }
+#topBar.hidden { opacity:0; visibility:hidden; }
+.top-btn { pointer-events:auto; background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.28); color:#fff; border-radius:8px; padding:10px 14px; min-height:44px; font-size:14px; font-weight:bold; cursor:pointer; font-family:inherit; white-space:nowrap; flex-shrink:0; }
+.top-btn:focus { background:rgba(30,90,120,0.9); border-color:#4fc3f7; }
+#titleWrap { flex:1; min-width:0; display:flex; align-items:center; justify-content:center; gap:8px; pointer-events:none; }
+#chNum { padding:3px 9px; background:rgba(79,195,247,0.18); border:1px solid rgba(79,195,247,0.5); color:#7cd0f5; border-radius:6px; font-size:13px; font-weight:bold; }
+#chNum:empty { display:none; }
+#title { font-size:16px; font-weight:bold; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#dthBanner { position:absolute; bottom:100px; left:16px; right:16px; z-index:15; background:linear-gradient(135deg, rgba(12,22,32,0.97), rgba(18,35,50,0.94)); border:1px solid rgba(79,195,247,0.35); border-radius:14px; padding:14px 18px; transform:translateY(30px); opacity:0; visibility:hidden; pointer-events:none; transition:transform .3s, opacity .3s, visibility .3s; cursor:pointer; }
+#dthBanner.visible { transform:translateY(0); opacity:1; visibility:visible; pointer-events:auto; }
+.dth-row { display:flex; gap:16px; align-items:flex-start; }
+.dth-logo-box { width:100px; height:100px; border-radius:10px; background:#0a0a0a; border:1px solid rgba(79,195,247,0.25); position:relative; flex-shrink:0; display:flex; align-items:center; justify-content:center; overflow:hidden; }
+.dth-logo { max-width:78px; max-height:62px; object-fit:contain; }
+.dth-ch-num { position:absolute; bottom:0; left:0; right:0; text-align:center; font-size:11px; font-weight:bold; color:#7cd0f5; background:rgba(0,0,0,0.88); padding:3px 0; border-top:1px solid rgba(79,195,247,0.25); }
+.dth-logo-box.no-logo .dth-logo { display:none; }
+.dth-logo-box.no-logo .dth-ch-num { position:static; font-size:22px; font-weight:bold; background:transparent; color:#4fc3f7; border:none; }
+.dth-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:8px; }
+.dth-ch-name { font-size:18px; font-weight:bold; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
+.dth-now { background:rgba(79,195,247,0.07); border-left:3px solid #66bb6a; border-radius:6px; padding:8px 10px; display:flex; flex-direction:column; gap:4px; }
+.dth-now.recent { border-left-color:#f7a23f; }
+.dth-now.upcoming { border-left-color:#4fc3f7; }
+.dth-now.far-past, .dth-now.far-future { border-left-color:#555; }
+.dth-now-header { display:flex; align-items:center; gap:8px; font-size:11px; }
+.dth-now-label { color:#66bb6a; font-weight:bold; flex-shrink:0; }
+.dth-now.recent .dth-now-label { color:#f7a23f; }
+.dth-now.upcoming .dth-now-label { color:#4fc3f7; }
+.dth-now.far-past .dth-now-label, .dth-now.far-future .dth-now-label { color:#888; }
+.dth-now-time { color:#a0b8c8; font-size:11px; }
+.dth-now-title { font-size:14px; font-weight:bold; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dth-now-meta { font-size:11px; color:#7cd0f5; }
+.dth-progress { height:4px; background:rgba(255,255,255,0.12); border-radius:2px; overflow:hidden; margin-top:4px; }
+.dth-progress-fill { height:100%; background:linear-gradient(90deg, #66bb6a 0%, #4fc3f7 100%); border-radius:2px; width:0%; }
+.dth-next { display:flex; align-items:center; gap:8px; font-size:12px; padding:4px 10px; background:rgba(79,195,247,0.05); border-left:3px solid #4fc3f7; border-radius:6px; }
+.dth-next-label { color:#4fc3f7; font-weight:bold; font-size:11px; flex-shrink:0; }
+.dth-next-time { color:#9bbdd0; font-size:11px; flex-shrink:0; }
+.dth-next-title { color:#e0e8ee; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:bold; }
+.dth-hint { font-size:10px; color:#7a8a95; text-align:right; margin-top:4px; }
+#placeholder { position:absolute; top:0; left:0; right:0; bottom:0; z-index:50; display:flex; flex-direction:column; align-items:center; justify-content:center; background:#000; color:#888; text-align:center; padding:24px; }
+#placeholder.hidden { display:none; }
+#placeholder .ph-actions { margin-top:22px; display:flex; gap:12px; flex-wrap:wrap; justify-content:center; }
+#placeholder button { background:#2a2a2a; border:none; color:#eee; padding:12px 22px; border-radius:8px; font-size:15px; cursor:pointer; font-family:inherit; }
+.spinner { display:inline-block; width:34px; height:34px; border:3px solid #333; border-top-color:#4fc3f7; border-radius:50%; animation:spin 0.8s linear infinite; margin-bottom:16px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+#tapToPlay { position:absolute; top:0; left:0; right:0; bottom:0; z-index:40; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.4); cursor:pointer; }
+#tapToPlay.hidden { display:none; }
+.tap-play-inner { display:flex; flex-direction:column; align-items:center; gap:14px; padding:30px 50px; background:rgba(10,20,28,0.92); border:2px solid #4fc3f7; border-radius:20px; }
+.tap-play-icon { width:80px; height:80px; border-radius:50%; background:#4fc3f7; color:#001018; display:flex; align-items:center; justify-content:center; font-size:40px; padding-left:8px; }
+.tap-play-text { font-size:18px; font-weight:bold; color:#fff; }
+#unmuteBtn { position:absolute; bottom:24px; left:50%; transform:translateX(-50%); z-index:30; display:flex; align-items:center; gap:10px; padding:12px 22px; background:rgba(220,53,69,0.95); border:2px solid rgba(255,255,255,0.4); color:#fff; border-radius:30px; font-size:15px; font-weight:bold; font-family:inherit; cursor:pointer; }
+#unmuteBtn.hidden { display:none; }
+#chNumOverlay { position:fixed; top:22%; left:50%; transform:translateX(-50%); min-width:200px; padding:20px 40px; background:rgba(10,20,28,0.96); border:3px solid #4fc3f7; border-radius:18px; text-align:center; z-index:2000; pointer-events:none; display:none; }
+#chNumOverlay.visible { display:block; }
+#chNumOverlay .num-label { font-size:12px; color:#7ab8d6; font-weight:bold; margin-bottom:6px; }
+#chNumOverlay .num-value { font-size:72px; color:#fff; font-weight:bold; line-height:1; }
+#toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:rgba(30,30,30,0.95); color:#fff; padding:12px 22px; border-radius:8px; border:1px solid #4fc3f7; font-size:14px; z-index:2500; opacity:0; transition:opacity .25s; pointer-events:none; max-width:90vw; }
+#toast.visible { opacity:1; }
+#toast.error { border-color:#ef5350; color:#ffc7c7; }
+.overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.92); z-index:1800; display:flex; align-items:center; justify-content:center; padding:16px; }
+.overlay.hidden { display:none; }
+.overlay-panel { background:#121a24; border-radius:14px; max-width:700px; width:100%; max-height:90vh; display:flex; flex-direction:column; border:1px solid #2a3a4a; overflow:hidden; }
+.overlay-panel h2 { padding:16px 20px; border-bottom:1px solid #2a3a4a; font-size:17px; color:#4fc3f7; background:#0e1620; }
+.overlay-body { overflow-y:auto; padding:14px 20px; flex:1; }
+.overlay-footer { padding:12px 20px; border-top:1px solid #2a3a4a; background:#0e1620; display:flex; gap:10px; }
+.overlay-footer button { flex:1; padding:12px; background:#2a2a2a; color:#eee; border:1px solid #444; border-radius:8px; font-size:14px; font-weight:bold; font-family:inherit; cursor:pointer; }
+.guide-row { display:flex; gap:12px; padding:9px 0; border-bottom:1px solid #1a2530; }
+.guide-time { font-size:12px; color:#7cd0f5; font-weight:bold; min-width:95px; flex-shrink:0; }
+.guide-title { font-size:13px; color:#ddd; flex:1; }
+.guide-row.live .guide-time { color:#66bb6a; } .guide-row.live .guide-title { color:#fff; font-weight:bold; }
+.guide-row.past { opacity:0.5; }
+.airing-tag { background:#66bb6a; color:#fff; font-size:9px; font-weight:bold; padding:1px 5px; border-radius:3px; }
+.mini-channel-strip { display:flex; flex-wrap:wrap; gap:8px; }
+.mini-ch { padding:8px 12px; background:#1a2530; border:1px solid #2a3a4a; color:#ddd; border-radius:8px; font-size:12px; font-weight:bold; cursor:pointer; font-family:inherit; }
+.mini-ch.active { background:#1e5a78; border-color:#4fc3f7; color:#fff; }
+.mini-ch-num { color:#7cd0f5; font-family:monospace; margin-right:6px; }
+.help-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #1a2530; font-size:13px; }
+.help-key { background:#1e2a35; border:1px solid #2f4a5f; border-radius:4px; padding:2px 8px; color:#7cd0f5; font-family:monospace; font-size:12px; }
+.stats-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #1a2530; font-size:13px; }
+.stats-label { color:#8aa; }
+.stats-value { color:#7cd0f5; font-family:monospace; font-weight:bold; }
+.shaka-controls-container { font-size:14px; }
+@media (max-width: 480px) { .top-btn { padding:10px 12px; min-height:42px; font-size:13px; } #dthBanner { bottom:80px; left:10px; right:10px; padding:10px 12px; } .dth-logo-box { width:70px; height:70px; } .dth-ch-name { font-size:14px; } .dth-now-title { font-size:12px; } }
 </style>
 </head>
 <body>
 <div id="playerWrapper">
   <div id="videoContainer">
-    <video id="video" autoplay playsinline webkit-playsinline preload="auto" x5-playsinline x5-video-player-type="h5"></video>
+    <video id="video" autoplay playsinline webkit-playsinline preload="auto"></video>
     <div id="topBar">
-      <button id="backBtn" class="top-btn" type="button" tabindex="0">◄</button>
+      <button id="backBtn" class="top-btn" type="button">◄</button>
       <div id="titleWrap"><span id="chNum"></span><span id="title">…</span></div>
-      <button id="guideBtn" class="top-btn" type="button" tabindex="0">📅</button>
-      <button id="fitBtn" class="top-btn" type="button" tabindex="0">FIT</button>
-      <button id="helpBtn" class="top-btn" type="button" tabindex="0">?</button>
+      <button id="guideBtn" class="top-btn" type="button">📅</button>
+      <button id="fitBtn" class="top-btn" type="button">FIT</button>
+      <button id="helpBtn" class="top-btn" type="button">?</button>
     </div>
     <div id="dthBanner">
       <div class="dth-row">
-        <div class="dth-logo-box" id="dthLogoBox">
-          <img class="dth-logo" id="dthLogo" src="" alt="">
-          <div class="dth-ch-num" id="dthChNum">CH —</div>
-        </div>
+        <div class="dth-logo-box" id="dthLogoBox"><img class="dth-logo" id="dthLogo" src=""><div class="dth-ch-num" id="dthChNum">CH —</div></div>
         <div class="dth-info">
           <div class="dth-ch-name" id="dthChName">Loading…</div>
-          <div class="dth-now">
-            <div class="dth-now-header"><span class="dth-now-label">● NOW</span><span class="dth-now-time" id="dthNowTime"></span></div>
+          <div class="dth-now" id="dthNowBox">
+            <div class="dth-now-header"><span class="dth-now-label" id="dthNowLabel">● NOW</span><span class="dth-now-time" id="dthNowTime"></span></div>
             <div class="dth-now-title" id="dthNowTitle"></div>
             <div class="dth-now-meta" id="dthNowMeta"></div>
             <div class="dth-progress"><div class="dth-progress-fill" id="dthProgressFill"></div></div>
@@ -144,41 +125,32 @@ html, body { background: #000; width: 100%; height: 100%; overflow: hidden; font
       <div class="dth-hint">Tap banner for full guide</div>
     </div>
     <div id="tapToPlay" class="hidden"><div class="tap-play-inner"><div class="tap-play-icon">▶</div><div class="tap-play-text">Tap to play</div></div></div>
-    <button id="unmuteBtn" class="hidden" type="button"><span class="unmute-icon">🔇</span><span class="unmute-text">Tap for sound</span></button>
+    <button id="unmuteBtn" class="hidden" type="button">🔇 Tap for sound</button>
   </div>
   <div id="placeholder">
     <div class="spinner" id="phSpinner"></div>
     <div id="phMsg">Loading…</div>
-    <div class="ph-actions" id="phActions" style="display:none">
-      <button id="phBackBtn" type="button">◄ Back to channels</button>
-      <button id="phRetryBtn" type="button">⟳ Retry</button>
-    </div>
+    <div class="ph-actions" id="phActions" style="display:none"><button id="phBackBtn" type="button">◄ Back</button><button id="phRetryBtn" type="button">⟳ Retry</button></div>
   </div>
 </div>
 <div id="chNumOverlay"><div class="num-label">Channel</div><div class="num-value" id="chNumValue"></div></div>
 <div id="toast"></div>
 <div id="guideModal" class="overlay hidden"><div class="overlay-panel"><h2 id="guideTitle">📅 Full Guide</h2><div class="overlay-body" id="guideBody"></div><div class="overlay-footer"><button id="guideClose" type="button">Close</button></div></div></div>
 <div id="miniModal" class="overlay hidden"><div class="overlay-panel"><h2>📺 Channel List</h2><div class="overlay-body"><div id="miniStrip" class="mini-channel-strip">Loading…</div></div><div class="overlay-footer"><button id="miniClose" type="button">Close</button></div></div></div>
-<div id="helpModal" class="overlay hidden"><div class="overlay-panel"><h2>⌨️ Player Shortcuts</h2><div class="overlay-body">
-  <div class="help-row"><span class="help-desc">Type channel number</span><span class="help-key">0-9</span></div>
-  <div class="help-row"><span class="help-desc">Confirm</span><span class="help-key">Enter</span></div>
-  <div class="help-row"><span class="help-desc">Cancel / Close</span><span class="help-key">Esc</span></div>
-  <div class="help-row"><span class="help-desc">Next channel</span><span class="help-key">PgUp / +</span></div>
-  <div class="help-row"><span class="help-desc">Previous channel</span><span class="help-key">PgDn / -</span></div>
-  <div class="help-row"><span class="help-desc">Switch to last channel</span><span class="help-key">Backspace</span></div>
-  <div class="help-row"><span class="help-desc">Full guide</span><span class="help-key">G</span></div>
-  <div class="help-row"><span class="help-desc">Mini channel list</span><span class="help-key">L</span></div>
-  <div class="help-row"><span class="help-desc">Stream stats</span><span class="help-key">I</span></div>
-  <div class="help-row"><span class="help-desc">Fit mode cycle</span><span class="help-key">F</span></div>
-  <div class="help-row"><span class="help-desc">Volume up / down</span><span class="help-key">↑ / ↓</span></div>
-  <div class="help-row"><span class="help-desc">Mute toggle</span><span class="help-key">M</span></div>
-  <div class="help-row"><span class="help-desc">Show this help</span><span class="help-key">? or H</span></div>
+<div id="helpModal" class="overlay hidden"><div class="overlay-panel"><h2>⌨️ Shortcuts</h2><div class="overlay-body">
+<div class="help-row"><span>Channel number</span><span class="help-key">0-9</span></div>
+<div class="help-row"><span>Full guide</span><span class="help-key">G</span></div>
+<div class="help-row"><span>Mini list</span><span class="help-key">L</span></div>
+<div class="help-row"><span>Stats</span><span class="help-key">I</span></div>
+<div class="help-row"><span>Volume ↑ / ↓</span><span class="help-key">↑ / ↓</span></div>
+<div class="help-row"><span>Mute</span><span class="help-key">M</span></div>
+<div class="help-row"><span>Next / Prev</span><span class="help-key">PgUp / PgDn</span></div>
+<div class="help-row"><span>Back to last channel</span><span class="help-key">Backspace</span></div>
 </div><div class="overlay-footer"><button id="helpClose" type="button">Close</button></div></div></div>
-<div id="statsModal" class="overlay hidden"><div class="overlay-panel"><h2>📊 Stream Stats</h2><div class="overlay-body" id="statsBody"></div><div class="overlay-footer"><button id="statsClose" type="button">Close</button></div></div></div>
+<div id="statsModal" class="overlay hidden"><div class="overlay-panel"><h2>📊 Stats</h2><div class="overlay-body" id="statsBody"></div><div class="overlay-footer"><button id="statsClose" type="button">Close</button></div></div></div>
 
 <script>
 if (!Array.prototype.includes) Array.prototype.includes = function(x){ return this.indexOf(x) !== -1; };
-if (!Element.prototype.closest) { Element.prototype.closest = function(sel) { var el = this; while (el) { if (el.matches && el.matches(sel)) return el; el = el.parentElement; } return null; }; }
 function xhrFetch(url, opts) {
   opts = opts || {};
   return new Promise(function(resolve, reject) {
@@ -186,10 +158,7 @@ function xhrFetch(url, opts) {
     xhr.open(opts.method || 'GET', url, true);
     xhr.timeout = opts.timeout || 20000;
     if (opts.headers) for (var k in opts.headers) if (opts.headers.hasOwnProperty(k)) try { xhr.setRequestHeader(k, opts.headers[k]); } catch(e){}
-    xhr.onload = function() {
-      if (xhr.status >= 200 && xhr.status < 300) resolve({ ok:true, status: xhr.status, text: function(){ return Promise.resolve(xhr.responseText); }, json: function(){ return Promise.resolve(JSON.parse(xhr.responseText)); } });
-      else reject(new Error('HTTP ' + xhr.status));
-    };
+    xhr.onload = function() { if (xhr.status >= 200 && xhr.status < 300) resolve({ ok:true, text: function(){ return Promise.resolve(xhr.responseText); }, json: function(){ return Promise.resolve(JSON.parse(xhr.responseText)); } }); else reject(new Error('HTTP ' + xhr.status)); };
     xhr.onerror = function(){ reject(new Error('Network error')); };
     xhr.ontimeout = function(){ reject(new Error('Timeout')); };
     try { xhr.send(opts.body || null); } catch(e){ reject(e); }
@@ -200,70 +169,34 @@ var CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
 var COOKIE_PRIMARY = "https://allinonereborn2.online/jstrweb2/cookies.json";
 var COOKIE_STAR_SPORTS = "https://allinonereborn2.online/jtv-fetch/jstarcookie/cookie.json";
 var RECENT_KEY = 'jtv_recents_v1';
-var EPG_CACHE_KEY = 'jtv_epg_cache_v13';
+var EPG_CACHE_KEY = 'jtv_epg_cache_v15';
 
-var videoEl = document.getElementById('video');
-var videoContainer = document.getElementById('videoContainer');
-var topBar = document.getElementById('topBar');
-var chNumEl = document.getElementById('chNum');
-var titleEl = document.getElementById('title');
-var backBtn = document.getElementById('backBtn');
-var fitBtn = document.getElementById('fitBtn');
-var guideBtn = document.getElementById('guideBtn');
-var helpBtn = document.getElementById('helpBtn');
-var placeholder = document.getElementById('placeholder');
-var phMsg = document.getElementById('phMsg');
-var phSpinner = document.getElementById('phSpinner');
-var phActions = document.getElementById('phActions');
-var phBackBtn = document.getElementById('phBackBtn');
-var phRetryBtn = document.getElementById('phRetryBtn');
-var dthBanner = document.getElementById('dthBanner');
-var dthLogoBox = document.getElementById('dthLogoBox');
-var dthLogo = document.getElementById('dthLogo');
-var dthChNum = document.getElementById('dthChNum');
-var dthChName = document.getElementById('dthChName');
-var dthNowTime = document.getElementById('dthNowTime');
-var dthNowTitle = document.getElementById('dthNowTitle');
-var dthNowMeta = document.getElementById('dthNowMeta');
-var dthProgressFill = document.getElementById('dthProgressFill');
-var dthNextTime = document.getElementById('dthNextTime');
-var dthNextTitle = document.getElementById('dthNextTitle');
-var tapToPlay = document.getElementById('tapToPlay');
-var unmuteBtn = document.getElementById('unmuteBtn');
-var chNumOverlay = document.getElementById('chNumOverlay');
-var chNumValue = document.getElementById('chNumValue');
-var toastEl = document.getElementById('toast');
-var guideModal = document.getElementById('guideModal');
-var guideBody = document.getElementById('guideBody');
-var guideClose = document.getElementById('guideClose');
-var miniModal = document.getElementById('miniModal');
-var miniStrip = document.getElementById('miniStrip');
-var miniClose = document.getElementById('miniClose');
-var helpModal = document.getElementById('helpModal');
-var helpClose = document.getElementById('helpClose');
-var statsModal = document.getElementById('statsModal');
-var statsBody = document.getElementById('statsBody');
-var statsClose = document.getElementById('statsClose');
+var videoEl = document.getElementById('video'), videoContainer = document.getElementById('videoContainer'), topBar = document.getElementById('topBar');
+var chNumEl = document.getElementById('chNum'), titleEl = document.getElementById('title');
+var backBtn = document.getElementById('backBtn'), fitBtn = document.getElementById('fitBtn'), guideBtn = document.getElementById('guideBtn'), helpBtn = document.getElementById('helpBtn');
+var placeholder = document.getElementById('placeholder'), phMsg = document.getElementById('phMsg'), phSpinner = document.getElementById('phSpinner'), phActions = document.getElementById('phActions');
+var phBackBtn = document.getElementById('phBackBtn'), phRetryBtn = document.getElementById('phRetryBtn');
+var dthBanner = document.getElementById('dthBanner'), dthLogoBox = document.getElementById('dthLogoBox'), dthLogo = document.getElementById('dthLogo');
+var dthChNum = document.getElementById('dthChNum'), dthChName = document.getElementById('dthChName'), dthNowBox = document.getElementById('dthNowBox');
+var dthNowLabel = document.getElementById('dthNowLabel'), dthNowTime = document.getElementById('dthNowTime'), dthNowTitle = document.getElementById('dthNowTitle');
+var dthNowMeta = document.getElementById('dthNowMeta'), dthProgressFill = document.getElementById('dthProgressFill');
+var dthNextTime = document.getElementById('dthNextTime'), dthNextTitle = document.getElementById('dthNextTitle');
+var tapToPlay = document.getElementById('tapToPlay'), unmuteBtn = document.getElementById('unmuteBtn');
+var chNumOverlay = document.getElementById('chNumOverlay'), chNumValue = document.getElementById('chNumValue'), toastEl = document.getElementById('toast');
+var guideModal = document.getElementById('guideModal'), guideBody = document.getElementById('guideBody'), guideClose = document.getElementById('guideClose');
+var miniModal = document.getElementById('miniModal'), miniStrip = document.getElementById('miniStrip'), miniClose = document.getElementById('miniClose');
+var helpModal = document.getElementById('helpModal'), helpClose = document.getElementById('helpClose');
+var statsModal = document.getElementById('statsModal'), statsBody = document.getElementById('statsBody'), statsClose = document.getElementById('statsClose');
 
-var shakaPlayer = null;
-var shakaUI = null;
-var activeCookie = '';
-var currentChannel = null;
-var isLoading = false;
-var channelPrograms = null;
-var programUpdateTimer = null;
-var bannerHideTimer = null;
-var progressTimer = null;
-var lastMouseMoveTs = 0;
-var autoplayAttempted = false;
-var reconnectAttempts = 0;
-var reconnectTimer = null;
-var lastChannelId = null;
-var statsTimer = null;
-var lastProgramKey = '';
-var chNumBuffer = '';
-var chNumTimer = null;
-var toastTimer = null;
+var shakaPlayer = null, shakaUI = null, activeCookie = '', currentChannel = null;
+var isLoading = false, channelPrograms = null;
+var programUpdateTimer = null, bannerHideTimer = null, progressTimer = null;
+var autoplayAttempted = false, reconnectAttempts = 0, reconnectTimer = null;
+var lastChannelId = null, lastProgramKey = '';
+var chNumBuffer = '', chNumTimer = null, toastTimer = null;
+
+var STATE_RECENT_MS = 6 * 3600000;
+var STATE_UPCOMING_MS = 12 * 3600000;
 
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function formatTimeOnly(ms){ var d = new Date(ms), h = d.getHours(), m = d.getMinutes(); var ap = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12; return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap; }
@@ -275,30 +208,12 @@ function showPlaceholder(html, showActions, showSpinner){ placeholder.classList.
 function hidePlaceholder(){ placeholder.classList.add('hidden'); }
 function showToast(msg, isError){ toastEl.textContent = msg; toastEl.classList.add('visible'); if (isError) toastEl.classList.add('error'); else toastEl.classList.remove('error'); clearTimeout(toastTimer); toastTimer = setTimeout(function(){ toastEl.classList.remove('visible'); }, 2500); }
 function getChannelNumber(ch){ if (!ch) return null; var id = ch.id; if (typeof id === 'number') return id; if (typeof id === 'string') { var n = parseInt(id, 10); if (!isNaN(n) && String(n) === id) return n; } return null; }
-function showTapToPlay(){ tapToPlay.classList.remove('hidden'); }
-function hideTapToPlay(){ tapToPlay.classList.add('hidden'); }
-function showUnmuteBtn(){ unmuteBtn.classList.remove('hidden'); }
-function hideUnmuteBtn(){ unmuteBtn.classList.add('hidden'); }
-function attemptPlayback() {
-  autoplayAttempted = true; hideTapToPlay();
-  var p = videoEl.play();
-  if (!p || !p.then) { setTimeout(function() { if (videoEl.paused && !isLoading) tryMutedPlayback(); }, 1500); return; }
-  p.then(function() { hideUnmuteBtn(); hideTapToPlay(); }).catch(function() { tryMutedPlayback(); });
-}
-function tryMutedPlayback() {
-  videoEl.muted = true;
-  var p = videoEl.play();
-  if (!p || !p.then) { setTimeout(function() { if (videoEl.paused) showTapToPlay(); else showUnmuteBtn(); }, 1500); return; }
-  p.then(function() { showUnmuteBtn(); }).catch(function() { showTapToPlay(); });
-}
-tapToPlay.addEventListener('click', function(e){
-  e.stopPropagation(); hideTapToPlay(); videoEl.muted = false;
-  var p = videoEl.play();
-  if (p && p.then) p.then(function(){ hideUnmuteBtn(); }).catch(function(){ videoEl.muted = true; var p2 = videoEl.play(); if (p2 && p2.then) p2.then(function(){ showUnmuteBtn(); }).catch(function(){ showTapToPlay(); }); });
-});
-unmuteBtn.addEventListener('click', function(e){ e.stopPropagation(); videoEl.muted = false; if (videoEl.paused) videoEl.play().catch(function(){}); if (!videoEl.muted) hideUnmuteBtn(); });
+function attemptPlayback() { autoplayAttempted = true; tapToPlay.classList.add('hidden'); var p = videoEl.play(); if (p && p.then) p.then(function(){ unmuteBtn.classList.add('hidden'); }).catch(function(){ tryMutedPlayback(); }); }
+function tryMutedPlayback() { videoEl.muted = true; var p = videoEl.play(); if (p && p.then) p.then(function(){ unmuteBtn.classList.remove('hidden'); }).catch(function(){ tapToPlay.classList.remove('hidden'); }); }
+tapToPlay.addEventListener('click', function(e){ e.stopPropagation(); tapToPlay.classList.add('hidden'); videoEl.muted = false; videoEl.play().then(function(){ unmuteBtn.classList.add('hidden'); }).catch(function(){ videoEl.muted = true; videoEl.play(); }); });
+unmuteBtn.addEventListener('click', function(e){ e.stopPropagation(); videoEl.muted = false; if (videoEl.paused) videoEl.play(); unmuteBtn.classList.add('hidden'); });
 
-/* ════════ Load programs from localStorage ════════ */
+/* ════════ Programs load + fill gaps ════════ */
 function loadChannelPrograms() {
   try {
     var raw = localStorage.getItem('channelPrograms');
@@ -311,78 +226,89 @@ function loadChannelPrograms() {
       if (typeof p.end === 'string') p.end = new Date(p.end).getTime();
     }
     channelPrograms.sort(function(a,b){ return a.start - b.start; });
-    /* Fill gaps */
-    for (var j = 0; j < channelPrograms.length - 1; j++) {
-      if (channelPrograms[j].end < channelPrograms[j+1].start) channelPrograms[j].end = channelPrograms[j+1].start;
-    }
+    for (var j = 0; j < channelPrograms.length - 1; j++) if (channelPrograms[j].end < channelPrograms[j+1].start) channelPrograms[j].end = channelPrograms[j+1].start;
   } catch (e) { channelPrograms = null; }
 }
-
-/* ════════ Cache fallback lookup (id → numeric → prefixed) ════════ */
 function getProgramsFromCache(cache, ch) {
   if (!cache || !cache.data || !ch) return null;
   var idStr = String(ch.id);
   if (cache.data[idStr] && cache.data[idStr].length) return cache.data[idStr];
   var num = idStr.match(/(\d{1,6})\s*$/);
   if (num && num[1] !== idStr && cache.data[num[1]] && cache.data[num[1]].length) return cache.data[num[1]];
-  var variants = ['jio_' + idStr, 'jio' + idStr, 'jio:' + idStr, 'jio.tv_' + idStr];
-  for (var i = 0; i < variants.length; i++) if (cache.data[variants[i]] && cache.data[variants[i]].length) return cache.data[variants[i]];
   return null;
 }
-
-/* ════════ Gap-aware NOW lookup ════════ */
-function findBestCurrentProgram(progs, now) {
+function getProgramState(progs, now) {
   if (!progs || !progs.length) return null;
   now = now || Date.now();
-  var best = null;
+  var live = null;
   for (var i = 0; i < progs.length; i++) {
     var p = progs[i];
     var s = p.start instanceof Date ? p.start.getTime() : p.start;
     var e = p.end instanceof Date ? p.end.getTime() : p.end;
-    if (s <= now && e > now) {
-      if (!best || s > best.s) best = { p: p, s: s, e: e };
-    }
+    if (s <= now && e > now) { if (!live || s > live.s) live = { p: p, s: s, e: e }; }
   }
-  if (best) return best;
-  /* Grace fallback */
-  var recent = null, grace = 4 * 3600000;
+  if (live) return { p: live.p, s: live.s, e: live.e, state: 'live' };
+  var recent = null;
   for (var j = 0; j < progs.length; j++) {
     var q = progs[j];
     var qs = q.start instanceof Date ? q.start.getTime() : q.start;
     var qe = q.end instanceof Date ? q.end.getTime() : q.end;
-    if (qe <= now && (now - qe) < grace) {
-      if (!recent || qe > recent.e) recent = { p: q, s: qs, e: qe };
-    }
+    if (qe <= now && (now - qe) <= STATE_RECENT_MS) { if (!recent || qe > recent.e) recent = { p: q, s: qs, e: qe }; }
   }
-  return recent;
+  if (recent) return { p: recent.p, s: recent.s, e: recent.e, state: 'recent' };
+  var upcoming = null;
+  for (var k = 0; k < progs.length; k++) {
+    var u = progs[k];
+    var us = u.start instanceof Date ? u.start.getTime() : u.start;
+    var ue = u.end instanceof Date ? u.end.getTime() : u.end;
+    if (us > now && (us - now) <= STATE_UPCOMING_MS) { if (!upcoming || us < upcoming.s) upcoming = { p: u, s: us, e: ue }; }
+  }
+  if (upcoming) return { p: upcoming.p, s: upcoming.s, e: upcoming.e, state: 'upcoming' };
+  var closest = null, closestDist = Infinity, closestPast = false;
+  for (var m = 0; m < progs.length; m++) {
+    var c = progs[m];
+    var cs = c.start instanceof Date ? c.start.getTime() : c.start;
+    var ce = c.end instanceof Date ? c.end.getTime() : c.end;
+    var dist = cs > now ? (cs - now) : (ce < now ? (now - ce) : 0);
+    if (dist < closestDist) { closestDist = dist; closest = { p: c, s: cs, e: ce }; closestPast = ce < now; }
+  }
+  if (closest) return { p: closest.p, s: closest.s, e: closest.e, state: closestPast ? 'far-past' : 'far-future' };
+  return null;
 }
-function findEarliestNextProgram(progs, refMs) {
+function getStrictLive(progs, now) { var r = getProgramState(progs, now); return r && r.state === 'live' ? r : null; }
+function getNextProgram(progs, afterMs) {
   if (!progs || !progs.length) return null;
-  var best = null;
+  var ref = afterMs || Date.now(), best = null;
   for (var i = 0; i < progs.length; i++) {
     var p = progs[i];
     var s = p.start instanceof Date ? p.start.getTime() : p.start;
-    if (s > refMs && (!best || s < best.s)) best = { p: p, s: s, e: p.end instanceof Date ? p.end.getTime() : p.end };
+    if (s > ref && (!best || s < best.s)) best = { p: p, s: s, e: p.end instanceof Date ? p.end.getTime() : p.end };
   }
   return best;
+}
+function stateLabel(state) {
+  if (state === 'live') return { text: '● NOW', cls: '' };
+  if (state === 'recent') return { text: '◑ RECENT', cls: 'recent' };
+  if (state === 'upcoming') return { text: '◐ NEXT', cls: 'upcoming' };
+  if (state === 'far-past') return { text: '⊖ PREVIOUS', cls: 'far-past' };
+  if (state === 'far-future') return { text: '⊕ LATER', cls: 'far-future' };
+  return { text: '', cls: '' };
 }
 function findCurrentAndNext() {
   if (!channelPrograms || !channelPrograms.length) return { current: null, next: null };
   var now = Date.now();
-  var current = findBestCurrentProgram(channelPrograms, now);
-  var ref = current ? current.e : now;
-  var next = findEarliestNextProgram(channelPrograms, ref);
+  var current = getProgramState(channelPrograms, now);
+  var next = current ? getNextProgram(channelPrograms, current.e) : getNextProgram(channelPrograms, now);
   return { current: current, next: next };
 }
 function updateProgress() {
   if (!channelPrograms || !channelPrograms.length) return;
   var cur = findCurrentAndNext();
-  var key = (cur.current ? cur.current.p.title + '|' + cur.current.s : '') + '|' + (cur.next ? cur.next.s + '|' + cur.next.p.title : '');
+  var key = (cur.current ? cur.current.state + '|' + cur.current.p.title + '|' + cur.current.s : '') + '|' + (cur.next ? cur.next.s + '|' + cur.next.p.title : '');
   if (key !== lastProgramKey) { lastProgramKey = key; updateDthBannerTitles(cur); }
-  if (!cur.current) { dthProgressFill.style.width = '0%'; return; }
-  var total = cur.current.e - cur.current.s, elapsed = Date.now() - cur.current.s;
-  var pct = Math.max(0, Math.min(100, (elapsed / total) * 100));
-  dthProgressFill.style.width = pct.toFixed(1) + '%';
+  if (!cur.current || cur.current.state !== 'live') { dthProgressFill.style.width = '0%'; return; }
+  var total = cur.current.e - cur.current.s;
+  dthProgressFill.style.width = Math.max(0, Math.min(100, ((Date.now() - cur.current.s) / total) * 100)).toFixed(1) + '%';
 }
 function startProgressUpdates(){ stopProgressUpdates(); updateProgress(); progressTimer = setInterval(updateProgress, 1000); }
 function stopProgressUpdates(){ if (progressTimer) { clearInterval(progressTimer); progressTimer = null; } }
@@ -394,26 +320,31 @@ function updateDthBannerTitles(curOverride) {
   else { dthLogo.style.display = 'none'; dthLogoBox.classList.add('no-logo'); }
   dthChName.textContent = currentChannel.name || 'Unknown';
   var cur = curOverride || findCurrentAndNext();
+  dthNowBox.classList.remove('recent', 'upcoming', 'far-past', 'far-future');
   if (cur.current) {
+    var lbl = stateLabel(cur.current.state);
+    if (lbl.cls) dthNowBox.classList.add(lbl.cls);
+    dthNowLabel.textContent = lbl.text;
     dthNowTime.textContent = formatRange(cur.current.s, cur.current.e);
     dthNowTitle.textContent = cur.current.p.title || 'No Title';
-    var metaParts = [];
-    if (cur.current.p.episode) metaParts.push(cur.current.p.episode);
-    if (cur.current.p.genre) metaParts.push(cur.current.p.genre);
-    dthNowMeta.textContent = metaParts.join(' · ');
+    var meta = [];
+    if (cur.current.p.episode) meta.push(cur.current.p.episode);
+    if (cur.current.p.genre) meta.push(cur.current.p.genre);
+    dthNowMeta.textContent = meta.join(' · ');
   } else {
+    dthNowLabel.textContent = '● NOW';
     dthNowTime.textContent = '';
-    dthNowTitle.textContent = channelPrograms ? ('No current programme' + (channelPrograms.length ? ' (' + channelPrograms.length + ' in guide)' : '')) : 'Loading guide…';
+    dthNowTitle.textContent = channelPrograms ? 'No guide data' : 'Loading guide…';
     dthNowMeta.textContent = '';
   }
   if (cur.next) { dthNextTime.textContent = formatTimeOnly(cur.next.s); dthNextTitle.textContent = cur.next.p.title || 'No Title'; }
-  else { dthNextTime.textContent = ''; dthNextTitle.textContent = channelPrograms ? 'No upcoming programme' : ''; }
+  else { dthNextTime.textContent = ''; dthNextTitle.textContent = channelPrograms ? 'No upcoming' : ''; }
 }
 function updateDthBanner() { updateDthBannerTitles(); updateProgress(); }
-function showDthBanner(autoHideMs) {
+function showDthBanner(ms) {
   updateDthBanner(); dthBanner.classList.add('visible'); startProgressUpdates();
   if (bannerHideTimer) clearTimeout(bannerHideTimer);
-  if (autoHideMs && autoHideMs > 0) bannerHideTimer = setTimeout(hideDthBanner, autoHideMs);
+  if (ms && ms > 0) bannerHideTimer = setTimeout(hideDthBanner, ms);
 }
 function hideDthBanner(){ dthBanner.classList.remove('visible'); stopProgressUpdates(); if (bannerHideTimer) { clearTimeout(bannerHideTimer); bannerHideTimer = null; } }
 function peekBanner(ms){ if (!dthBanner.classList.contains('visible')) showDthBanner(ms || 5000); }
@@ -425,29 +356,17 @@ function openGuide() {
   var num = getChannelNumber(currentChannel);
   document.getElementById('guideTitle').textContent = '📅 ' + (num !== null ? 'CH ' + num + ' · ' : '') + (currentChannel.name || '');
   var progs = channelPrograms || [];
-  if (!progs.length) {
-    guideBody.innerHTML = '<div style="color:#888;padding:20px;text-align:center">No guide data for this channel.</div>';
-  } else {
-    var now = Date.now();
-    var best = findBestCurrentProgram(progs, now);
-    var todayStart = new Date(); todayStart.setHours(0,0,0,0);
-    var todayEnd = todayStart.getTime() + 86400000;
-    var filtered = progs.filter(function(p){
+  if (!progs.length) { guideBody.innerHTML = '<div style="color:#888;padding:20px;text-align:center">No guide data for this channel.</div>'; }
+  else {
+    var now = Date.now(), strictLive = getStrictLive(progs, now), body = '';
+    for (var i = 0; i < progs.length; i++) {
+      var p = progs[i];
       var s = p.start instanceof Date ? p.start.getTime() : p.start;
       var e = p.end instanceof Date ? p.end.getTime() : p.end;
-      return e > todayStart.getTime() && s < todayEnd;
-    });
-    if (!filtered.length) filtered = progs.slice(0, 50);
-    var body = '';
-    for (var i = 0; i < filtered.length; i++) {
-      var p = filtered[i];
-      var s = p.start instanceof Date ? p.start.getTime() : p.start;
-      var e = p.end instanceof Date ? p.end.getTime() : p.end;
-      var isLive = s <= now && e > now;
-      var isBest = best && best.p === p;
+      var isLive = strictLive && strictLive.p === p;
       var isPast = e <= now;
-      var cls = isBest ? ' live' : (isPast ? ' past' : '');
-      var badge = isBest ? ' <span class="airing-tag">● AIRING</span>' : (isLive ? ' <span class="overlap-tag">(overlap)</span>' : '');
+      var cls = isLive ? ' live' : (isPast ? ' past' : '');
+      var badge = isLive ? ' <span class="airing-tag">● AIRING</span>' : '';
       body += '<div class="guide-row' + cls + '"><div class="guide-time">' + formatRange(s, e) + '</div><div class="guide-title">' + escapeHtml(p.title || 'No Title') + (p.episode ? ' <span style="color:#7cd0f5;font-size:11px">' + escapeHtml(p.episode) + '</span>' : '') + badge + '</div></div>';
     }
     guideBody.innerHTML = body;
@@ -469,44 +388,18 @@ function openMiniGuide() {
   }
   miniStrip.innerHTML = html;
   var btns = miniStrip.querySelectorAll('.mini-ch');
-  for (var k = 0; k < btns.length; k++) {
-    (function(btn){ btn.addEventListener('click', function(){ var chid = btn.getAttribute('data-chid'); for (var z = 0; z < all.length; z++) if (String(all[z].id) === chid) { miniModal.classList.add('hidden'); switchToChannel(all[z], getChannelNumber(all[z])); return; } }); })(btns[k]);
-  }
+  for (var k = 0; k < btns.length; k++) (function(btn){ btn.addEventListener('click', function(){ var chid = btn.getAttribute('data-chid'); for (var z = 0; z < all.length; z++) if (String(all[z].id) === chid) { miniModal.classList.add('hidden'); switchToChannel(all[z], getChannelNumber(all[z])); return; } }); })(btns[k]);
   miniModal.classList.remove('hidden');
 }
 function openStats() {
-  var html = '';
-  html += '<div class="stats-row"><span class="stats-label">Channel</span><span class="stats-value">' + escapeHtml(currentChannel ? (currentChannel.name || '') : '—') + '</span></div>';
+  var html = '<div class="stats-row"><span class="stats-label">Channel</span><span class="stats-value">' + escapeHtml(currentChannel ? (currentChannel.name || '') : '—') + '</span></div>';
   if (videoEl) {
-    var vid = videoEl;
-    html += '<div class="stats-row"><span class="stats-label">Resolution</span><span class="stats-value">' + (vid.videoWidth || '—') + ' × ' + (vid.videoHeight || '—') + '</span></div>';
-    html += '<div class="stats-row"><span class="stats-label">Current Time</span><span class="stats-value">' + (vid.currentTime ? vid.currentTime.toFixed(1) + 's' : '—') + '</span></div>';
-    var buf = vid.buffered, bufStr = '—';
-    if (buf && buf.length) { try { bufStr = (buf.end(buf.length - 1) - vid.currentTime).toFixed(1) + 's ahead'; } catch(e){} }
-    html += '<div class="stats-row"><span class="stats-label">Buffer</span><span class="stats-value">' + bufStr + '</span></div>';
-    html += '<div class="stats-row"><span class="stats-label">Volume</span><span class="stats-value">' + (vid.muted ? 'MUTED' : Math.round(vid.volume * 100) + '%') + '</span></div>';
-    html += '<div class="stats-row"><span class="stats-label">Playback</span><span class="stats-value">' + (vid.paused ? 'Paused' : 'Playing') + '</span></div>';
+    html += '<div class="stats-row"><span class="stats-label">Resolution</span><span class="stats-value">' + (videoEl.videoWidth || '—') + ' × ' + (videoEl.videoHeight || '—') + '</span></div>';
+    html += '<div class="stats-row"><span class="stats-label">Volume</span><span class="stats-value">' + (videoEl.muted ? 'MUTED' : Math.round(videoEl.volume * 100) + '%') + '</span></div>';
+    html += '<div class="stats-row"><span class="stats-label">Playback</span><span class="stats-value">' + (videoEl.paused ? 'Paused' : 'Playing') + '</span></div>';
   }
-  if (shakaPlayer) {
-    try {
-      var stats = shakaPlayer.getStats();
-      html += '<div class="stats-row"><span class="stats-label">Est. Bandwidth</span><span class="stats-value">' + (stats.estimatedBandwidth ? (stats.estimatedBandwidth / 1000000).toFixed(2) + ' Mbps' : '—') + '</span></div>';
-      html += '<div class="stats-row"><span class="stats-label">Dropped Frames</span><span class="stats-value">' + (stats.droppedFrames || 0) + '</span></div>';
-    } catch (e) {}
-    try {
-      var tracks = shakaPlayer.getVariantTracks();
-      if (tracks && tracks.length) {
-        var active = null;
-        for (var i = 0; i < tracks.length; i++) if (tracks[i].active) { active = tracks[i]; break; }
-        if (active) {
-          html += '<div class="stats-row"><span class="stats-label">Quality</span><span class="stats-value">' + (active.height || '?') + 'p</span></div>';
-          if (active.bandwidth) html += '<div class="stats-row"><span class="stats-label">Variant BW</span><span class="stats-value">' + (active.bandwidth / 1000).toFixed(0) + ' kbps</span></div>';
-        }
-      }
-    } catch (e) {}
-  }
-  statsBody.innerHTML = html || '<div style="color:#888">No stats available.</div>';
-  statsModal.classList.remove('hidden');
+  if (shakaPlayer) { try { var st = shakaPlayer.getStats(); html += '<div class="stats-row"><span class="stats-label">Bandwidth</span><span class="stats-value">' + (st.estimatedBandwidth ? (st.estimatedBandwidth/1000000).toFixed(2) + ' Mbps' : '—') + '</span></div>'; } catch(e){} }
+  statsBody.innerHTML = html; statsModal.classList.remove('hidden');
 }
 function showChNumOverlay(){ chNumValue.textContent = chNumBuffer || '—'; chNumOverlay.classList.add('visible'); }
 function hideChNumOverlay(){ chNumOverlay.classList.remove('visible'); }
@@ -517,16 +410,8 @@ function commitChNum() {
   if (!num) return;
   var n = parseInt(num, 10);
   var all = []; try { all = JSON.parse(localStorage.getItem('allChannels') || '[]'); } catch(e){}
-  var found = null;
-  for (var i = 0; i < all.length; i++) if (getChannelNumber(all[i]) === n) { found = all[i]; break; }
-  if (found) { showToast('Switching to CH ' + n + ' · ' + (found.name || '')); switchToChannel(found, n); return; }
-  showToast('Looking up CH ' + n + '…');
-  fetchChannelsFrom(0).then(function(chs) {
-    try { localStorage.setItem('allChannels', JSON.stringify(chs)); } catch (e) {}
-    var f2 = null;
-    for (var j = 0; j < chs.length; j++) if (getChannelNumber(chs[j]) === n) { f2 = chs[j]; break; }
-    if (f2) switchToChannel(f2, n); else showToast('Channel ' + num + ' not found', true);
-  }).catch(function(){ showToast('Channel ' + num + ' not found', true); });
+  for (var i = 0; i < all.length; i++) if (getChannelNumber(all[i]) === n) { showToast('Switching to CH ' + n); switchToChannel(all[i], n); return; }
+  showToast('Channel ' + num + ' not found', true);
 }
 function getChannelList(){ try { return JSON.parse(localStorage.getItem('allChannels') || '[]'); } catch(e){ return []; } }
 function findChannelIndex(list, ch) { if (!ch) return -1; for (var i = 0; i < list.length; i++) if (String(list[i].id) === String(ch.id)) return i; return -1; }
@@ -536,23 +421,15 @@ function switchChannelByOffset(offset) {
   var idx = findChannelIndex(list, currentChannel);
   if (idx === -1) idx = 0;
   var next = (idx + offset + list.length) % list.length;
-  var target = list[next];
-  showToast('CH ' + (getChannelNumber(target) || '?') + ' · ' + (target.name || ''));
-  switchToChannel(target, getChannelNumber(target));
+  showToast('CH ' + (getChannelNumber(list[next]) || '?'));
+  switchToChannel(list[next], getChannelNumber(list[next]));
 }
 function switchToPreviousChannel() {
   var last = lastChannelId;
   if (!last) { showToast('No previous channel'); return; }
   var list = getChannelList();
-  for (var i = 0; i < list.length; i++) {
-    if (String(list[i].id) === last) {
-      if (currentChannel && String(currentChannel.id) === last) { showToast('Already on this channel'); return; }
-      showToast('Switching to ' + (list[i].name || ''));
-      switchToChannel(list[i], getChannelNumber(list[i]));
-      return;
-    }
-  }
-  showToast('Previous channel not available', true);
+  for (var i = 0; i < list.length; i++) if (String(list[i].id) === last) { showToast('Switching back…'); switchToChannel(list[i], getChannelNumber(list[i])); return; }
+  showToast('Previous channel unavailable', true);
 }
 function getPlayerUrl(ch) { var loc = window.location; return loc.protocol + '//' + loc.host + loc.pathname.substring(0, loc.pathname.lastIndexOf('/') + 1) + 'jplayer.html?id=' + encodeURIComponent(ch.id); }
 function switchToChannel(ch, num) {
@@ -577,13 +454,9 @@ function extractStarCookie(data, channelId) {
   if (data && Array.isArray(data.successful_results)) results = results.concat(data.successful_results);
   if (data && Array.isArray(data.failed_results)) results = results.concat(data.failed_results);
   for (var i = 0; i < results.length; i++) {
-    var item = results[i]; if (!item) continue;
-    if (String(item.channel_id) !== String(channelId)) continue;
+    var item = results[i]; if (!item || String(item.channel_id) !== String(channelId)) continue;
     var finalUrl = (item.error_details && item.error_details.final_url) || item.final_url || '';
-    var m = finalUrl.match(/[?&]__hdnea__=([^&]+)/);
-    if (m) return '__hdnea__=' + m[1];
-    var raw = finalUrl.match(/__hdnea__=([^&]+)/);
-    if (raw) return '__hdnea__=' + raw[1];
+    var m = finalUrl.match(/[?&]__hdnea__=([^&]+)/); if (m) return '__hdnea__=' + m[1];
   }
   return '';
 }
@@ -591,86 +464,64 @@ function fetchCookiesForChannel(channelData) {
   var streamUrls = [channelData.url, channelData.url1, channelData.url2, channelData.url3].filter(function(u){ return !!u; }).map(function(u){ return u.replace('bpk-tv//', 'bpk-tv/'); });
   var hasJio = false, hasRegular = false;
   for (var i = 0; i < streamUrls.length; i++) { if (isJioPlLiveUrl(streamUrls[i])) hasJio = true; else hasRegular = true; }
-  var primaryCookie = '', fallbackCookie = '', starCookie = '';
-  var tasks = [];
-  if (hasJio) tasks.push(fetchWithFallback(COOKIE_STAR_SPORTS, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(data){ starCookie = extractStarCookie(data, channelData.id); }).catch(function(){}));
-  if (hasRegular) tasks.push(fetchWithFallback(COOKIE_PRIMARY, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(data){ if (Array.isArray(data)) { for (var i = 0; i < data.length; i++) if (data[i] && data[i].cookie) { primaryCookie = data[i].cookie; break; } } else if (data && data.cookie) primaryCookie = data.cookie; }).catch(function(){}));
-  return Promise.all(tasks).then(function(){ return { streamUrls: streamUrls, primaryCookie: primaryCookie, fallbackCookie: fallbackCookie, starCookie: starCookie }; });
+  var primaryCookie = '', starCookie = '', tasks = [];
+  if (hasJio) tasks.push(fetchWithFallback(COOKIE_STAR_SPORTS, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){ starCookie = extractStarCookie(d, channelData.id); }).catch(function(){}));
+  if (hasRegular) tasks.push(fetchWithFallback(COOKIE_PRIMARY, { cache: 'no-store' }).then(function(r){ return r.json(); }).then(function(d){ if (Array.isArray(d)) { for (var i = 0; i < d.length; i++) if (d[i] && d[i].cookie) { primaryCookie = d[i].cookie; break; } } else if (d && d.cookie) primaryCookie = d.cookie; }).catch(function(){}));
+  return Promise.all(tasks).then(function(){ return { streamUrls: streamUrls, primaryCookie: primaryCookie, starCookie: starCookie }; });
 }
 function parseChannelJson(text) {
   var c = String(text).trim();
   if (c.charCodeAt(0) === 0xFEFF) c = c.slice(1);
   try { var p = JSON.parse(c); if (Array.isArray(p)) return p; if (p && Array.isArray(p.channels)) return p.channels; } catch(e){}
-  try { var p2 = JSON.parse('[' + c.replace(/,\s*$/, '') + ']'); if (Array.isArray(p2)) return p2; } catch(e){}
   throw new Error('Invalid JSON');
 }
 function fetchChannelsFrom(idx) {
   if (idx >= CHANNELS_CANDIDATES.length) return Promise.reject(new Error('All failed'));
-  return xhrFetch(CHANNELS_CANDIDATES[idx], { headers: { 'X-Requested-With': 'XMLHttpRequest' }, timeout: 20000 })
-    .then(function(r){ return r.text(); })
-    .then(function(t){ var p = parseChannelJson(t); if (p && p.length) return p; throw new Error('Empty'); })
-    .catch(function(){ return fetchChannelsFrom(idx + 1); });
+  return xhrFetch(CHANNELS_CANDIDATES[idx], { timeout: 20000 }).then(function(r){ return r.text(); }).then(function(t){ var p = parseChannelJson(t); if (p && p.length) return p; throw new Error('Empty'); }).catch(function(){ return fetchChannelsFrom(idx + 1); });
 }
 function findChannelById(id) {
-  var last = CHANNELS_CANDIDATES[CHANNELS_CANDIDATES.length - 1];
-  return fetchChannelsFrom(0).catch(function(){ return xhrFetch(CORS_PROXY + last, { timeout: 25000 }).then(function(r){ return r.text(); }).then(function(t){ return parseChannelJson(t); }); })
-    .then(function(list){ for (var i = 0; i < list.length; i++) if (String(list[i].id) === String(id)) return list[i]; throw new Error('Channel not found'); });
+  return fetchChannelsFrom(0).then(function(list){ for (var i = 0; i < list.length; i++) if (String(list[i].id) === String(id)) return list[i]; throw new Error('Channel not found'); });
 }
 function initPlayer() {
-  if (typeof shaka === 'undefined' || !shaka.Player) { showPlaceholder('⚠️ Player failed to load.<br>Check your internet connection.', true, false); return false; }
-  try { if (shaka.polyfill && shaka.polyfill.installAll) shaka.polyfill.installAll(); } catch (e) {}
-  if (!shaka.Player.isBrowserSupported()) { showPlaceholder('⚠️ This browser is not supported by the player.', true, false); return false; }
+  if (typeof shaka === 'undefined' || !shaka.Player) { showPlaceholder('⚠️ Player failed to load.', true, false); return false; }
+  try { if (shaka.polyfill) shaka.polyfill.installAll(); } catch (e) {}
+  if (!shaka.Player.isBrowserSupported()) { showPlaceholder('⚠️ Browser not supported.', true, false); return false; }
   shakaPlayer = new shaka.Player(videoEl);
   shakaPlayer.getNetworkingEngine().registerRequestFilter(function(type, request) {
     request.headers['Referer'] = 'https://www.jiotv.com/';
     request.headers['User-Agent'] = 'plaYtv/7.1.5';
     if (activeCookie && (type === shaka.net.NetworkingEngine.RequestType.MANIFEST || type === shaka.net.NetworkingEngine.RequestType.SEGMENT)) {
-      var url = request.uris[0];
-      url = url.replace(/([?&])__hdnea__=[^&]*/g, '$1').replace(/[?&]+$/, '');
-      var sep = url.indexOf('?') === -1 ? '?' : '&';
-      request.uris[0] = url + sep + activeCookie;
+      var url = request.uris[0].replace(/([?&])__hdnea__=[^&]*/g, '$1').replace(/[?&]+$/, '');
+      request.uris[0] = url + (url.indexOf('?') === -1 ? '?' : '&') + activeCookie;
     }
   });
-  try {
-    var uiConfig = { addSeekBar: true, addBigPlayButton: true, controlPanelElements: ['play_pause', 'time_and_duration', 'spacer', 'mute', 'volume', 'quality', 'captions', 'playback_rate', 'picture_in_picture', 'fullscreen', 'overflow_menu'], overflowMenuButtons: ['quality', 'captions', 'playback_rate', 'picture_in_picture'] };
-    shakaUI = new shaka.ui.Overlay(shakaPlayer, videoContainer, videoEl, uiConfig);
-  } catch (e) { videoEl.setAttribute('controls', 'controls'); }
-  syncTopBarWithShakaControls();
+  try { shakaUI = new shaka.ui.Overlay(shakaPlayer, videoContainer, videoEl, { addSeekBar: true, addBigPlayButton: true, controlPanelElements: ['play_pause','time_and_duration','spacer','mute','volume','quality','fullscreen','overflow_menu'] }); } catch (e) { videoEl.setAttribute('controls', 'controls'); }
+  syncTopBar();
   return true;
 }
-function syncTopBarWithShakaControls() {
-  var lastState = null, attempts = 0;
-  function checkForContainer() {
+function syncTopBar() {
+  var last = null, attempts = 0;
+  function check() {
     attempts++;
     var ctrl = videoContainer.querySelector('.shaka-controls-container');
-    if (!ctrl) { if (attempts < 30) setTimeout(checkForContainer, 200); return; }
-    setInterval(function() {
-      var isHidden = ctrl.classList.contains('shaka-hidden') || ctrl.offsetParent === null || window.getComputedStyle(ctrl).visibility === 'hidden' || parseFloat(window.getComputedStyle(ctrl).opacity) === 0;
-      if (isHidden !== lastState) { lastState = isHidden; if (isHidden) topBar.classList.add('hidden'); else topBar.classList.remove('hidden'); }
-    }, 200);
-    var initialHidden = ctrl.classList.contains('shaka-hidden');
-    lastState = initialHidden;
-    if (initialHidden) topBar.classList.add('hidden');
+    if (!ctrl) { if (attempts < 30) setTimeout(check, 200); return; }
+    setInterval(function() { var isHidden = ctrl.classList.contains('shaka-hidden') || ctrl.offsetParent === null; if (isHidden !== last) { last = isHidden; if (isHidden) topBar.classList.add('hidden'); else topBar.classList.remove('hidden'); } }, 200);
   }
-  checkForContainer();
+  check();
 }
 function scheduleReconnect() {
-  if (!currentChannel) return;
-  if (reconnectAttempts >= 3) { showToast('Could not reconnect', true); return; }
+  if (!currentChannel || reconnectAttempts >= 3) { if (reconnectAttempts >= 3) showToast('Could not reconnect', true); return; }
   reconnectAttempts++;
   var delay = Math.min(8000, 1500 * Math.pow(2, reconnectAttempts - 1));
-  showToast('Reconnecting (' + reconnectAttempts + '/3) in ' + (delay / 1000) + 's…');
+  showToast('Reconnecting (' + reconnectAttempts + '/3)…');
   clearTimeout(reconnectTimer);
   reconnectTimer = setTimeout(function() { if (currentChannel) playChannel(currentChannel, true); }, delay);
 }
 videoEl.addEventListener('error', function() { if (!isLoading && currentChannel) scheduleReconnect(); });
-videoEl.addEventListener('stalled', function() { setTimeout(function() { if (videoEl.paused && !isLoading && currentChannel) scheduleReconnect(); }, 3000); });
 function playChannel(channelData, isReconnect) {
   if (!shakaPlayer || isLoading) return;
-  isLoading = true;
-  if (!isReconnect) reconnectAttempts = 0;
-  autoplayAttempted = false;
-  hideUnmuteBtn(); hideTapToPlay();
+  isLoading = true; if (!isReconnect) reconnectAttempts = 0;
+  autoplayAttempted = false; unmuteBtn.classList.add('hidden'); tapToPlay.classList.add('hidden');
   if (currentChannel && String(currentChannel.id) !== String(channelData.id)) lastChannelId = String(currentChannel.id);
   currentChannel = channelData;
   var num = getChannelNumber(channelData);
@@ -678,42 +529,27 @@ function playChannel(channelData, isReconnect) {
   titleEl.textContent = channelData.name || 'Unknown';
   if (!isReconnect) showPlaceholder('Connecting to stream…', false, true);
   shakaPlayer.unload().catch(function(){}).then(function(){ return fetchCookiesForChannel(channelData); }).then(function(cookies) {
-    var streamUrls = cookies.streamUrls, primaryCookie = cookies.primaryCookie, fallbackCookie = cookies.fallbackCookie, starCookie = cookies.starCookie;
-    if (!streamUrls.length) { isLoading = false; showPlaceholder('⚠️ No stream URL for this channel.', true, false); return; }
-    var clearKeysConfig = {};
-    if (Array.isArray(channelData.keys) && channelData.keys.length > 0) {
-      for (var i = 0; i < channelData.keys.length; i++) { var k = channelData.keys[i]; if (k && k.keyId && k.key) clearKeysConfig[k.keyId] = k.key; }
-    } else if (channelData.keyId && channelData.key) { clearKeysConfig[channelData.keyId] = channelData.key; }
-    shakaPlayer.configure({ drm: { clearKeys: clearKeysConfig }, streaming: { lowLatencyMode: true }, abr: { enabled: true } });
+    var streamUrls = cookies.streamUrls, primaryCookie = cookies.primaryCookie, starCookie = cookies.starCookie;
+    if (!streamUrls.length) { isLoading = false; showPlaceholder('⚠️ No stream URL.', true, false); return; }
+    var clearKeys = {};
+    if (Array.isArray(channelData.keys)) for (var i = 0; i < channelData.keys.length; i++) { var k = channelData.keys[i]; if (k && k.keyId && k.key) clearKeys[k.keyId] = k.key; }
+    else if (channelData.keyId && channelData.key) clearKeys[channelData.keyId] = channelData.key;
+    shakaPlayer.configure({ drm: { clearKeys: clearKeys }, streaming: { lowLatencyMode: true }, abr: { enabled: true } });
     var urlIdx = 0, loaded = false;
     function tryNextUrl() {
-      if (loaded || urlIdx >= streamUrls.length) {
-        if (!loaded) { isLoading = false; activeCookie = ''; if (reconnectAttempts < 3) scheduleReconnect(); else showPlaceholder('⚠️ Could not load this channel.<br>Try another channel or tap Retry.', true, false); }
-        return;
-      }
-      var streamUrl = streamUrls[urlIdx++];
-      var isJio = isJioPlLiveUrl(streamUrl);
-      var cookieRounds = [];
-      if (isJio) { if (starCookie) cookieRounds.push(starCookie); }
-      else { if (primaryCookie) cookieRounds.push(primaryCookie); if (fallbackCookie && fallbackCookie !== primaryCookie) cookieRounds.push(fallbackCookie); if (cookieRounds.length === 0) cookieRounds.push(''); }
+      if (loaded || urlIdx >= streamUrls.length) { if (!loaded) { isLoading = false; if (reconnectAttempts < 3) scheduleReconnect(); else showPlaceholder('⚠️ Could not load.', true, false); } return; }
+      var streamUrl = streamUrls[urlIdx++], isJio = isJioPlLiveUrl(streamUrl);
+      var cookieRounds = isJio ? (starCookie ? [starCookie] : ['']) : (primaryCookie ? [primaryCookie, ''] : ['']);
       var cIdx = 0;
       function tryNextCookie() {
         if (loaded || cIdx >= cookieRounds.length) { tryNextUrl(); return; }
         activeCookie = cookieRounds[cIdx++];
-        shakaPlayer.load(streamUrl).then(function() {
-          loaded = true; isLoading = false; reconnectAttempts = 0;
-          hidePlaceholder(); attemptPlayback();
-          setTimeout(function() { peekBanner(5000); }, 400);
-        }).catch(function(e) { console.warn('[play] failed:', e && (e.code || e.message)); tryNextCookie(); });
+        shakaPlayer.load(streamUrl).then(function() { loaded = true; isLoading = false; reconnectAttempts = 0; hidePlaceholder(); attemptPlayback(); setTimeout(function() { peekBanner(5000); }, 400); }).catch(function(){ tryNextCookie(); });
       }
       tryNextCookie();
     }
     tryNextUrl();
-  }).catch(function(e) {
-    isLoading = false;
-    if (reconnectAttempts < 3 && !isReconnect) scheduleReconnect();
-    else showPlaceholder('⚠️ Error: ' + escapeHtml(e && e.message ? e.message : 'unknown'), true, false);
-  });
+  }).catch(function() { isLoading = false; if (reconnectAttempts < 3 && !isReconnect) scheduleReconnect(); else showPlaceholder('⚠️ Error.', true, false); });
 }
 var fitModes = [{ key: 'contain', label: 'FIT' }, { key: 'cover', label: 'COVER' }, { key: 'stretch', label: 'FILL' }];
 var fitModeIndex = 0;
@@ -723,7 +559,7 @@ applyFitMode(0);
 function goBack() { try { if (history.length > 1) history.back(); else window.location.href = 'jtv.html'; } catch (e) { window.location.href = 'jtv.html'; } }
 backBtn.addEventListener('click', function(e){ e.preventDefault(); goBack(); });
 phBackBtn.addEventListener('click', function(e){ e.preventDefault(); goBack(); });
-phRetryBtn.addEventListener('click', function(e) { e.preventDefault(); if (currentChannel) { reconnectAttempts = 0; playChannel(currentChannel); } });
+phRetryBtn.addEventListener('click', function(e){ e.preventDefault(); if (currentChannel) { reconnectAttempts = 0; playChannel(currentChannel); } });
 guideBtn.addEventListener('click', function(e){ e.preventDefault(); openGuide(); });
 helpBtn.addEventListener('click', function(e){ e.preventDefault(); helpModal.classList.remove('hidden'); });
 dthBanner.addEventListener('click', function(){ openGuide(); });
@@ -735,71 +571,40 @@ helpClose.addEventListener('click', function(){ helpModal.classList.add('hidden'
 helpModal.addEventListener('click', function(e){ if (e.target === helpModal) helpModal.classList.add('hidden'); });
 statsClose.addEventListener('click', function(){ statsModal.classList.add('hidden'); });
 statsModal.addEventListener('click', function(e){ if (e.target === statsModal) statsModal.classList.add('hidden'); });
-videoContainer.addEventListener('click', function(e) {
-  if (e.target === backBtn || e.target === fitBtn || e.target === guideBtn || e.target === helpBtn) return;
-  if (e.target === unmuteBtn || e.target === tapToPlay) return;
-  if (e.target.closest && (e.target.closest('.shaka-overlays-container') || e.target.closest('#unmuteBtn') || e.target.closest('#tapToPlay'))) return;
-  peekBanner(5000);
-});
-videoContainer.addEventListener('touchstart', function(e) {
-  if (e.target === backBtn || e.target === fitBtn || e.target === guideBtn || e.target === helpBtn) return;
-  if (e.target === unmuteBtn || e.target === tapToPlay) return;
-  peekBanner(5000);
-}, { passive: true });
-videoContainer.addEventListener('mousemove', function() { var now = Date.now(); if (now - lastMouseMoveTs < 400) return; lastMouseMoveTs = now; peekBanner(5000); });
+videoContainer.addEventListener('click', function(e) { if (e.target.closest && (e.target.closest('.shaka-overlays-container') || e.target.closest('#unmuteBtn') || e.target.closest('#tapToPlay'))) return; peekBanner(5000); });
 document.addEventListener('keydown', function(e) {
-  var k = e.keyCode, focused = document.activeElement;
+  var k = e.keyCode;
   var inOverlay = !guideModal.classList.contains('hidden') || !miniModal.classList.contains('hidden') || !helpModal.classList.contains('hidden') || !statsModal.classList.contains('hidden');
-  if (inOverlay) {
-    if (k === 27 || k === 8 || k === 10009) { e.preventDefault(); guideModal.classList.add('hidden'); miniModal.classList.add('hidden'); helpModal.classList.add('hidden'); statsModal.classList.add('hidden'); return; }
-    return;
-  }
+  if (inOverlay) { if (k === 27 || k === 8) { e.preventDefault(); guideModal.classList.add('hidden'); miniModal.classList.add('hidden'); helpModal.classList.add('hidden'); statsModal.classList.add('hidden'); } return; }
   var isNumKey = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
   if (isNumKey) { e.preventDefault(); handleChNumDigit(String.fromCharCode(k >= 96 ? k - 48 : k)); return; }
   if (k === 13 && chNumBuffer) { e.preventDefault(); clearTimeout(chNumTimer); commitChNum(); return; }
-  if ((k === 27 || k === 8 || k === 10009) && chNumBuffer) { e.preventDefault(); cancelChNum(); return; }
-  if (k === 71 && !chNumBuffer) { e.preventDefault(); openGuide(); return; }
-  if (k === 76 && !chNumBuffer) { e.preventDefault(); openMiniGuide(); return; }
-  if (k === 73 && !chNumBuffer) { e.preventDefault(); openStats(); return; }
-  if ((k === 72 || (k === 191 && e.shiftKey)) && !chNumBuffer) { e.preventDefault(); helpModal.classList.remove('hidden'); return; }
-  if (k === 33 || k === 187 || k === 107) { e.preventDefault(); switchChannelByOffset(1); return; }
-  if (k === 34 || k === 189 || k === 109) { e.preventDefault(); switchChannelByOffset(-1); return; }
-  if (k === 8 && !chNumBuffer) { e.preventDefault(); switchToPreviousChannel(); return; }
+  if ((k === 27 || k === 8) && chNumBuffer) { e.preventDefault(); cancelChNum(); return; }
+  if (k === 71) { e.preventDefault(); openGuide(); return; }
+  if (k === 76) { e.preventDefault(); openMiniGuide(); return; }
+  if (k === 73) { e.preventDefault(); openStats(); return; }
+  if (k === 72) { e.preventDefault(); helpModal.classList.remove('hidden'); return; }
+  if (k === 33) { e.preventDefault(); switchChannelByOffset(1); return; }
+  if (k === 34) { e.preventDefault(); switchChannelByOffset(-1); return; }
+  if (k === 8) { e.preventDefault(); switchToPreviousChannel(); return; }
   if (k === 38) { e.preventDefault(); if (videoEl.volume < 1) videoEl.volume = Math.min(1, videoEl.volume + 0.1); showToast('Volume ' + Math.round(videoEl.volume * 100) + '%'); return; }
   if (k === 40) { e.preventDefault(); if (videoEl.volume > 0) videoEl.volume = Math.max(0, videoEl.volume - 0.1); showToast('Volume ' + Math.round(videoEl.volume * 100) + '%'); return; }
   if (k === 77) { e.preventDefault(); videoEl.muted = !videoEl.muted; showToast(videoEl.muted ? 'Muted' : 'Unmuted'); return; }
   if (k === 70) { e.preventDefault(); applyFitMode(fitModeIndex + 1); return; }
-  if (k === 27 || k === 461 || k === 10009 || k === 10033) {
-    if (dthBanner.classList.contains('visible') && !document.querySelector('.shaka-overflow-menu:not(.shaka-hidden)') && !document.querySelector('.shaka-settings-menu:not(.shaka-hidden)')) { e.preventDefault(); hideDthBanner(); return; }
-    if (document.querySelector('.shaka-overflow-menu:not(.shaka-hidden)') || document.querySelector('.shaka-settings-menu:not(.shaka-hidden)')) return;
-    e.preventDefault(); goBack(); return;
-  }
-  if (k === 37 || k === 38 || k === 39 || k === 40) { if (focused === fitBtn || focused === backBtn || focused === guideBtn || focused === helpBtn) return; peekBanner(3000); }
-  var inTopBar = (focused === backBtn || focused === fitBtn || focused === guideBtn || focused === helpBtn);
-  if (k === 37) { if (focused === fitBtn) { guideBtn.focus(); e.preventDefault(); } else if (focused === guideBtn) { backBtn.focus(); e.preventDefault(); } else if (focused === helpBtn) { fitBtn.focus(); e.preventDefault(); } else if (!inTopBar) { backBtn.focus(); e.preventDefault(); } }
-  else if (k === 39) { if (focused === backBtn) { guideBtn.focus(); e.preventDefault(); } else if (focused === guideBtn) { fitBtn.focus(); e.preventDefault(); } else if (focused === fitBtn) { helpBtn.focus(); e.preventDefault(); } else if (!inTopBar) { helpBtn.focus(); e.preventDefault(); } }
-  else if (k === 40 && inTopBar) { focused.blur(); e.preventDefault(); }
-  else if (k === 38 && !inTopBar) { backBtn.focus(); e.preventDefault(); }
-  else if (k === 13 && inTopBar) { e.preventDefault(); if (focused === backBtn) goBack(); else if (focused === fitBtn) applyFitMode(fitModeIndex + 1); else if (focused === guideBtn) openGuide(); else if (focused === helpBtn) helpModal.classList.remove('hidden'); }
+  if (k === 27 || k === 461) { e.preventDefault(); goBack(); return; }
 });
-videoEl.addEventListener('playing', function(){ hidePlaceholder(); isLoading = false; if (videoEl.muted) showUnmuteBtn(); else hideUnmuteBtn(); });
-videoEl.addEventListener('loadedmetadata', function() { if (!autoplayAttempted) return; setTimeout(function(){ if (videoEl.paused && !isLoading && currentChannel) tryMutedPlayback(); }, 2000); });
+videoEl.addEventListener('playing', function(){ hidePlaceholder(); isLoading = false; if (videoEl.muted) unmuteBtn.classList.remove('hidden'); else unmuteBtn.classList.add('hidden'); });
 function boot() {
   var channelId = getQueryParam('id');
-  if (!channelId) { showPlaceholder('⚠️ No channel selected.<br>Return to the channel list.', true, false); return; }
+  if (!channelId) { showPlaceholder('⚠️ No channel selected.', true, false); return; }
   if (!initPlayer()) return;
   loadChannelPrograms();
   startBannerRefreshTimer();
-  if (statsTimer) clearInterval(statsTimer);
-  statsTimer = setInterval(function() { if (!statsModal.classList.contains('hidden')) openStats(); }, 2000);
   var ch = null;
   try { var raw = localStorage.getItem('currentChannel'); if (raw) ch = JSON.parse(raw); } catch (e) { ch = null; }
   if (ch && String(ch.id) === String(channelId)) { playChannel(ch); return; }
-  channelPrograms = null;
   showPlaceholder('Looking up channel…', false, true);
-  findChannelById(channelId).then(function(found){ playChannel(found); }).catch(function(e) {
-    showPlaceholder('⚠️ Channel not found.<br><div style="color:#888;font-size:12px;margin-top:8px">' + escapeHtml(e.message || '') + '</div>', true, false);
-  });
+  findChannelById(channelId).then(function(found){ playChannel(found); }).catch(function(){ showPlaceholder('⚠️ Channel not found.', true, false); });
 }
 if (document.readyState === 'complete' || document.readyState === 'interactive') setTimeout(boot, 0);
 else document.addEventListener('DOMContentLoaded', boot);
