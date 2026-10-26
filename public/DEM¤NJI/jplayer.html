@@ -14,9 +14,8 @@ html,body { background:#000; width:100%; height:100%; overflow:hidden; font-fami
 #videoContainer { position:absolute; top:0; left:0; right:0; bottom:0; background:#000; overflow:hidden; }
 #video { width:100%; height:100%; background:#000; object-fit:contain; display:block; }
 #video.fit-contain { object-fit:contain !important; } #video.fit-cover { object-fit:cover !important; } #video.fit-stretch { object-fit:fill !important; }
-#topBar { position:absolute; top:0; left:0; right:0; z-index:10; padding:12px 16px; padding-top:calc(12px + env(safe-area-inset-top)); background:linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0)); display:flex; align-items:center; gap:10px; transition:opacity .3s ease; pointer-events:none; }
-#topBar.hidden { opacity:0; }
-#topBar.hidden .top-btn { pointer-events:none; }
+#topBar { position:absolute; top:0; left:0; right:0; z-index:10; padding:12px 16px; padding-top:calc(12px + env(safe-area-inset-top)); background:linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0)); display:flex; align-items:center; gap:10px; transition:opacity .3s ease, visibility .3s ease; pointer-events:none; }
+#topBar.hidden { opacity:0; visibility:hidden; }
 .top-btn { pointer-events:auto; background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.28); color:#fff; border-radius:8px; padding:10px 14px; min-height:44px; font-size:14px; font-weight:bold; cursor:pointer; font-family:inherit; white-space:nowrap; flex-shrink:0; }
 .top-btn:focus { background:rgba(30,90,120,0.95); border-color:#4fc3f7; box-shadow:0 0 0 2px rgba(79,195,247,0.45); outline:none; }
 #titleWrap { flex:1; min-width:0; display:flex; align-items:center; justify-content:center; gap:8px; pointer-events:none; }
@@ -133,8 +132,9 @@ html,body { background:#000; width:100%; height:100%; overflow:hidden; font-fami
 <div id="guideModal" class="overlay hidden"><div class="overlay-panel"><h2 id="guideTitle">📅 Full Guide</h2><div class="overlay-body" id="guideBody"></div><div class="overlay-footer"><button id="guideClose" type="button">Close</button></div></div></div>
 <div id="miniModal" class="overlay hidden"><div class="overlay-panel"><h2>📺 Channel List</h2><div class="overlay-body"><div id="miniStrip" class="mini-channel-strip">Loading…</div></div><div class="overlay-footer"><button id="miniClose" type="button">Close</button></div></div></div>
 <div id="helpModal" class="overlay hidden"><div class="overlay-panel"><h2>⌨️ Shortcuts</h2><div class="overlay-body">
-<div class="help-row"><span>Enter / leave top bar</span><span class="help-key">↑ / ↓</span></div>
-<div class="help-row"><span>Navigate top bar buttons</span><span class="help-key">← / →</span></div>
+<div class="help-row"><span>Enter top bar</span><span class="help-key">↑</span></div>
+<div class="help-row"><span>Leave top bar</span><span class="help-key">↓</span></div>
+<div class="help-row"><span>Navigate top bar</span><span class="help-key">← / →</span></div>
 <div class="help-row"><span>Activate button</span><span class="help-key">Enter</span></div>
 <div class="help-row"><span>Channel number</span><span class="help-key">0-9</span></div>
 <div class="help-row"><span>Channel up / down</span><span class="help-key">PgUp / PgDn</span></div>
@@ -194,7 +194,12 @@ var programUpdateTimer = null, bannerHideTimer = null, progressTimer = null;
 var autoplayAttempted = false, reconnectAttempts = 0, reconnectTimer = null;
 var lastChannelId = null, lastProgramKey = '';
 var chNumBuffer = '', chNumTimer = null, toastTimer = null;
-var topBarFocusGrace = 0;
+
+/* Top-bar keyboard nav grace — makes the bar visible briefly so the user
+   can SEE the focused button. After 5 s it fades back out on its own — the
+   Shaka-driven auto-hide takes over again. */
+var topBarNavUntil = 0;
+var topBarNavTimer = null;
 
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function formatTimeOnly(ms){ var d = new Date(ms), h = d.getHours(), m = d.getMinutes(); var ap = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12; return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap; }
@@ -491,6 +496,10 @@ function initPlayer() {
   syncTopBar();
   return true;
 }
+
+/* ════════ AUTO-HIDE — exactly like before, driven by Shaka ════════
+   Except while the keyboard nav grace window is active, so the user can
+   see the button they are focused on. Grace auto-expires after 5 s. */
 function syncTopBar() {
   var last = null, attempts = 0;
   function check() {
@@ -498,19 +507,45 @@ function syncTopBar() {
     var ctrl = videoContainer.querySelector('.shaka-controls-container');
     if (!ctrl) { if (attempts < 30) setTimeout(check, 200); return; }
     setInterval(function() {
-      var shakaHidden = ctrl.classList.contains('shaka-hidden') || ctrl.offsetParent === null;
-      var focusedInBar = topBar.contains(document.activeElement) || Date.now() < topBarFocusGrace;
-      var shouldHide = shakaHidden && !focusedInBar;
-      if (shouldHide !== last) {
-        last = shouldHide;
-        if (shouldHide) topBar.classList.add('hidden');
+      /* If the keyboard nav grace window is active, keep the bar visible. */
+      if (Date.now() < topBarNavUntil) {
+        if (topBar.classList.contains('hidden')) topBar.classList.remove('hidden');
+        last = false;
+        return;
+      }
+      /* Otherwise mirror Shaka's own hide/show state — pure auto-hide. */
+      var isHidden = ctrl.classList.contains('shaka-hidden') || ctrl.offsetParent === null;
+      if (isHidden !== last) {
+        last = isHidden;
+        if (isHidden) topBar.classList.add('hidden');
         else topBar.classList.remove('hidden');
       }
-      if (focusedInBar) topBar.classList.remove('hidden');
     }, 150);
   }
   check();
 }
+
+/* ════════ KEYBOARD NAV GRACE ════════ */
+function pokeTopBar() {
+  topBarNavUntil = Date.now() + 5000;
+  topBar.classList.remove('hidden');
+  if (topBarNavTimer) clearTimeout(topBarNavTimer);
+  topBarNavTimer = setTimeout(function() {
+    topBarNavUntil = 0;
+    /* Let auto-hide take back over; blur any leftover focused button */
+    if (topBar.contains(document.activeElement) && document.activeElement.blur) {
+      try { document.activeElement.blur(); } catch (e) {}
+    }
+  }, 5000);
+}
+function releaseTopBarNow() {
+  topBarNavUntil = 0;
+  if (topBarNavTimer) { clearTimeout(topBarNavTimer); topBarNavTimer = null; }
+  if (topBar.contains(document.activeElement) && document.activeElement.blur) {
+    try { document.activeElement.blur(); } catch (e) {}
+  }
+}
+
 function scheduleReconnect() {
   if (!currentChannel || reconnectAttempts >= 3) { if (reconnectAttempts >= 3) showToast('Could not reconnect', true); return; }
   reconnectAttempts++;
@@ -575,11 +610,10 @@ statsClose.addEventListener('click', function(){ statsModal.classList.add('hidde
 statsModal.addEventListener('click', function(e){ if (e.target === statsModal) statsModal.classList.add('hidden'); });
 videoContainer.addEventListener('click', function(e) { if (e.target.closest && (e.target.closest('.shaka-overlays-container') || e.target.closest('#unmuteBtn') || e.target.closest('#tapToPlay'))) return; peekBanner(5000); });
 
-/* ═══════════ KEY HANDLER — top bar navigation + volume on +/− ═══════════ */
+/* ═══════════ KEY HANDLER ═══════════ */
 document.addEventListener('keydown', function(e) {
   var k = e.keyCode;
 
-  /* Modal overlays block everything except Escape/Back */
   var inOverlay = !guideModal.classList.contains('hidden') || !miniModal.classList.contains('hidden') || !helpModal.classList.contains('hidden') || !statsModal.classList.contains('hidden');
   if (inOverlay) {
     if (k === 27 || k === 8 || k === 10009) {
@@ -589,24 +623,20 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 
-  /* Channel number entry (digits, Enter to commit, Esc/Backspace to cancel) */
   var isNumKey = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
   if (isNumKey) { e.preventDefault(); handleChNumDigit(String.fromCharCode(k >= 96 ? k - 48 : k)); return; }
   if (k === 13 && chNumBuffer) { e.preventDefault(); clearTimeout(chNumTimer); commitChNum(); return; }
   if ((k === 27 || k === 8) && chNumBuffer) { e.preventDefault(); cancelChNum(); return; }
 
-  /* Shortcut keys (always available) */
   if (k === 71) { e.preventDefault(); openGuide(); return; }
   if (k === 76) { e.preventDefault(); openMiniGuide(); return; }
   if (k === 73) { e.preventDefault(); openStats(); return; }
   if (k === 72) { e.preventDefault(); helpModal.classList.remove('hidden'); return; }
 
-  /* Channel up/down & previous */
   if (k === 33) { e.preventDefault(); switchChannelByOffset(1); return; }
   if (k === 34) { e.preventDefault(); switchChannelByOffset(-1); return; }
   if (k === 8) { e.preventDefault(); switchToPreviousChannel(); return; }
 
-  /* Volume on + / − (keys 187/107 and 189/109) */
   if ((k === 187 || k === 107) && !e.ctrlKey && !e.metaKey) {
     e.preventDefault();
     if (videoEl.volume < 1) videoEl.volume = Math.min(1, videoEl.volume + 0.1);
@@ -621,16 +651,14 @@ document.addEventListener('keydown', function(e) {
   }
   if (k === 77) { e.preventDefault(); videoEl.muted = !videoEl.muted; showToast(videoEl.muted ? 'Muted' : 'Unmuted'); return; }
 
-  /* ══════ TOP BAR NAVIGATION ══════ */
   var inTopBar = topBar.contains(document.activeElement);
 
-  /* ↑ — enter top bar (or stay, if already there) */
+  /* ↑ — open top bar (grace-visible) and focus its first button */
   if (k === 38) {
     e.preventDefault();
-    topBarFocusGrace = Date.now() + 400;
-    topBar.classList.remove('hidden');
+    pokeTopBar();
     if (!inTopBar) {
-      requestAnimationFrame(function() { backBtn.focus(); });
+      requestAnimationFrame(function() { try { backBtn.focus(); } catch (err) {} });
     }
     peekBanner(4000);
     return;
@@ -640,7 +668,7 @@ document.addEventListener('keydown', function(e) {
   if (k === 40) {
     e.preventDefault();
     if (inTopBar) {
-      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      releaseTopBarNow();
     } else {
       if (videoEl.volume > 0) videoEl.volume = Math.max(0, videoEl.volume - 0.1);
       showToast('Volume ' + Math.round(videoEl.volume * 100) + '%');
@@ -649,24 +677,22 @@ document.addEventListener('keydown', function(e) {
     return;
   }
 
-  /* ← / → / Enter while focused on a top-bar button */
+  /* ←/→/Enter while inside the top bar */
   if (inTopBar) {
     var barBtns = [backBtn, guideBtn, fitBtn, helpBtn];
     var bidx = barBtns.indexOf(document.activeElement);
     if (k === 37) {
-      e.preventDefault();
-      topBarFocusGrace = Date.now() + 400;
+      e.preventDefault(); pokeTopBar();
       if (bidx > 0) barBtns[bidx - 1].focus();
       return;
     }
     if (k === 39) {
-      e.preventDefault();
-      topBarFocusGrace = Date.now() + 400;
+      e.preventDefault(); pokeTopBar();
       if (bidx < barBtns.length - 1) barBtns[bidx + 1].focus();
       return;
     }
     if (k === 13) {
-      e.preventDefault();
+      e.preventDefault(); pokeTopBar();
       if (document.activeElement === backBtn) goBack();
       else if (document.activeElement === guideBtn) openGuide();
       else if (document.activeElement === fitBtn) applyFitMode(fitModeIndex + 1);
@@ -675,7 +701,6 @@ document.addEventListener('keydown', function(e) {
     }
   }
 
-  /* Other single-key shortcuts */
   if (k === 70) { e.preventDefault(); applyFitMode(fitModeIndex + 1); return; }
   if (k === 27 || k === 461) { e.preventDefault(); goBack(); return; }
 });
