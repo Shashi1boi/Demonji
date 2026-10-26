@@ -6,12 +6,11 @@
 <meta name="referrer" content="no-referrer">
 <title>Channels</title>
 <link rel="preconnect" href="https://avkb.short.gy" crossorigin>
-<link rel="preconnect" href="https://epgshare01.online" crossorigin>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <style>
 * { margin: 0; padding: 0; box-sizing: border-box; -webkit-box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sans-serif; width: 100%; height: 100%; overflow: hidden; -webkit-user-select: none; user-select: none; }
-#header { background: #111; border-bottom: 1px solid #222; padding: 12px 20px; padding-top: calc(12px + env(safe-area-inset-top)); display: flex; align-items: center; gap: 16px; flex-wrap: wrap; flex-shrink: 0; }
+#header { background: #111; border-bottom: 1px solid #222; padding: 12px 20px; padding-top: calc(12px + env(safe-area-inset-top)); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
 #header h1 { font-size: 20px; font-weight: bold; color: #4fc3f7; white-space: nowrap; margin: 0; }
 #searchWrap { flex: 1; min-width: 200px; }
 #search { width: 100%; padding: 12px 16px; font-size: 16px; background: #1a1a1a; border: 1px solid #333; color: #eee; border-radius: 6px; outline: none; font-family: inherit; -webkit-appearance: none; }
@@ -20,34 +19,59 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
 #epgStatus.visible { display: block; }
 #epgStatus.error { color: #ef5350; }
 #epgStatus.warn { color: #f7a23f; }
+#epgStatus.ok { color: #66bb6a; }
+.hdr-btn { padding: 9px 12px; background: #1a1a1a; border: 1px solid #333; color: #ddd; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; white-space: nowrap; transition: background .15s,border-color .15s; }
+.hdr-btn:hover { background: #242424; border-color: #4fc3f7; }
+.hdr-btn:focus { border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79,195,247,0.35); }
+#sortSelect { padding: 9px 10px; background: #1a1a1a; border: 1px solid #333; color: #ddd; border-radius: 6px; font-size: 12px; font-weight: bold; font-family: inherit; cursor: pointer; outline: none; }
+#sortSelect:focus { border-color: #4fc3f7; }
 #categories { background: #0e0e0e; border-bottom: 1px solid #222; padding: 10px 16px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; flex-shrink: 0; scrollbar-width: none; }
 #categories::-webkit-scrollbar { display: none; }
 .cat-chip { display: inline-block; padding: 8px 16px; margin-right: 8px; background: #1a1a1a; border: 1px solid #2a2a2a; color: #ccc; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; white-space: nowrap; transition: background .15s, color .15s, border-color .15s; }
 .cat-chip:hover { background: #242424; color: #fff; }
 .cat-chip.active { background: #1a3a4a; border-color: #4fc3f7; color: #fff; }
+.cat-chip.fav-chip { border-color: #b8850f; color: #ffc94a; }
+.cat-chip.fav-chip.active { background: #3a2a10; border-color: #ffc94a; color: #fff; }
+.cat-chip.recent-chip { border-color: #6a3a8a; color: #c090e0; }
+.cat-chip.recent-chip.active { background: #2a1a3a; border-color: #c090e0; color: #fff; }
+.cat-chip.live-chip { border-color: #2a7a3a; color: #66d684; }
+.cat-chip.live-chip.active { background: #1a3a20; border-color: #66d684; color: #fff; }
 .cat-chip:focus { background: #1e2a35; border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79,195,247,0.35); }
 #wrap { height: calc(100vh - 130px); height: calc(100dvh - 130px); overflow-y: auto; overflow-x: hidden; padding: 14px; padding-bottom: calc(20px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling: touch; contain: layout style; }
 #grid { display: flex; flex-wrap: wrap; margin: -6px; contain: layout style; }
-.card { box-sizing: border-box; padding: 12px; margin: 6px; width: calc(100% - 12px); background: #161616; border: 2px solid transparent; border-radius: 10px; cursor: pointer; outline: none; transition: background .15s, border-color .15s; display: flex; flex-direction: column; gap: 10px; contain: layout style; }
+.card { box-sizing: border-box; padding: 12px; margin: 6px; width: calc(100% - 12px); background: #161616; border: 2px solid transparent; border-radius: 10px; cursor: pointer; outline: none; transition: background .15s, border-color .15s; display: flex; flex-direction: column; gap: 10px; contain: layout style; position: relative; }
 .card:hover { background: #1a1e24; border-color: #2f4a5f; }
 .card:focus { background: #1a2a35; border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79,195,247,0.3); }
 .card.hidden { display: none; }
-.card-top { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.card.compact { padding: 10px; gap: 6px; }
+.card.compact .card-epg, .card.compact .card-actions { display: none; }
+.card.compact .card-logo { width: 40px; height: 40px; }
+.card.compact .card-name { font-size: 13px; }
+.card-star { position: absolute; top: 8px; right: 8px; background: transparent; border: none; color: #444; font-size: 20px; line-height: 1; cursor: pointer; padding: 4px 6px; outline: none; transition: color .15s, transform .15s; z-index: 2; }
+.card-star:hover { color: #ffc94a; transform: scale(1.15); }
+.card-star.active { color: #ffc94a; }
+.card-star:focus { color: #4fc3f7; }
+.card-top { display: flex; align-items: center; gap: 12px; min-width: 0; padding-right: 24px; }
 .card-logo { width: 48px; height: 48px; border-radius: 8px; object-fit: contain; background: #222; flex-shrink: 0; }
 .card-meta { flex: 1; min-width: 0; }
 .card-name { font-size: 15px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .card-num { display: inline-block; padding: 1px 7px; margin-right: 6px; background: #1e3a4a; border: 1px solid #2f5a70; color: #7cd0f5; border-radius: 4px; font-size: 11px; font-weight: bold; letter-spacing: .5px; vertical-align: middle; }
 .card-cat { font-size: 11px; color: #7ab8d6; margin-top: 2px; text-transform: uppercase; letter-spacing: .5px; font-weight: bold; }
 .card-epg { padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 3px solid #4fc3f7; min-height: 56px; }
+.card-epg.live { border-left-color: #66bb6a; }
 .epg-now-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #888; margin-bottom: 4px; }
 .epg-now-label { display: inline-block; padding: 2px 6px; background: #66bb6a; color: #fff; border-radius: 3px; font-size: 10px; font-weight: bold; letter-spacing: .5px; }
 .epg-now-label.next { background: #4fc3f7; color: #001018; }
 .epg-now-time { color: #aaa; font-size: 11px; }
 .epg-now-title { font-size: 13px; color: #ddd; font-weight: bold; line-height: 1.35; margin-bottom: 4px; }
 .epg-now-desc { font-size: 11px; color: #777; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.epg-now-meta { font-size: 11px; color: #7cd0f5; margin-bottom: 4px; }
+.epg-progress { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; margin-top: 6px; }
+.epg-progress-fill { height: 100%; background: linear-gradient(90deg, #66bb6a 0%, #4fc3f7 100%); border-radius: 2px; width: 0%; transition: width 2s linear; }
 .epg-next-mini { font-size: 11px; color: #6a8ba0; margin-top: 4px; padding-top: 4px; border-top: 1px solid #222; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .epg-next-mini b { color: #8ab8d0; }
 .epg-empty { font-size: 12px; color: #555; font-style: italic; }
+.epg-empty.has-data { color: #7a8a95; }
 .card-actions { display: flex; gap: 8px; justify-content: flex-end; }
 .card-btn { padding: 8px 14px; background: #1e5a78; border: 1px solid #4fc3f7; color: #fff; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; white-space: nowrap; }
 .card-btn:hover { background: #2a7ba0; }
@@ -57,15 +81,13 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
 .msg button { margin-top: 16px; background: #2a2a2a; border: none; color: #eee; padding: 12px 24px; border-radius: 6px; font-size: 15px; cursor: pointer; font-family: inherit; }
 .spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid #333; border-top-color: #4fc3f7; border-radius: 50%; -webkit-animation: spin 0.8s linear infinite; animation: spin 0.8s linear infinite; margin-bottom: 14px; }
 @keyframes spin { to { transform: rotate(360deg); } }
-
 #chNumOverlay { position: fixed; top: 22%; left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%); min-width: 200px; padding: 20px 40px; background: rgba(10,20,28,0.96); border: 3px solid #4fc3f7; border-radius: 18px; text-align: center; z-index: 2000; pointer-events: none; display: none; box-shadow: 0 8px 32px rgba(0,0,0,0.7); }
 #chNumOverlay.visible { display: block; }
 #chNumOverlay .num-label { font-size: 12px; color: #7ab8d6; letter-spacing: 2px; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; }
 #chNumOverlay .num-value { font-size: 72px; color: #fff; font-weight: bold; line-height: 1; letter-spacing: 4px; text-shadow: 0 2px 10px rgba(79,195,247,0.6); }
-
 #detailModal { position: fixed; top:0;left:0;right:0;bottom:0; background: rgba(0,0,0,0.88); z-index: 1500; display: flex; align-items: center; justify-content: center; padding: 16px; }
 #detailModal.hidden { display: none; }
-.detail-panel { background: #161616; border-radius: 14px; max-width: 640px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; border: 1px solid #2a2a2a; overflow: hidden; }
+.detail-panel { background: #161616; border-radius: 14px; max-width: 720px; width: 100%; max-height: 92vh; display: flex; flex-direction: column; border: 1px solid #2a2a2a; overflow: hidden; }
 .detail-header { display: flex; align-items: center; gap: 14px; padding: 16px; border-bottom: 1px solid #2a2a2a; background: #121212; }
 .detail-logo { width: 56px; height: 56px; border-radius: 10px; object-fit: contain; background: #222; flex-shrink: 0; }
 .detail-meta { flex: 1; min-width: 0; }
@@ -74,55 +96,79 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
 .detail-cat { font-size: 11px; color: #7ab8d6; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
 .detail-close { background: transparent; border: 1px solid #333; color: #eee; width: 44px; height: 44px; border-radius: 8px; font-size: 24px; cursor: pointer; line-height: 1; flex-shrink: 0; outline: none; }
 .detail-close:hover, .detail-close:focus { background: #2a2a2a; border-color: #4fc3f7; }
+.detail-tabs { display: flex; border-bottom: 1px solid #2a2a2a; background: #101010; }
+.detail-tab { flex: 1; padding: 12px; background: transparent; border: none; color: #888; font-size: 13px; font-weight: bold; font-family: inherit; cursor: pointer; outline: none; border-bottom: 2px solid transparent; }
+.detail-tab:hover { color: #ccc; }
+.detail-tab.active { color: #4fc3f7; border-bottom-color: #4fc3f7; }
 .detail-body { overflow-y: auto; padding: 16px; flex: 1; -webkit-overflow-scrolling: touch; }
 .detail-show { padding: 14px; background: #1c1c1c; border-radius: 10px; margin-bottom: 12px; border: 1px solid #262626; }
 .detail-show.now { border-left: 4px solid #66bb6a; }
 .detail-show.next { border-left: 4px solid #4fc3f7; }
+.detail-show.past { border-left: 4px solid #444; opacity: 0.6; }
 .detail-show.none { border-left: 4px solid #444; opacity: 0.7; }
 .show-label { font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
 .detail-show.now .show-label { color: #66bb6a; }
 .detail-show.next .show-label { color: #4fc3f7; }
+.detail-show.past .show-label { color: #777; }
 .detail-show.none .show-label { color: #666; }
 .show-title { font-size: 16px; font-weight: bold; color: #fff; line-height: 1.3; margin-bottom: 6px; }
+.show-meta-row { font-size: 11px; color: #8aa; margin-bottom: 6px; }
 .show-image { width: 100%; max-height: 180px; border-radius: 8px; overflow: hidden; margin-bottom: 10px; background: #0a0a0a; }
 .show-image img { width: 100%; height: auto; max-height: 180px; object-fit: cover; display: block; }
 .show-desc { font-size: 13px; color: #a0a0a0; line-height: 1.5; }
+.timeline-row { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #222; }
+.timeline-row:last-child { border-bottom: none; }
+.timeline-time { font-size: 12px; color: #7cd0f5; font-weight: bold; min-width: 90px; flex-shrink: 0; }
+.timeline-title { font-size: 13px; color: #ddd; flex: 1; }
+.timeline-row.live .timeline-time { color: #66bb6a; }
+.timeline-row.live .timeline-title { color: #fff; font-weight: bold; }
+.timeline-row.past { opacity: 0.5; }
+.overlap-tag { color: #7a8a95; font-size: 10px; }
+.airing-tag { background: #66bb6a; color: #fff; font-size: 9px; font-weight: bold; padding: 1px 5px; border-radius: 3px; letter-spacing: .5px; }
 .detail-actions { display: flex; gap: 10px; padding: 14px 16px; border-top: 1px solid #2a2a2a; background: #121212; flex-shrink: 0; }
 .detail-actions button { flex: 1; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; border: none; }
 .btn-watch { background: #1e5a78; color: #fff; border: 1px solid #4fc3f7 !important; }
 .btn-watch:hover, .btn-watch:focus { background: #2a7ba0; box-shadow: 0 0 0 2px rgba(79,195,247,0.35); }
 .btn-cancel { background: #2a2a2a; color: #ddd; border: 1px solid #333 !important; }
 .btn-cancel:hover, .btn-cancel:focus { background: #3a3a3a; border-color: #4fc3f7 !important; }
-
-#toast { position: fixed; bottom: 30px; left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%); background: rgba(30,30,30,0.95); color: #fff; padding: 12px 22px; border-radius: 8px; border: 1px solid #4fc3f7; font-size: 14px; z-index: 2500; opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; }
+#helpModal { position: fixed; top:0;left:0;right:0;bottom:0; background: rgba(0,0,0,0.9); z-index: 1600; display: flex; align-items: center; justify-content: center; padding: 16px; }
+#helpModal.hidden { display: none; }
+.help-panel { background: #161616; border-radius: 14px; max-width: 560px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; border: 1px solid #2a2a2a; overflow: hidden; }
+.help-panel h2 { padding: 16px; border-bottom: 1px solid #2a2a2a; font-size: 18px; color: #4fc3f7; background: #121212; }
+.help-body { padding: 16px; overflow-y: auto; }
+.help-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; font-size: 13px; }
+.help-row:last-child { border-bottom: none; }
+.help-key { background: #2a2a2a; border: 1px solid #444; border-radius: 4px; padding: 2px 8px; color: #7cd0f5; font-family: monospace; font-size: 12px; }
+.help-desc { color: #ccc; }
+#toast { position: fixed; bottom: 30px; left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%); background: rgba(30,30,30,0.95); color: #fff; padding: 12px 22px; border-radius: 8px; border: 1px solid #4fc3f7; font-size: 14px; z-index: 2500; opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; max-width: 90vw; text-align: center; }
 #toast.visible { opacity: 1; }
 #toast.error { border-color: #ef5350; color: #ffc7c7; }
-
 @media (min-width: 600px) { .card { width: calc(50% - 12px); } }
 @media (min-width: 900px) { .card { width: calc(33.333% - 12px); } }
 @media (min-width: 1280px) { .card { width: calc(33.333% - 12px); padding: 14px; } .card-logo { width: 56px; height: 56px; } .card-name { font-size: 17px; } .epg-now-title { font-size: 14px; } }
 @media (min-width: 1700px) { .card { width: calc(25% - 12px); } .card-name { font-size: 18px; } }
-@media (max-width: 480px) { #header { padding: 10px 12px; padding-top: calc(10px + env(safe-area-inset-top)); } #header h1 { font-size: 16px; width: 100%; } #searchWrap { min-width: 100%; } #search { padding: 10px 12px; font-size: 15px; } #categories { padding: 8px 12px; } .cat-chip { padding: 7px 12px; font-size: 12px; } #wrap { padding: 10px; } .card { padding: 10px; gap: 8px; } .card-logo { width: 42px; height: 42px; } .card-name { font-size: 14px; } .epg-now-title { font-size: 12px; } .epg-now-desc { -webkit-line-clamp: 1; } .card-btn { padding: 7px 12px; font-size: 11px; } #chNumOverlay .num-value { font-size: 56px; } .detail-name { font-size: 17px; } }
+@media (max-width: 480px) { #header { padding: 10px 12px; padding-top: calc(10px + env(safe-area-inset-top)); gap: 8px; } #header h1 { font-size: 16px; width: 100%; } #searchWrap { min-width: 100%; } #search { padding: 10px 12px; font-size: 15px; } #categories { padding: 8px 12px; } .cat-chip { padding: 7px 12px; font-size: 12px; } #wrap { padding: 10px; } .card { padding: 10px; gap: 8px; } .card-logo { width: 42px; height: 42px; } .card-name { font-size: 14px; } .epg-now-title { font-size: 12px; } .epg-now-desc { -webkit-line-clamp: 1; } .card-btn { padding: 7px 12px; font-size: 11px; } #chNumOverlay .num-value { font-size: 56px; } .detail-name { font-size: 17px; } .hdr-btn, #sortSelect { padding: 8px 10px; font-size: 11px; } }
 </style>
 </head>
 <body>
-
 <div id="header">
-  <h1>📺 JTV Channels</h1>
-  <div id="searchWrap">
-    <input id="search" type="search" placeholder="Search channels… (or type channel number)" autocomplete="off">
-  </div>
+  <h1>📺 JTV</h1>
+  <div id="searchWrap"><input id="search" type="search" placeholder="Search channels or shows…" autocomplete="off"></div>
+  <select id="sortSelect" title="Sort channels">
+    <option value="default">Sort: Default</option>
+    <option value="number">Sort: Number</option>
+    <option value="name">Sort: Name A-Z</option>
+    <option value="category">Sort: Category</option>
+  </select>
+  <button class="hdr-btn" id="viewBtn" type="button" title="Toggle view">▦ Grid</button>
+  <button class="hdr-btn" id="refreshBtn" type="button" title="Refresh guide">⟳ EPG</button>
+  <button class="hdr-btn" id="helpBtn" type="button" title="Help">?</button>
   <div id="epgStatus"></div>
 </div>
 <div id="categories"></div>
-<div id="wrap">
-  <div id="grid"><div class="msg"><div class="spinner"></div><div>Loading channels…</div></div></div>
-</div>
+<div id="wrap"><div id="grid"><div class="msg"><div class="spinner"></div><div>Loading channels…</div></div></div></div>
 
-<div id="chNumOverlay">
-  <div class="num-label">Channel</div>
-  <div class="num-value" id="chNumValue"></div>
-</div>
+<div id="chNumOverlay"><div class="num-label">Channel</div><div class="num-value" id="chNumValue"></div></div>
 
 <div id="detailModal" class="hidden">
   <div class="detail-panel">
@@ -135,6 +181,10 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
       </div>
       <button class="detail-close" id="dClose" tabindex="0" type="button">×</button>
     </div>
+    <div class="detail-tabs">
+      <button class="detail-tab active" id="dTabInfo" type="button">Now / Next</button>
+      <button class="detail-tab" id="dTabGuide" type="button">Full Day Guide</button>
+    </div>
     <div class="detail-body" id="dBody"></div>
     <div class="detail-actions">
       <button class="btn-cancel" id="dCancel" tabindex="0" type="button">✕ Close</button>
@@ -143,37 +193,39 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
   </div>
 </div>
 
+<div id="helpModal" class="hidden">
+  <div class="help-panel">
+    <h2>⌨️ Keyboard Shortcuts</h2>
+    <div class="help-body">
+      <div class="help-row"><span class="help-desc">Focus search</span><span class="help-key">/ or S</span></div>
+      <div class="help-row"><span class="help-desc">Type channel number</span><span class="help-key">0-9</span></div>
+      <div class="help-row"><span class="help-desc">Confirm channel number</span><span class="help-key">Enter</span></div>
+      <div class="help-row"><span class="help-desc">Cancel channel number</span><span class="help-key">Esc / Backspace</span></div>
+      <div class="help-row"><span class="help-desc">Navigate cards</span><span class="help-key">← ↑ → ↓</span></div>
+      <div class="help-row"><span class="help-desc">Open details / Watch</span><span class="help-key">Enter</span></div>
+      <div class="help-row"><span class="help-desc">Toggle favorite</span><span class="help-key">F</span></div>
+      <div class="help-row"><span class="help-desc">Show Help</span><span class="help-key">?</span></div>
+      <div class="help-row"><span class="help-desc">Refresh guide</span><span class="help-key">R</span></div>
+      <div class="help-row"><span class="help-desc">Close any overlay</span><span class="help-key">Esc</span></div>
+    </div>
+    <div class="detail-actions">
+      <button id="helpClose" type="button" style="flex:1;padding:14px;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;font-family:inherit;background:#2a2a2a;color:#ddd;border:1px solid #333;">Close</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
 if (typeof Promise === 'undefined') {
-  (function(){
-    function P(e){
-      var s=this; s._s=0; s._v=null; s._h=[];
-      function r(v){if(s._s)return;s._s=1;s._v=v;f(s);}
-      function j(v){if(s._s)return;s._s=2;s._v=v;f(s);}
-      function f(p){if(p._s===0)return;var hs=p._h;p._h=[];for(var i=0;i<hs.length;i++)h(p,hs[i]);}
-      function h(p,hd){
-        if(p._s===1){if(hd.of){try{var x=hd.of(p._v);if(x&&typeof x.then==='function')x.then(hd.r,hd.j);else hd.r(x);}catch(e){hd.j(e);}}else hd.r(p._v);}
-        else{if(hd.or){try{var y=hd.or(p._v);if(y&&typeof y.then==='function')y.then(hd.r,hd.j);else hd.r(y);}catch(e){hd.j(e);}}else hd.j(p._v);}
-      }
-      s.then=function(of,or){return new P(function(res,rej){var hd={of:of,or:or,r:res,j:rej};if(s._s)h(s,hd);else s._h.push(hd);});};
-      s['catch']=function(or){return s.then(null,or);};
-      try{e(r,j);}catch(e){j(e);}
-    }
-    P.resolve=function(v){return new P(function(r){r(v);});};
-    P.reject=function(v){return new P(function(r,j){j(v);});};
-    P.all=function(a){return new P(function(r,j){var o=[],d=0;if(!a.length)return r(o);for(var i=0;i<a.length;i++)(function(x){a[x].then(function(v){o[x]=v;if(++d===a.length)r(o);},j);})(i);});};
-    window.Promise=P;
-  })();
+  (function(){function P(e){var s=this;s._s=0;s._v=null;s._h=[];function r(v){if(s._s)return;s._s=1;s._v=v;f(s);}function j(v){if(s._s)return;s._s=2;s._v=v;f(s);}function f(p){if(p._s===0)return;var hs=p._h;p._h=[];for(var i=0;i<hs.length;i++)h(p,hs[i]);}function h(p,hd){if(p._s===1){if(hd.of){try{var x=hd.of(p._v);if(x&&typeof x.then==='function')x.then(hd.r,hd.j);else hd.r(x);}catch(e){hd.j(e);}}else hd.r(p._v);}else{if(hd.or){try{var y=hd.or(p._v);if(y&&typeof y.then==='function')y.then(hd.r,hd.j);else hd.r(y);}catch(e){hd.j(e);}}else hd.j(p._v);}}s.then=function(of,or){return new P(function(res,rej){var hd={of:of,or:or,r:res,j:rej};if(s._s)h(s,hd);else s._h.push(hd);});};s['catch']=function(or){return s.then(null,or);};try{e(r,j);}catch(e){j(e);}}P.resolve=function(v){return new P(function(r){r(v);});};P.reject=function(v){return new P(function(r,j){j(v);});};P.all=function(a){return new P(function(r,j){var o=[],d=0;if(!a.length)return r(o);for(var i=0;i<a.length;i++)(function(x){a[x].then(function(v){o[x]=v;if(++d===a.length)r(o);},j);})(i);});};window.Promise=P;})();
 }
 if (!Array.prototype.includes) Array.prototype.includes = function(x){ return this.indexOf(x) !== -1; };
 if (!Element.prototype.closest) { Element.prototype.closest = function(sel) { var el = this; while (el) { if (el.matches && el.matches(sel)) return el; el = el.parentElement; } return null; }; }
 
 var rAF = window.requestAnimationFrame || function(cb){ return setTimeout(function(){ cb(Date.now()); }, 16); };
-
-function safeLog() { try { console.log.apply(console, arguments); } catch (e) {} }
-function safeWarn() { try { console.warn.apply(console, arguments); } catch (e) {} }
+function safeLog(){ try{ console.log.apply(console,arguments);}catch(e){} }
+function safeWarn(){ try{ console.warn.apply(console,arguments);}catch(e){} }
 
 function xhrFetch(url, opts) {
   opts = opts || {};
@@ -181,20 +233,13 @@ function xhrFetch(url, opts) {
     var xhr = new XMLHttpRequest();
     xhr.open(opts.method || 'GET', url, true);
     xhr.timeout = opts.timeout || 20000;
-    if (opts.headers) {
-      for (var k in opts.headers) {
-        if (opts.headers.hasOwnProperty(k)) { try { xhr.setRequestHeader(k, opts.headers[k]); } catch(e){} }
-      }
-    }
+    if (opts.headers) for (var k in opts.headers) if (opts.headers.hasOwnProperty(k)) try { xhr.setRequestHeader(k, opts.headers[k]); } catch(e){}
     xhr.onload = function() {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        resolve({ ok: true, status: xhr.status,
-          text: function(){ return Promise.resolve(xhr.responseText); },
-          json: function(){ return Promise.resolve(JSON.parse(xhr.responseText)); } });
-      } else reject(new Error('HTTP ' + xhr.status));
+      if (xhr.status >= 200 && xhr.status < 300) resolve({ ok:true, status: xhr.status, text: function(){ return Promise.resolve(xhr.responseText); }, json: function(){ return Promise.resolve(JSON.parse(xhr.responseText)); } });
+      else reject(new Error('HTTP ' + xhr.status));
     };
     xhr.onerror = function(){ reject(new Error('Network error')); };
-    xhr.ontimeout = function(){ reject(new Error('Timeout after ' + xhr.timeout + 'ms')); };
+    xhr.ontimeout = function(){ reject(new Error('Timeout')); };
     try { xhr.send(opts.body || null); } catch(e){ reject(e); }
   });
 }
@@ -205,148 +250,180 @@ function xhrFetchBuffer(url, opts) {
     xhr.open(opts.method || 'GET', url, true);
     xhr.responseType = 'arraybuffer';
     xhr.timeout = opts.timeout || 120000;
-    xhr.onload = function() {
-      if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response);
-      else reject(new Error('HTTP ' + xhr.status));
-    };
+    xhr.onload = function() { if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response); else reject(new Error('HTTP ' + xhr.status)); };
     xhr.onerror = function(){ reject(new Error('Network error')); };
-    xhr.ontimeout = function(){ reject(new Error('Timeout after ' + xhr.timeout + 'ms')); };
+    xhr.ontimeout = function(){ reject(new Error('Timeout')); };
     try { xhr.send(null); } catch(e){ reject(e); }
   });
 }
 
 var CHANNELS_CANDIDATES = ['/jstr4web.json', 'https://jjtvxweb.pages.dev/jstr4web.json'];
 var CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
-var EPG_SOURCES = [
-  { url: 'https://avkb.short.gy/tsepg.xml.gz', name: 'AVKB TSEPG', timeout: 180000 },
-  { url: 'https://epgshare01.online/epgshare01/epg_ripper_IN4.xml.gz', name: 'Open-EPG', timeout: 180000 }
-];
-var EPG_CACHE_KEY = 'jtv_epg_cache_v9';
-var EPG_CACHE_TTL_MS = 60 * 60 * 1000;
+var EPG_URL = 'https://avkb.short.gy/jioepg.xml.gz';
+var EPG_CACHE_KEY = 'jtv_epg_cache_v13';
+var EPG_CACHE_TTL_MS = 4 * 60 * 60 * 1000;
+var EPG_TRIM_BEFORE_H = 12;
+var EPG_TRIM_AFTER_H = 48;
+var FAV_KEY = 'jtv_favorites_v1';
+var RECENT_KEY = 'jtv_recents_v1';
+var PREF_KEY = 'jtv_prefs_v1';
 
-var gridEl       = document.getElementById('grid');
-var searchEl     = document.getElementById('search');
+var gridEl = document.getElementById('grid');
+var searchEl = document.getElementById('search');
 var categoriesEl = document.getElementById('categories');
-var wrapEl       = document.getElementById('wrap');
-var epgStatusEl  = document.getElementById('epgStatus');
+var wrapEl = document.getElementById('wrap');
+var epgStatusEl = document.getElementById('epgStatus');
 var chNumOverlay = document.getElementById('chNumOverlay');
-var chNumValue   = document.getElementById('chNumValue');
-var detailModal  = document.getElementById('detailModal');
+var chNumValue = document.getElementById('chNumValue');
+var detailModal = document.getElementById('detailModal');
+var helpModal = document.getElementById('helpModal');
 var dLogo = document.getElementById('dLogo');
-var dNum  = document.getElementById('dNum');
+var dNum = document.getElementById('dNum');
 var dName = document.getElementById('dName');
-var dCat  = document.getElementById('dCat');
+var dCat = document.getElementById('dCat');
 var dBody = document.getElementById('dBody');
 var dClose = document.getElementById('dClose');
 var dCancel = document.getElementById('dCancel');
-var dWatch  = document.getElementById('dWatch');
+var dWatch = document.getElementById('dWatch');
+var dTabInfo = document.getElementById('dTabInfo');
+var dTabGuide = document.getElementById('dTabGuide');
 var toastEl = document.getElementById('toast');
+var sortSelect = document.getElementById('sortSelect');
+var viewBtn = document.getElementById('viewBtn');
+var refreshBtn = document.getElementById('refreshBtn');
+var helpBtn = document.getElementById('helpBtn');
+var helpClose = document.getElementById('helpClose');
 
 var allChannels = [];
+var displayedChannels = [];
 var selectedCategory = 'all';
 var searchQuery = '';
 var cardMap = {};
 var currentDetailChannel = null;
+var currentDetailTab = 'info';
 var chNumBuffer = '';
 var chNumTimer = null;
 var toastTimer = null;
 
+var favorites = {};
+var recents = [];
+var sortMode = 'default';
+var viewMode = 'grid';
+
 var epgByChannelId = {};
 var epgLoaded = false;
-var looseNorm2Ambiguous = {};   /* populated after allChannels loads */
+var progressUpdateTimer = null;
 
-/* ══════════════════════════════════════════════════════════════ Utilities */
-function escapeHtml(s) { return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-function truncate(s, n) { if (!s) return ''; return s.length > n ? s.substring(0, n - 1) + '…' : s; }
-function formatTimeOnly(ms) {
-  var d = new Date(ms);
-  var h = d.getHours(), m = d.getMinutes();
-  var ap = h >= 12 ? 'PM' : 'AM';
-  h = h % 12; if (h === 0) h = 12;
-  return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap;
-}
-function formatRange(s, e) { return formatTimeOnly(s) + ' - ' + formatTimeOnly(e); }
-function setEpgStatus(text, kind) {
+function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function truncate(s,n){ if(!s) return ''; return s.length > n ? s.substring(0, n-1) + '…' : s; }
+function formatTimeOnly(ms){ var d = new Date(ms), h = d.getHours(), m = d.getMinutes(); var ap = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12; return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap; }
+function formatRange(s, e){ return formatTimeOnly(s) + ' - ' + formatTimeOnly(e); }
+function setEpgStatus(text, kind){
   if (!epgStatusEl) return;
-  if (!text) { epgStatusEl.classList.remove('visible'); epgStatusEl.textContent = ''; return; }
+  if (!text) { epgStatusEl.classList.remove('visible','error','warn','ok'); epgStatusEl.textContent = ''; return; }
   epgStatusEl.textContent = text;
   epgStatusEl.classList.add('visible');
-  epgStatusEl.classList.remove('error'); epgStatusEl.classList.remove('warn');
-  if (kind === 'error') epgStatusEl.classList.add('error');
-  else if (kind === 'warn') epgStatusEl.classList.add('warn');
+  epgStatusEl.classList.remove('error','warn','ok');
+  if (kind) epgStatusEl.classList.add(kind);
 }
-function showToast(msg, isError) {
-  toastEl.textContent = msg;
-  toastEl.classList.add('visible');
+function showToast(msg, isError){
+  toastEl.textContent = msg; toastEl.classList.add('visible');
   if (isError) toastEl.classList.add('error'); else toastEl.classList.remove('error');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(function(){ toastEl.classList.remove('visible'); }, 2500);
+  clearTimeout(toastTimer); toastTimer = setTimeout(function(){ toastEl.classList.remove('visible'); }, 2500);
 }
 
-function parseEPGDate(dateStr) {
-  if (!dateStr) return null;
-  var parts = String(dateStr).trim().split(' ');
-  var datetime = parts[0];
-  var tz = parts[1] || '+0000';
-  var year   = parseInt(datetime.slice(0, 4), 10);
-  var month  = parseInt(datetime.slice(4, 6), 10) - 1;
-  var day    = parseInt(datetime.slice(6, 8), 10);
-  var hour   = parseInt(datetime.slice(8, 10), 10);
-  var minute = parseInt(datetime.slice(10, 12), 10);
-  var second = parseInt(datetime.slice(12, 14), 10);
-  if (isNaN(year)) return null;
-  var ms = Date.UTC(year, month, day, hour, minute, second);
-  var tzSign  = tz.charAt(0);
-  var tzHours = parseInt(tz.slice(1, 3), 10) || 0;
-  var tzMins  = parseInt(tz.slice(3, 5), 10) || 0;
-  var offset  = (tzHours * 3600 + tzMins * 60) * 1000;
-  if (tzSign === '-') offset = -offset;
-  return ms - offset;
-}
-
-/* ══════════════════════════════════════════════════════════════
-   Normalize — strict (safe, preserves distinguishing words)
-   ══════════════════════════════════════════════════════════════ */
+/* ════════ ID / name normalization ════════ */
+function extractNumericId(id) { if (!id) return null; var m = String(id).match(/(\d{1,6})\s*$/); return m ? m[1] : null; }
 function normalizeChannelName(name) {
   if (!name) return '';
-  var s = String(name).toLowerCase();
-  s = s.replace(/&/g, ' and ');
-  s = s.replace(/[^\w\s]/g, ' ');
+  var s = String(name).toLowerCase().replace(/&/g, ' and ').replace(/[^\w\s]/g, ' ');
   s = s.replace(/\b(hd|sd|fhd|uhd|4k|8k|1080p|720p|1080i|720i|576p|480p|tv|channel)\b/g, ' ');
-  s = s.replace(/\s+/g, ' ').trim();
-  return s;
+  return s.replace(/\s+/g, ' ').trim();
 }
-
-/* Loose — strips more words, used ONLY as fallback for empty channels */
 function normalizeChannelNameLoose(name) {
   if (!name) return '';
-  var s = String(name).toLowerCase();
-  s = s.replace(/&/g, ' and ');
-  s = s.replace(/[^\w\s]/g, ' ');
-  s = s.replace(/\b(hd|sd|fhd|uhd|4k|8k|1080p|720p|1080i|720i|576p|480p|tv|channel|plus|movies|music|news|sports|gold|comedy|kids|family|classic|action|drama)\b/g, ' ');
-  s = s.replace(/\s+/g, ' ').trim();
-  return s;
+  var s = String(name).toLowerCase().replace(/&/g, ' and ').replace(/[^\w\s]/g, ' ');
+  s = s.replace(/\b(hd|sd|fhd|uhd|4k|8k|1080p|720p|1080i|720i|576p|480p|tv|channel|plus|movies|music|news|sports|gold|comedy|kids|family|classic|action|drama|entertainment|lifestyle|devotional|regional|national|international)\b/g, ' ');
+  return s.replace(/\s+/g, ' ').trim();
+}
+
+/* ════════ Prefs ════════ */
+function loadPrefs(){
+  try { favorites = JSON.parse(localStorage.getItem(FAV_KEY) || '{}'); } catch(e){ favorites = {}; }
+  try { recents = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch(e){ recents = []; }
+  try { var p = JSON.parse(localStorage.getItem(PREF_KEY) || '{}'); if (p.sortMode) sortMode = p.sortMode; if (p.viewMode) viewMode = p.viewMode; } catch(e){}
+  if (sortSelect) sortSelect.value = sortMode;
+  updateViewBtn();
+}
+function savePrefs(){ try { localStorage.setItem(PREF_KEY, JSON.stringify({ sortMode: sortMode, viewMode: viewMode })); } catch(e){} }
+function saveFavorites(){ try { localStorage.setItem(FAV_KEY, JSON.stringify(favorites)); } catch(e){} }
+function saveRecents(){ try { localStorage.setItem(RECENT_KEY, JSON.stringify(recents)); } catch(e){} }
+function updateViewBtn(){ if (viewBtn) viewBtn.textContent = viewMode === 'grid' ? '▦ Grid' : '☰ List'; }
+function toggleFavorite(chId){
+  chId = String(chId);
+  if (favorites[chId]) delete favorites[chId]; else favorites[chId] = true;
+  saveFavorites();
+  var entry = cardMap[chId];
+  if (entry) { var star = entry.el.querySelector('.card-star'); if (star) { if (favorites[chId]) star.classList.add('active'); else star.classList.remove('active'); } }
+  if (selectedCategory === 'favorites') applyFilter();
+  showToast(favorites[chId] ? 'Added to favorites ⭐' : 'Removed from favorites');
+}
+function addRecent(chId){ chId = String(chId); recents = [chId].concat(recents.filter(function(x){ return x !== chId; })).slice(0, 20); saveRecents(); }
+
+/* ════════ ROBUST EPG date parse ════════ */
+/* Handles: YYYYMMDDHHMMSS +HHMM | YYYYMMDDHHMMSS+HHMM | YYYYMMDDHHMMSS +HH:MM |
+   YYYYMMDDHHMMSS+HH:MM | YYYYMMDDHHMMSS | YYYYMMDDHHMMSS IST | YYYYMMDDHHMMSS UTC
+   Default timezone when none is present: IST (+0530) — matches jioepg source.
+*/
+function parseEPGDate(dateStr) {
+  if (!dateStr) return null;
+  var s = String(dateStr).trim();
+  /* Extract 14-digit datetime at the start */
+  var m = s.match(/^(\d{14})/);
+  if (!m) return null;
+  var dt = m[1];
+  /* Extract timezone from the rest of the string */
+  var tzPart = s.substring(14).trim();
+  var tz = '+0530';  /* default: IST */
+  if (tzPart) {
+    /* Try +HHMM, +HH:MM, -HHMM, -HH:MM */
+    var tzm = tzPart.match(/([+-])(\d{1,2}):?(\d{2})?/);
+    if (tzm) {
+      var sign = tzm[1] === '-' ? -1 : 1;
+      var tzH = parseInt(tzm[2], 10) || 0;
+      var tzM = parseInt(tzm[3] || '0', 10) || 0;
+      tz = (sign < 0 ? '-' : '+') + (tzH < 10 ? '0' : '') + tzH + (tzM < 10 ? '0' : '') + tzM;
+    }
+    /* Named zones */
+    else if (/IST/i.test(tzPart)) tz = '+0530';
+    else if (/UTC|GMT/i.test(tzPart)) tz = '+0000';
+  }
+  var year = parseInt(dt.slice(0, 4), 10);
+  var month = parseInt(dt.slice(4, 6), 10) - 1;
+  var day = parseInt(dt.slice(6, 8), 10);
+  var hour = parseInt(dt.slice(8, 10), 10);
+  var minute = parseInt(dt.slice(10, 12), 10);
+  var second = parseInt(dt.slice(12, 14), 10) || 0;
+  if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) return null;
+  var ms = Date.UTC(year, month, day, hour, minute, second);
+  var sign2 = tz.charAt(0) === '-' ? -1 : 1;
+  var tzH2 = parseInt(tz.substr(1, 2), 10) || 0;
+  var tzM2 = parseInt(tz.substr(3, 2), 10) || 0;
+  return ms - (tzH2 * 3600 + tzM2 * 60) * 1000 * sign2;
 }
 
 function bytesToUtf8String(bytes) {
-  if (typeof TextDecoder !== 'undefined') {
-    try { return new TextDecoder('utf-8').decode(bytes); } catch (e) {}
-  }
+  if (typeof TextDecoder !== 'undefined') { try { return new TextDecoder('utf-8').decode(bytes); } catch (e) {} }
   var result = '', i = 0;
   while (i < bytes.length) {
     var b = bytes[i++];
     if (b < 0x80) result += String.fromCharCode(b);
     else if (b < 0xE0) result += String.fromCharCode(((b & 0x1F) << 6) | (bytes[i++] & 0x3F));
     else if (b < 0xF0) result += String.fromCharCode(((b & 0x0F) << 12) | ((bytes[i++] & 0x3F) << 6) | (bytes[i++] & 0x3F));
-    else {
-      var cp = ((b & 0x07) << 18) | ((bytes[i++] & 0x3F) << 12) | ((bytes[i++] & 0x3F) << 6) | (bytes[i++] & 0x3F);
-      cp -= 0x10000;
-      result += String.fromCharCode(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF));
-    }
+    else { var cp = ((b & 0x07) << 18) | ((bytes[i++] & 0x3F) << 12) | ((bytes[i++] & 0x3F) << 6) | (bytes[i++] & 0x3F); cp -= 0x10000; result += String.fromCharCode(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF)); }
   }
   return result;
 }
-
 function chunkedUngzip(bytes) {
   return new Promise(function(resolve, reject) {
     if (typeof pako === 'undefined') { reject(new Error('pako not loaded')); return; }
@@ -355,369 +432,352 @@ function chunkedUngzip(bytes) {
       var inflator = new pako.Inflate({ to: 'string', chunkSize: 1024 * 1024 });
       inflator.push(bytes, true);
       if (inflator.err) { reject(new Error('inflate failed: ' + inflator.msg)); return; }
-      safeLog('[pako] decompressed ' + bytes.length + ' bytes in ' + (Date.now() - t0) + 'ms');
+      safeLog('[pako] ' + bytes.length + ' bytes in ' + (Date.now() - t0) + 'ms');
       resolve(inflator.result);
     } catch (e) { reject(e); }
   });
 }
-
 function decodeXmlEntities(s) {
   if (!s || s.indexOf('&') === -1) return s;
   return s.replace(/&(#x?[0-9a-fA-F]+|amp|lt|gt|quot|apos);/g, function(m, e) {
-    if (e === 'amp') return '&';
-    if (e === 'lt') return '<';
-    if (e === 'gt') return '>';
-    if (e === 'quot') return '"';
-    if (e === 'apos') return "'";
-    if (e.charAt(0) === '#') {
-      var code = (e.charAt(1) === 'x' || e.charAt(1) === 'X')
-        ? parseInt(e.substr(2), 16)
-        : parseInt(e.substr(1), 10);
-      if (!isNaN(code)) return String.fromCharCode(code);
-    }
+    if (e === 'amp') return '&'; if (e === 'lt') return '<'; if (e === 'gt') return '>';
+    if (e === 'quot') return '"'; if (e === 'apos') return "'";
+    if (e.charAt(0) === '#') { var code = (e.charAt(1) === 'x' || e.charAt(1) === 'X') ? parseInt(e.substr(2), 16) : parseInt(e.substr(1), 10); if (!isNaN(code)) return String.fromCharCode(code); }
     return m;
   });
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Regex XMLTV parser — also builds byLoose index (unique only)
-   ══════════════════════════════════════════════════════════════ */
+/* ════════ Channel lookup map ════════ */
+function buildChannelLookup() {
+  var byId = {}, byNumeric = {}, byName = {}, byLoose = {};
+  var nameLists = {}, looseLists = {};
+  for (var i = 0; i < allChannels.length; i++) {
+    var ch = allChannels[i], idStr = String(ch.id);
+    byId[idStr] = ch;
+    var num = extractNumericId(idStr);
+    if (num && !byNumeric[num]) byNumeric[num] = ch;
+    var norm = normalizeChannelName(ch.name);
+    if (norm) { if (!nameLists[norm]) nameLists[norm] = []; nameLists[norm].push(ch); }
+    var loose = normalizeChannelNameLoose(ch.name);
+    if (loose) { if (!looseLists[loose]) looseLists[loose] = []; looseLists[loose].push(ch); }
+  }
+  for (var n in nameLists) if (nameLists[n].length === 1) byName[n] = nameLists[n][0];
+  for (var l in looseLists) if (looseLists[l].length === 1) byLoose[l] = looseLists[l][0];
+  return { byId: byId, byNumeric: byNumeric, byName: byName, byLoose: byLoose };
+}
+function findMatchingChannel(lookup, xmltvId, xmltvName) {
+  if (lookup.byId[xmltvId]) return lookup.byId[xmltvId];
+  var num = extractNumericId(xmltvId);
+  if (num && lookup.byNumeric[num]) return lookup.byNumeric[num];
+  if (xmltvName) {
+    var norm = normalizeChannelName(xmltvName);
+    if (norm && lookup.byName[norm]) return lookup.byName[norm];
+    var loose = normalizeChannelNameLoose(xmltvName);
+    if (loose && lookup.byLoose[loose]) return lookup.byLoose[loose];
+  }
+  return null;
+}
+
+/* ════════ XMLTV parser ════════ */
 function processXmlText(xmlText, label) {
   if (!xmlText || xmlText.length < 500) throw new Error('XML too small');
   if (xmlText.indexOf('<tv') === -1 && xmlText.indexOf('<?xml') === -1) throw new Error('Not XMLTV');
-
   var t0 = Date.now();
 
-  /* Channel id → display name */
-  var channelIdToName = {};
-  var chRe = /<channel\s+([^>]*?)>([\s\S]*?)<\/channel>/g;
-  var cm;
+  var idToName = {};
+  var chRe = /<channel\s+([^>]*?)>([\s\S]*?)<\/channel>/g, cm;
   while ((cm = chRe.exec(xmlText)) !== null) {
-    var chIdM = cm[1].match(/\bid="([^"]*)"/);
-    if (!chIdM) continue;
-    var chId = chIdM[1];
+    var idM = cm[1].match(/\bid="([^"]*)"/); if (!idM) continue;
     var dnM = cm[2].match(/<display-name[^>]*>([\s\S]*?)<\/display-name>/);
-    if (dnM) channelIdToName[chId] = decodeXmlEntities(dnM[1]).trim();
+    if (dnM) idToName[idM[1]] = decodeXmlEntities(dnM[1]).trim();
   }
 
-  var byId = {}, byName = {};
-  var progCount = 0;
-  var progRe = /<programme\s+([^>]*?)>([\s\S]*?)<\/programme>/g;
-  var pm;
+  var rawByChannel = {}, progCount = 0;
+  var progRe = /<programme\s+([^>]*?)>([\s\S]*?)<\/programme>/g, pm;
   while ((pm = progRe.exec(xmlText)) !== null) {
-    var pAttrs = pm[1], pInner = pm[2];
-    var chIdM2 = pAttrs.match(/\bchannel="([^"]*)"/);
-    var startM = pAttrs.match(/\bstart="([^"]*)"/);
-    if (!chIdM2 || !startM) continue;
-    var chIdVal = chIdM2[1];
-    var startMs = parseEPGDate(startM[1]);
+    var attrs = pm[1], inner = pm[2];
+    var chMatch = attrs.match(/\bchannel="([^"]*)"/);
+    var startMatch = attrs.match(/\bstart="([^"]*)"/);
+    if (!chMatch || !startMatch) continue;
+    var rawId = chMatch[1];
+    var pdcMatch = attrs.match(/\bpdc-start="([^"]*)"/);
+    var startMs = parseEPGDate(pdcMatch ? pdcMatch[1] : startMatch[1]);
     if (!startMs) continue;
-    var stopM = pAttrs.match(/\bstop="([^"]*)"/);
-    var endMs = stopM ? parseEPGDate(stopM[1]) : (startMs + 3600000);
-    if (!endMs) continue;
+    var stopMatch = attrs.match(/\bstop="([^"]*)"/);
+    var endMs = stopMatch ? parseEPGDate(stopMatch[1]) : (startMs + 3600000);
+    if (!endMs || endMs <= startMs) continue;
 
-    var titleM = pInner.match(/<title[^>]*>([\s\S]*?)<\/title>/);
-    var descM  = pInner.match(/<desc[^>]*>([\s\S]*?)<\/desc>/);
-    var iconM  = pInner.match(/<icon\s+[^>]*\bsrc="([^"]*)"/);
+    var titleM = inner.match(/<title[^>]*>([\s\S]*?)<\/title>/);
+    var descM = inner.match(/<desc[^>]*>([\s\S]*?)<\/desc>/);
+    var iconM = inner.match(/<icon\s+[^>]*\bsrc="([^"]*)"/);
+    var epM = inner.match(/<episode-num[^>]*>([\s\S]*?)<\/episode-num>/);
+    var seasonM = inner.match(/<episode-num\s+system="xmltv_ns"[^>]*>([\s\S]*?)<\/episode-num>/);
+    var catM = inner.match(/<category[^>]*>([\s\S]*?)<\/category>/);
 
     var desc = descM ? decodeXmlEntities(descM[1]).trim() : '';
-    if (desc.length > 300) desc = desc.substring(0, 300);
+    if (desc.length > 400) desc = desc.substring(0, 400);
+    var epStr = '';
+    if (seasonM) { var sp = seasonM[1].split('/'); epStr = 'S' + ((parseInt(sp[0],10)||0)+1) + ' E' + ((parseInt(sp[1],10)||0)+1); }
+    else if (epM) epStr = decodeXmlEntities(epM[1]).trim();
 
     var entry = {
       t: titleM ? decodeXmlEntities(titleM[1]).trim() : 'No title',
       d: desc, s: startMs, e: endMs,
-      ic: iconM ? iconM[1] : ''
+      ic: iconM ? iconM[1] : '',
+      ep: epStr,
+      g: catM ? decodeXmlEntities(catM[1]).trim() : ''
     };
-
-    if (!byId[chIdVal]) byId[chIdVal] = [];
-    byId[chIdVal].push(entry);
+    if (!rawByChannel[rawId]) rawByChannel[rawId] = [];
+    rawByChannel[rawId].push(entry);
     progCount++;
+  }
 
-    var chName = channelIdToName[chIdVal];
-    if (chName) {
-      var normKey = normalizeChannelName(chName);
-      if (normKey) {
-        if (!byName[normKey]) byName[normKey] = [];
-        byName[normKey].push(entry);
-      }
+  var lookup = buildChannelLookup();
+  var result = {};
+  var matched = 0, unmatched = 0, unmatchedSamples = [];
+
+  for (var rawId in rawByChannel) {
+    if (!rawByChannel.hasOwnProperty(rawId)) continue;
+    var progs = rawByChannel[rawId];
+    var dispName = idToName[rawId] || '';
+    var ch = findMatchingChannel(lookup, rawId, dispName);
+    if (!ch) {
+      unmatched++;
+      if (unmatchedSamples.length < 5) unmatchedSamples.push(rawId + (dispName ? '(' + dispName + ')' : ''));
+      continue;
+    }
+    var key = String(ch.id);
+    if (!result[key]) result[key] = [];
+    for (var p = 0; p < progs.length; p++) result[key].push(progs[p]);
+    matched++;
+  }
+
+  for (var k in result) {
+    if (!result.hasOwnProperty(k)) continue;
+    result[k].sort(function(a,b){ return a.s - b.s; });
+    var seen = {}, deduped = [];
+    for (var i = 0; i < result[k].length; i++) {
+      var pr = result[k][i];
+      var dk = pr.s + '|' + (pr.t || '').toLowerCase().trim();
+      if (!seen[dk]) { seen[dk] = true; deduped.push(pr); }
+    }
+    result[k] = deduped;
+  }
+
+  /* ── Gap fill: extend each program's end to the next program's start ── */
+  var now = Date.now();
+  var sampleStart = null, sampleEnd = null;
+  for (var kk in result) {
+    if (!result.hasOwnProperty(kk)) continue;
+    var arr = result[kk];
+    if (!arr.length) continue;
+    if (sampleStart === null) sampleStart = arr[0].s;
+    if (sampleEnd === null || arr[arr.length - 1].e > sampleEnd) sampleEnd = arr[arr.length - 1].e;
+    for (var j = 0; j < arr.length - 1; j++) {
+      if (arr[j].e < arr[j+1].s) arr[j].e = arr[j+1].s;
     }
   }
 
-  for (var k1 in byId) if (byId.hasOwnProperty(k1)) byId[k1].sort(function(a,b){ return a.s - b.s; });
-  for (var k2 in byName) if (byName.hasOwnProperty(k2)) byName[k2].sort(function(a,b){ return a.s - b.s; });
-
-  /* Build byLoose — only unique loose keys */
-  var looseToIds = {};
-  for (var cid in channelIdToName) {
-    if (!byId[cid]) continue;
-    var loose = normalizeChannelNameLoose(channelIdToName[cid]);
-    if (!loose) continue;
-    if (!looseToIds[loose]) looseToIds[loose] = [];
-    looseToIds[loose].push(cid);
+  safeLog('[epg] ' + label + ' → ' + progCount + ' programmes, matched ' + matched +
+    ' → ' + Object.keys(result).length + ' jtv channels, unmatched ' + unmatched +
+    ', ' + (Date.now() - t0) + 'ms');
+  if (sampleStart && sampleEnd) {
+    var shiftH = ((sampleStart - now) / 3600000).toFixed(1);
+    safeLog('[epg] sample range: ' + new Date(sampleStart).toISOString() + ' → ' +
+      new Date(sampleEnd).toISOString() + ' (first program is ' + shiftH + 'h from now)');
   }
-  var byLoose = {};
-  for (var lk in looseToIds) {
-    if (looseToIds[lk].length === 1) {
-      byLoose[lk] = byId[looseToIds[lk][0]].slice();
-    }
-  }
+  if (unmatchedSamples.length) safeLog('[epg] unmatched samples: ' + unmatchedSamples.join(', '));
 
-  safeLog('[epg] ' + label + ' → ' + progCount + ' progs, ' +
-          Object.keys(byId).length + ' ids, ' +
-          Object.keys(byName).length + ' strict names, ' +
-          Object.keys(byLoose).length + ' unique loose names in ' + (Date.now() - t0) + 'ms');
-
-  return { byId: byId, byName: byName, byLoose: byLoose };
+  return { data: result, programCount: progCount, matched: matched, unmatched: unmatched };
 }
 
-function fetchAndParseSingleEPG(source) {
+function fetchAndParseEPG() {
   if (typeof pako === 'undefined') { safeWarn('[epg] pako missing'); return Promise.resolve(null); }
-  var url = source.url, name = source.name, timeout = source.timeout || 60000;
-  safeLog('[epg] fetching ' + url);
+  safeLog('[epg] fetching ' + EPG_URL);
   var t0 = Date.now();
-
-  return xhrFetchBuffer(url, { timeout: timeout })
+  return xhrFetchBuffer(EPG_URL, { timeout: 180000 })
     .then(function(buf) {
       if (!buf) throw new Error('Empty response');
       var bytes = new Uint8Array(buf);
-      safeLog('[epg] ' + name + ' downloaded ' + bytes.length + ' bytes in ' + (Date.now()-t0) + 'ms');
+      safeLog('[epg] downloaded ' + bytes.length + ' bytes in ' + (Date.now()-t0) + 'ms');
       if (bytes.length < 500) throw new Error('Too small');
-      if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
-        return chunkedUngzip(bytes).then(function(xmlText) { return processXmlText(xmlText, name); });
-      }
-      return processXmlText(bytesToUtf8String(bytes), name);
+      if (bytes[0] === 0x1f && bytes[1] === 0x8b) return chunkedUngzip(bytes).then(function(x){ return processXmlText(x, 'jioepg'); });
+      return processXmlText(bytesToUtf8String(bytes), 'jioepg');
     })
     .catch(function(e) {
-      safeWarn('[epg] ' + name + ' failed: ' + e.message + ' — trying proxy');
-      return xhrFetchBuffer(CORS_PROXY + url, { timeout: 180000 })
+      safeWarn('[epg] direct failed: ' + e.message + ' — trying proxy');
+      return xhrFetchBuffer(CORS_PROXY + EPG_URL, { timeout: 180000 })
         .then(function(buf) {
           var bytes = new Uint8Array(buf);
           if (bytes.length < 500) throw new Error('Too small via proxy');
-          if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
-            return chunkedUngzip(bytes).then(function(x){ return processXmlText(x, name + ' (proxy)'); });
-          }
-          return processXmlText(bytesToUtf8String(bytes), name + ' (proxy)');
+          if (bytes[0] === 0x1f && bytes[1] === 0x8b) return chunkedUngzip(bytes).then(function(x){ return processXmlText(x, 'jioepg (proxy)'); });
+          return processXmlText(bytesToUtf8String(bytes), 'jioepg (proxy)');
         })
-        .catch(function(e2) { safeWarn('[epg] ' + name + ' proxy failed: ' + e2.message); return null; });
+        .catch(function(e2) { safeWarn('[epg] proxy failed: ' + e2.message); return null; });
     });
 }
 
-/* ══════════════════════════════════════════════════════════════ Cache */
+/* ════════ Cache (trim keeping 12h past + 48h future) ════════ */
+function trimForCache(progs, now) {
+  var min = now - EPG_TRIM_BEFORE_H * 3600000;
+  var max = now + EPG_TRIM_AFTER_H * 3600000;
+  var out = [];
+  for (var i = 0; i < progs.length; i++) {
+    if (progs[i].e >= min && progs[i].s < max) out.push(progs[i]);
+  }
+  return out;
+}
+function saveCache() {
+  var now = Date.now();
+  var attempts = [EPG_TRIM_AFTER_H, 24, 12];
+  for (var a = 0; a < attempts.length; a++) {
+    var hours = attempts[a];
+    var maxS = now + hours * 3600000;
+    var min = now - EPG_TRIM_BEFORE_H * 3600000;
+    var out = {}, cnt = 0;
+    for (var key in epgByChannelId) {
+      if (!epgByChannelId.hasOwnProperty(key)) continue;
+      var filtered = [];
+      var arr = epgByChannelId[key];
+      for (var i = 0; i < arr.length; i++) {
+        if (arr[i].e >= min && arr[i].s < maxS) filtered.push(arr[i]);
+      }
+      if (filtered.length) { out[key] = filtered; cnt += filtered.length; }
+    }
+    try {
+      localStorage.setItem(EPG_CACHE_KEY, JSON.stringify({ v: 13, fetchedAt: now, hours: hours, data: out }));
+      safeLog('[cache] saved ' + Object.keys(out).length + ' ch / ' + cnt + ' progs (' + hours + 'h)');
+      return;
+    } catch (e) { safeWarn('[cache] save failed at ' + hours + 'h: ' + e.message); }
+  }
+}
 function loadCache() {
   try {
     var raw = localStorage.getItem(EPG_CACHE_KEY);
     if (!raw) return false;
     var c = JSON.parse(raw);
-    if (!c || !c.data) return false;
+    if (!c || !c.data || c.v !== 13) return false;
     var fresh = (Date.now() - c.fetchedAt) < EPG_CACHE_TTL_MS;
     var n = 0;
-    for (var id in c.data) {
-      if (!c.data.hasOwnProperty(id)) continue;
-      epgByChannelId[id] = c.data[id];
-      n++;
+    for (var id in c.data) { if (!c.data.hasOwnProperty(id)) continue; epgByChannelId[id] = c.data[id]; n++; }
+    if (!n) return false;
+    /* Sanity: what fraction of channels have a current program? */
+    var now = Date.now();
+    var withData = 0, airing = 0;
+    for (var i = 0; i < allChannels.length; i++) {
+      var progs = epgByChannelId[String(allChannels[i].id)];
+      if (progs && progs.length) {
+        withData++;
+        if (getCurrentProgram(progs, now)) airing++;
+      }
+    }
+    var airingRatio = withData > 0 ? airing / withData : 0;
+    safeLog('[cache] restored ' + n + ' channels (fresh=' + fresh + '), ' +
+      withData + ' have data, ' + airing + ' currently airing (' +
+      Math.round(airingRatio * 100) + '%)');
+    /* If cache has data but almost nothing airing, treat as stale */
+    if (withData > 0 && airingRatio < 0.2) {
+      safeWarn('[cache] suspicious — only ' + Math.round(airingRatio * 100) + '% airing; ignoring cache');
+      epgByChannelId = {};
+      return false;
     }
     epgLoaded = n > 0;
-    safeLog('[cache] restored ' + n + ' channels (fresh=' + fresh + ')');
     return fresh && epgLoaded;
   } catch (e) { return false; }
 }
-function saveCache() {
-  try {
-    localStorage.setItem(EPG_CACHE_KEY, JSON.stringify({ fetchedAt: Date.now(), data: epgByChannelId }));
-    safeLog('[cache] saved');
-  } catch (e) { safeWarn('[cache] save failed: ' + e.message); }
+function clearCacheAndRefresh() {
+  try { localStorage.removeItem(EPG_CACHE_KEY); } catch(e){}
+  epgByChannelId = {}; epgLoaded = false;
+  refreshAllCardsEpg();
+  loadEPG();
 }
 
-/* ══════════════════════════════════════════════════════════════
-   Merge helpers
-   ══════════════════════════════════════════════════════════════ */
-function mergeIntoChannel(channelId, progs) {
-  if (!progs || !progs.length) return 0;
-  if (!epgByChannelId[channelId]) epgByChannelId[channelId] = [];
-  var existing = epgByChannelId[channelId];
-  var seen = {};
-  for (var i = 0; i < existing.length; i++) seen[existing[i].s] = true;
-  var added = 0;
-  for (var j = 0; j < progs.length; j++) {
-    if (!seen[progs[j].s]) { existing.push(progs[j]); added++; }
-  }
-  if (added) existing.sort(function(a,b){ return a.s - b.s; });
-  return added;
-}
-
-/* ══════════════════════════════════════════════════════════════
-   MERGE — always merge (never skip). Three passes:
-     1. by-ID     — merge additional timestamps
-     2. by-Strict name — exact + partial, always merge
-     3. by-Loose  — only empty channels, only if unambiguous
-                    in both JioTV and EPG
-   ══════════════════════════════════════════════════════════════ */
-function mergeSource(result, sourceLabel) {
-  if (!result) return { byId: 0, strict: 0, loose: 0 };
-  var stats = { byId: 0, strict: 0, loose: 0 };
-
-  /* ── 1. By ID — always merge ── */
-  var byId = result.byId;
-  for (var id in byId) {
-    if (!byId.hasOwnProperty(id)) continue;
-    if (mergeIntoChannel(String(id), byId[id]) > 0) stats.byId++;
-  }
-
-  /* ── 2. By strict name — always merge ── */
-  var byName = result.byName;
-  var nameKeys = Object.keys(byName);
-  for (var i = 0; i < allChannels.length; i++) {
-    var ch = allChannels[i];
-    var id2 = String(ch.id);
-    var strictNorm = normalizeChannelName(ch.name);
-    if (!strictNorm) continue;
-
-    var progs = byName[strictNorm];
-    if (!progs) {
-      for (var nk = 0; nk < nameKeys.length; nk++) {
-        var key = nameKeys[nk];
-        if (key.indexOf(strictNorm) !== -1 || strictNorm.indexOf(key) !== -1) {
-          progs = byName[key]; break;
-        }
-      }
-    }
-    if (progs && progs.length) {
-      if (mergeIntoChannel(id2, progs) > 0) stats.strict++;
-    }
-  }
-
-  /* ── 3. By loose name — only for empty channels, only if unambiguous ── */
-  var byLoose = result.byLoose;
-  if (byLoose) {
-    for (var j = 0; j < allChannels.length; j++) {
-      var ch2 = allChannels[j];
-      var id3 = String(ch2.id);
-      if (epgByChannelId[id3] && epgByChannelId[id3].length) continue;   /* has data already */
-      var looseNorm = normalizeChannelNameLoose(ch2.name);
-      if (!looseNorm) continue;
-      if (looseNorm2Ambiguous[looseNorm]) continue;    /* shared by >1 JioTV channel → skip */
-      var looseProgs = byLoose[looseNorm];
-      if (looseProgs && looseProgs.length) {
-        if (mergeIntoChannel(id3, looseProgs) > 0) stats.loose++;
-      }
-    }
-  }
-
-  safeLog('[merge:' + sourceLabel + '] byId=' + stats.byId +
-          ' strict=' + stats.strict + ' loose=' + stats.loose +
-          ' → totalChannels=' + Object.keys(epgByChannelId).length);
-  return stats;
-}
-
-/* ══════════════════════════════════════════════════════════════ Load all EPG */
-function loadAllEPG() {
-  var idx = 0;
-  var t0 = Date.now();
-  var totalSources = EPG_SOURCES.length;
-  var failed = [];
-
-  function next() {
-    if (idx >= totalSources) {
-      epgLoaded = Object.keys(epgByChannelId).length > 0;
-      saveCache();
-      var elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-      var chCount = Object.keys(epgByChannelId).length;
-      if (epgLoaded) {
-        if (failed.length) setEpgStatus('Guide ready — ' + chCount + ' ch (' + failed.join(', ') + ' unavailable)', 'warn');
-        else setEpgStatus('Guide ready — ' + chCount + ' ch (' + elapsed + 's)');
-      } else {
-        setEpgStatus('Guide unavailable — channels only', 'error');
-      }
-      setTimeout(function(){ setEpgStatus(''); }, 5000);
-      refreshAllCardsEpg();
-      safeLog('[epg] ALL DONE — ' + chCount + ' channels in ' + elapsed + 's');
-      return;
-    }
-    var src = EPG_SOURCES[idx]; idx++;
-    setEpgStatus('Guide ' + idx + '/' + totalSources + ': ' + src.name + '…');
-
-    fetchAndParseSingleEPG(src).then(function(result) {
-      if (result && Object.keys(result.byId).length) {
-        mergeSource(result, src.name);
-        epgLoaded = Object.keys(epgByChannelId).length > 0;
-        refreshAllCardsEpg();
-        saveCache();
-      } else {
-        failed.push(src.name);
-        safeWarn('[epg] ' + src.name + ' returned no data');
-      }
-      setTimeout(next, 200);
-    });
-  }
-  next();
-}
-
-/* ══════════════════════════════════════════════════════════════ EPG lookups */
-function getCurrentProgram(progs) {
+/* ════════ Program lookups (gap-aware + grace fallback) ════════ */
+function getCurrentProgram(progs, now) {
   if (!progs || !progs.length) return null;
-  var now = Date.now();
-  for (var i = 0; i < progs.length; i++) if (progs[i].s <= now && progs[i].e > now) return progs[i];
-  return null;
+  now = now || Date.now();
+  var best = null;
+  for (var i = 0; i < progs.length; i++) {
+    var p = progs[i];
+    if (p.s <= now && p.e > now) {
+      if (!best || p.s > best.s) best = p;
+    }
+  }
+  if (best) return best;
+  /* Grace fallback: most recently ended program within 4 hours */
+  var recent = null, grace = 4 * 3600000;
+  for (var j = 0; j < progs.length; j++) {
+    var q = progs[j];
+    if (q.e <= now && (now - q.e) < grace) {
+      if (!recent || q.e > recent.e) recent = q;
+    }
+  }
+  return recent;
 }
 function getNextProgram(progs, afterMs) {
   if (!progs || !progs.length) return null;
-  var ref = afterMs || Date.now();
-  for (var i = 0; i < progs.length; i++) if (progs[i].s > ref) return progs[i];
-  return null;
+  var ref = afterMs || Date.now(), best = null;
+  for (var i = 0; i < progs.length; i++) {
+    var p = progs[i];
+    if (p.s > ref && (!best || p.s < best.s)) best = p;
+  }
+  return best;
 }
 function getChannelNumber(ch) {
   if (!ch) return null;
   var id = ch.id;
   if (typeof id === 'number') return id;
-  if (typeof id === 'string') {
-    var n = parseInt(id, 10);
-    if (!isNaN(n) && String(n) === id) return n;
-  }
+  if (typeof id === 'string') { var n = parseInt(id, 10); if (!isNaN(n) && String(n) === id) return n; }
   return null;
 }
+function progProgress(cur) {
+  if (!cur) return 0;
+  var total = cur.e - cur.s, elapsed = Date.now() - cur.s;
+  return Math.max(0, Math.min(100, (elapsed / total) * 100));
+}
 
+/* ════════ Card EPG ════════ */
 function buildEpgBlockHtml(ch) {
   if (!epgLoaded) return '<div class="card-epg"><div class="epg-empty">Loading guide…</div></div>';
   var progs = epgByChannelId[String(ch.id)];
+  var hasData = !!(progs && progs.length);
   var current = getCurrentProgram(progs);
-  var next = getNextProgram(progs, current ? current.s : Date.now());
-  if (!current && !next) return '<div class="card-epg"><div class="epg-empty">No guide data</div></div>';
-  var html = '<div class="card-epg">';
+  var next = getNextProgram(progs, current ? current.e : Date.now());
+  if (!current && !next) {
+    if (hasData) return '<div class="card-epg"><div class="epg-empty has-data">Guide data present — no current or next programme</div></div>';
+    return '<div class="card-epg"><div class="epg-empty">No guide data</div></div>';
+  }
+  var html = '<div class="card-epg' + (current ? ' live' : '') + '">';
   if (current) {
-    html += '<div class="epg-now-row"><span class="epg-now-label">NOW</span>' +
+    html += '<div class="epg-now-row"><span class="epg-now-label">● NOW</span>' +
             '<span class="epg-now-time">' + formatRange(current.s, current.e) + '</span></div>' +
-            '<div class="epg-now-title">' + escapeHtml(current.t || 'No Title') + '</div>' +
-            (current.d ? '<div class="epg-now-desc">' + escapeHtml(truncate(current.d, 120)) + '</div>' : '');
+            '<div class="epg-now-title">' + escapeHtml(current.t || 'No Title') + '</div>';
+    if (current.ep || current.g) html += '<div class="epg-now-meta">' + (current.ep ? escapeHtml(current.ep) : '') + (current.ep && current.g ? ' · ' : '') + (current.g ? escapeHtml(current.g) : '') + '</div>';
+    if (current.d) html += '<div class="epg-now-desc">' + escapeHtml(truncate(current.d, 120)) + '</div>';
+    html += '<div class="epg-progress"><div class="epg-progress-fill" style="width:' + progProgress(current).toFixed(1) + '%"></div></div>';
     if (next) html += '<div class="epg-next-mini">Next: <b>' + escapeHtml(truncate(next.t, 40)) + '</b> at ' + formatTimeOnly(next.s) + '</div>';
   } else {
     html += '<div class="epg-now-row"><span class="epg-now-label next">NEXT</span>' +
             '<span class="epg-now-time">' + formatTimeOnly(next.s) + '</span></div>' +
-            '<div class="epg-now-title">' + escapeHtml(next.t || 'No Title') + '</div>' +
-            (next.d ? '<div class="epg-now-desc">' + escapeHtml(truncate(next.d, 120)) + '</div>' : '');
+            '<div class="epg-now-title">' + escapeHtml(next.t || 'No Title') + '</div>';
+    if (next.d) html += '<div class="epg-now-desc">' + escapeHtml(truncate(next.d, 120)) + '</div>';
   }
   return html + '</div>';
 }
-
 function updateCardEpg(id) {
-  var entry = cardMap[id];
-  if (!entry) return;
+  var entry = cardMap[id]; if (!entry) return;
   if (entry.el.classList.contains('hidden')) return;
   var html = buildEpgBlockHtml(entry.ch);
   if (html !== entry.lastEpg) { entry.epg.innerHTML = html; entry.lastEpg = html; }
 }
 function refreshAllCardsEpg() {
-  var ids = Object.keys(cardMap);
-  if (!ids.length) return;
+  var ids = Object.keys(cardMap); if (!ids.length) return;
   var i = 0, BATCH = 20;
-  function step() {
-    var end = Math.min(i + BATCH, ids.length);
-    for (; i < end; i++) updateCardEpg(ids[i]);
-    if (i < ids.length) rAF(step);
-  }
+  function step() { var end = Math.min(i + BATCH, ids.length); for (; i < end; i++) updateCardEpg(ids[i]); if (i < ids.length) rAF(step); }
   rAF(step);
 }
 
-/* ══════════════════════════════════════════════════════════════ Channel JSON */
+/* ════════ Channel JSON ════════ */
 function parseChannelJson(text) {
   var c = String(text).trim();
   if (c.charCodeAt(0) === 0xFEFF) c = c.slice(1);
@@ -733,356 +793,347 @@ function fetchChannelsFrom(idx) {
     .catch(function(){ return fetchChannelsFrom(idx + 1); });
 }
 
-/* ══════════════════════════════════════════════════════════════ Render cards */
+/* ════════ Card render ════════ */
 function buildCardHtml(ch, idx) {
   var cat = ch.category || ch.group || 'Other';
   var num = getChannelNumber(ch);
   var numHtml = num !== null ? '<span class="card-num">' + num + '</span>' : '';
+  var starActive = favorites[String(ch.id)] ? ' active' : '';
   return '<div class="card" tabindex="0" data-idx="' + idx + '" data-chid="' + escapeHtml(String(ch.id)) + '">' +
+    '<button class="card-star' + starActive + '" data-chid="' + escapeHtml(String(ch.id)) + '" type="button" title="Favorite">★</button>' +
     '<div class="card-top">' +
       '<img class="card-logo" src="' + escapeHtml(ch.logo || '') + '" alt="" onerror="this.style.visibility=\'hidden\'">' +
-      '<div class="card-meta">' +
-        '<div class="card-name">' + numHtml + escapeHtml(ch.name || 'Unknown') + '</div>' +
-        '<div class="card-cat">' + escapeHtml(cat) + '</div>' +
-      '</div>' +
-    '</div>' +
-    buildEpgBlockHtml(ch) +
+      '<div class="card-meta"><div class="card-name">' + numHtml + escapeHtml(ch.name || 'Unknown') + '</div><div class="card-cat">' + escapeHtml(cat) + '</div></div>' +
+    '</div>' + buildEpgBlockHtml(ch) +
     '<div class="card-actions"><button class="card-btn" type="button">▶ Watch</button></div>' +
   '</div>';
 }
-
 function renderAllCards(onDone) {
   var batch = 25, i = 0;
   gridEl.innerHTML = '';
+  var list = displayedChannels;
   function step() {
-    var end = Math.min(i + batch, allChannels.length);
+    var end = Math.min(i + batch, list.length);
     var html = '';
-    for (; i < end; i++) html += buildCardHtml(allChannels[i], i);
+    for (; i < end; i++) html += buildCardHtml(list[i], i);
     gridEl.insertAdjacentHTML('beforeend', html);
-    if (i < allChannels.length) rAF(step);
+    if (i < list.length) rAF(step);
     else { buildCardMap(); if (onDone) onDone(); }
   }
-  if (!allChannels.length) { if (onDone) onDone(); return; }
+  if (!list.length) {
+    gridEl.innerHTML = '<div class="msg">No channels match your filter.<br><button id="clearFilterBtn" type="button">Clear filters</button></div>';
+    var cb = document.getElementById('clearFilterBtn');
+    if (cb) cb.onclick = function(){ selectedCategory = 'all'; searchQuery = ''; searchEl.value = ''; applyFilter(); };
+    if (onDone) onDone();
+    return;
+  }
   rAF(step);
 }
-
 function buildCardMap() {
   cardMap = {};
   var cards = gridEl.querySelectorAll('.card');
   for (var i = 0; i < cards.length; i++) {
     var card = cards[i];
     var idx = parseInt(card.getAttribute('data-idx'), 10);
-    var ch = allChannels[idx];
+    var ch = displayedChannels[idx];
     if (!ch) continue;
     var epgBox = card.querySelector('.card-epg');
     cardMap[String(ch.id)] = { el: card, epg: epgBox, ch: ch, lastEpg: '' };
     (function(cardEl, channel) {
-      cardEl.addEventListener('click', function(e) {
-        if (e.target.closest && e.target.closest('.card-btn')) return;
-        openDetails(channel);
-      });
+      cardEl.addEventListener('click', function(e) { if (e.target.closest && (e.target.closest('.card-btn') || e.target.closest('.card-star'))) return; openDetails(channel); });
       cardEl.addEventListener('keydown', function(ev) {
-        if (ev.keyCode === 13) {
-          var tgt = ev.target;
-          if (tgt && tgt.classList && tgt.classList.contains('card-btn')) return;
-          ev.preventDefault();
-          openDetails(channel);
-        }
+        if (ev.keyCode === 13) { var tgt = ev.target; if (tgt && tgt.classList && (tgt.classList.contains('card-btn') || tgt.classList.contains('card-star'))) return; ev.preventDefault(); openDetails(channel); }
       });
-      var playBtn = cardEl.querySelector('.card-btn');
-      if (playBtn) playBtn.addEventListener('click', function(e) {
-        e.stopPropagation();
-        openPlayer(channel);
-      });
+      var playBtn = cardEl.querySelector('.card-btn'); if (playBtn) playBtn.addEventListener('click', function(e) { e.stopPropagation(); openPlayer(channel); });
+      var star = cardEl.querySelector('.card-star'); if (star) star.addEventListener('click', function(e) { e.stopPropagation(); toggleFavorite(channel.id); });
     })(card, ch);
   }
 }
 
-function applyFilter() {
-  var q = searchQuery, cat = selectedCategory;
-  for (var i = 0; i < allChannels.length; i++) {
-    var ch = allChannels[i];
-    var chCat = ch.category || ch.group || 'Other';
-    var match = true;
-    if (cat !== 'all' && chCat !== cat) match = false;
-    if (match && q) {
-      var name = (ch.name || '').toLowerCase();
-      var catLow = chCat.toLowerCase();
-      if (name.indexOf(q) === -1 && catLow.indexOf(q) === -1) match = false;
-    }
-    var entry = cardMap[String(ch.id)];
-    if (entry) {
-      if (match) entry.el.classList.remove('hidden');
-      else entry.el.classList.add('hidden');
+/* ════════ Sort / Filter ════════ */
+function sortChannels(arr) {
+  var copy = arr.slice();
+  if (sortMode === 'number') copy.sort(function(a,b){ var na = getChannelNumber(a), nb = getChannelNumber(b); if (na === null && nb === null) return (a.name || '').localeCompare(b.name || ''); if (na === null) return 1; if (nb === null) return -1; return na - nb; });
+  else if (sortMode === 'name') copy.sort(function(a,b){ return (a.name || '').localeCompare(b.name || ''); });
+  else if (sortMode === 'category') copy.sort(function(a,b){ var ca = (a.category || a.group || 'Other').toLowerCase(); var cb = (b.category || b.group || 'Other').toLowerCase(); if (ca !== cb) return ca.localeCompare(cb); return (a.name || '').localeCompare(b.name || ''); });
+  return copy;
+}
+function channelMatches(ch, q, cat) {
+  var chCat = ch.category || ch.group || 'Other';
+  if (cat === 'favorites') { if (!favorites[String(ch.id)]) return false; }
+  else if (cat === 'recents') { if (recents.indexOf(String(ch.id)) === -1) return false; }
+  else if (cat === 'live') { if (!getCurrentProgram(epgByChannelId[String(ch.id)])) return false; }
+  else if (cat !== 'all' && chCat !== cat) return false;
+  if (q) {
+    var nameLow = (ch.name || '').toLowerCase();
+    var catLow = chCat.toLowerCase();
+    if (nameLow.indexOf(q) === -1 && catLow.indexOf(q) === -1) {
+      var progs = epgByChannelId[String(ch.id)];
+      if (!progs) return false;
+      var found = false, now = Date.now();
+      for (var i = 0; i < progs.length && i < 50; i++) {
+        var p = progs[i];
+        if (p.e < now - 3600000) continue;
+        if (p.s > now + 86400000 * 2) break;
+        if ((p.t || '').toLowerCase().indexOf(q) !== -1 || (p.d || '').toLowerCase().indexOf(q) !== -1) { found = true; break; }
+      }
+      if (!found) return false;
     }
   }
+  return true;
 }
-
+function applyFilter() {
+  var q = searchQuery, cat = selectedCategory;
+  var visible = [];
+  for (var i = 0; i < allChannels.length; i++) if (channelMatches(allChannels[i], q, cat)) visible.push(allChannels[i]);
+  visible = sortChannels(visible);
+  displayedChannels = visible;
+  renderAllCards(function(){
+    if (viewMode === 'compact') { var cards = gridEl.querySelectorAll('.card'); for (var k = 0; k < cards.length; k++) cards[k].classList.add('compact'); }
+    refreshAllCardsEpg();
+  });
+}
 function renderCategories() {
   var set = {};
   for (var i = 0; i < allChannels.length; i++) { var cat = allChannels[i].category || allChannels[i].group || 'Other'; set[cat] = true; }
   var cats = ['all'];
   for (var k in set) if (set.hasOwnProperty(k)) cats.push(k);
-  cats.sort(function(a,b){ if(a==='all')return -1; if(b==='all')return 1; return a.toLowerCase().localeCompare(b.toLowerCase()); });
+  cats.sort(function(a,b){ if(a==='all') return -1; if(b==='all') return 1; return a.toLowerCase().localeCompare(b.toLowerCase()); });
   var html = '';
-  for (var j = 0; j < cats.length; j++) {
-    var label = cats[j] === 'all' ? 'All' : cats[j];
-    var activeCls = cats[j] === selectedCategory ? ' active' : '';
-    html += '<button class="cat-chip' + activeCls + '" data-cat="' + escapeHtml(cats[j]) + '" type="button">' + escapeHtml(label) + '</button>';
-  }
+  html += '<button class="cat-chip fav-chip' + (selectedCategory==='favorites'?' active':'') + '" data-cat="favorites" type="button">★ Favorites</button>';
+  html += '<button class="cat-chip recent-chip' + (selectedCategory==='recents'?' active':'') + '" data-cat="recents" type="button">🕐 Recent</button>';
+  html += '<button class="cat-chip live-chip' + (selectedCategory==='live'?' active':'') + '" data-cat="live" type="button">● On Now</button>';
+  html += '<button class="cat-chip' + (selectedCategory==='all'?' active':'') + '" data-cat="all" type="button">All</button>';
+  for (var j = 0; j < cats.length; j++) { if (cats[j] === 'all') continue; var a = cats[j] === selectedCategory ? ' active' : ''; html += '<button class="cat-chip' + a + '" data-cat="' + escapeHtml(cats[j]) + '" type="button">' + escapeHtml(cats[j]) + '</button>'; }
   categoriesEl.innerHTML = html;
   var chips = categoriesEl.querySelectorAll('.cat-chip');
   for (var c = 0; c < chips.length; c++) {
-    (function(chip) {
-      chip.addEventListener('click', function() {
-        selectedCategory = chip.getAttribute('data-cat');
-        renderCategories();
-        applyFilter();
-        wrapEl.scrollTop = 0;
-      });
-    })(chips[c]);
+    (function(chip){ chip.addEventListener('click', function(){ selectedCategory = chip.getAttribute('data-cat'); renderCategories(); applyFilter(); wrapEl.scrollTop = 0; }); })(chips[c]);
   }
 }
 
+/* ════════ Detail modal ════════ */
 function openDetails(ch) {
-  currentDetailChannel = ch;
+  currentDetailChannel = ch; currentDetailTab = 'info';
+  dTabInfo.classList.add('active'); dTabGuide.classList.remove('active');
   var num = getChannelNumber(ch);
   dNum.textContent = num !== null ? 'CH ' + num : '';
   dName.textContent = ch.name || 'Unknown';
   dCat.textContent = ch.category || ch.group || 'Other';
-  dLogo.src = ch.logo || '';
-  dLogo.style.visibility = ch.logo ? 'visible' : 'hidden';
-
+  dLogo.src = ch.logo || ''; dLogo.style.visibility = ch.logo ? 'visible' : 'hidden';
+  renderDetailBody(); detailModal.classList.remove('hidden'); dWatch.focus();
+}
+function renderDetailBody() { if (!currentDetailChannel) return; if (currentDetailTab === 'info') renderInfoTab(currentDetailChannel); else renderGuideTab(currentDetailChannel); }
+function renderInfoTab(ch) {
   var progs = epgByChannelId[String(ch.id)] || [];
   var current = getCurrentProgram(progs);
-  var next = getNextProgram(progs, current ? current.s : Date.now());
+  var next = getNextProgram(progs, current ? current.e : Date.now());
   var body = '';
-
   if (current) {
-    body += '<div class="detail-show now">' +
-      '<div class="show-label">● NOW · ' + formatRange(current.s, current.e) + '</div>' +
-      '<div class="show-title">' + escapeHtml(current.t || 'No Title') + '</div>';
+    body += '<div class="detail-show now"><div class="show-label">● NOW · ' + formatRange(current.s, current.e) + '</div><div class="show-title">' + escapeHtml(current.t || 'No Title') + '</div>';
+    if (current.ep || current.g) body += '<div class="show-meta-row">' + (current.ep ? escapeHtml(current.ep) : '') + (current.g ? ' · ' + escapeHtml(current.g) : '') + '</div>';
     if (current.ic) body += '<div class="show-image"><img src="' + escapeHtml(current.ic) + '" alt="" onerror="this.parentNode.style.display=\'none\'"></div>';
     if (current.d) body += '<div class="show-desc">' + escapeHtml(current.d) + '</div>';
-    body += '</div>';
-  } else if (epgLoaded) {
-    body += '<div class="detail-show none"><div class="show-label">● NOW</div><div class="show-title">No current programme</div></div>';
-  } else {
-    body += '<div class="detail-show none"><div class="show-label">● NOW</div><div class="show-title">Loading guide…</div></div>';
-  }
-
+    body += '<div class="epg-progress"><div class="epg-progress-fill" style="width:' + progProgress(current).toFixed(1) + '%"></div></div></div>';
+  } else if (progs.length) body += '<div class="detail-show none"><div class="show-label">● NOW</div><div class="show-title">No current programme (' + progs.length + ' in guide)</div></div>';
+  else if (epgLoaded) body += '<div class="detail-show none"><div class="show-label">● NOW</div><div class="show-title">No guide data for this channel</div></div>';
+  else body += '<div class="detail-show none"><div class="show-label">● NOW</div><div class="show-title">Loading guide…</div></div>';
   if (next) {
-    body += '<div class="detail-show next">' +
-      '<div class="show-label">○ NEXT · ' + formatRange(next.s, next.e) + '</div>' +
-      '<div class="show-title">' + escapeHtml(next.t || 'No Title') + '</div>';
+    body += '<div class="detail-show next"><div class="show-label">○ NEXT · ' + formatRange(next.s, next.e) + '</div><div class="show-title">' + escapeHtml(next.t || 'No Title') + '</div>';
+    if (next.ep || next.g) body += '<div class="show-meta-row">' + (next.ep ? escapeHtml(next.ep) : '') + (next.g ? ' · ' + escapeHtml(next.g) : '') + '</div>';
     if (next.ic) body += '<div class="show-image"><img src="' + escapeHtml(next.ic) + '" alt="" onerror="this.parentNode.style.display=\'none\'"></div>';
-    if (next.d) body += '<div class="show-desc">' + escapeHtml(next.d) + '</div>';
-    body += '</div>';
-  } else if (epgLoaded) {
-    body += '<div class="detail-show none"><div class="show-label">○ NEXT</div><div class="show-title">No upcoming programme</div></div>';
-  }
-
+    if (next.d) body += '<div class="show-desc">' + escapeHtml(next.d) + '</div></div>';
+  } else if (epgLoaded) body += '<div class="detail-show none"><div class="show-label">○ NEXT</div><div class="show-title">No upcoming programme</div></div>';
   dBody.innerHTML = body;
-  detailModal.classList.remove('hidden');
-  dWatch.focus();
 }
-function closeDetails() {
-  detailModal.classList.add('hidden');
-  currentDetailChannel = null;
+function renderGuideTab(ch) {
+  var progs = epgByChannelId[String(ch.id)] || [];
+  if (!progs.length) { dBody.innerHTML = '<div class="msg" style="padding:30px">No guide data for this channel.</div>'; return; }
+  var now = Date.now();
+  var best = getCurrentProgram(progs);
+  var todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  var todayEnd = todayStart.getTime() + 86400000;
+  var filtered = progs.filter(function(p){ return p.e > todayStart.getTime() && p.s < todayEnd; });
+  if (!filtered.length) filtered = progs.slice(0, 24);
+  var body = '';
+  for (var i = 0; i < filtered.length; i++) {
+    var p = filtered[i];
+    var isLive = p.s <= now && p.e > now;
+    var isBest = best && best === p;
+    var isPast = p.e <= now;
+    var cls = isBest ? ' live' : (isPast ? ' past' : '');
+    var badge = isBest ? ' <span class="airing-tag">● AIRING</span>' : (isLive ? ' <span class="overlap-tag">(overlap)</span>' : '');
+    body += '<div class="timeline-row' + cls + '"><div class="timeline-time">' + formatRange(p.s, p.e) + '</div><div class="timeline-title">' + escapeHtml(p.t || 'No Title') + (p.ep ? ' <span style="color:#7cd0f5;font-size:11px">' + escapeHtml(p.ep) + '</span>' : '') + badge + '</div></div>';
+  }
+  dBody.innerHTML = body;
 }
+function closeDetails(){ detailModal.classList.add('hidden'); currentDetailChannel = null; }
 
+/* ════════ Player launch ════════ */
 function openPlayer(ch) {
+  addRecent(ch.id);
   try {
     localStorage.setItem('currentChannel', JSON.stringify(ch));
     localStorage.setItem('allChannels', JSON.stringify(allChannels));
     var progs = epgByChannelId[String(ch.id)];
     if (progs && progs.length) {
-      var serializable = [];
-      for (var i = 0; i < progs.length; i++) {
-        serializable.push({
-          title: progs[i].t, description: progs[i].d,
-          start: progs[i].s, end: progs[i].e, icon: progs[i].ic || ''
-        });
-      }
-      localStorage.setItem('channelPrograms', JSON.stringify(serializable));
+      var ser = [];
+      for (var i = 0; i < progs.length; i++) ser.push({ title: progs[i].t, description: progs[i].d, start: progs[i].s, end: progs[i].e, icon: progs[i].ic || '', episode: progs[i].ep || '', genre: progs[i].g || '' });
+      localStorage.setItem('channelPrograms', JSON.stringify(ser));
     } else localStorage.removeItem('channelPrograms');
   } catch (e) {}
   var url = 'jplayer.html?id=' + encodeURIComponent(ch.id);
-  try { var w = window.open(url, '_blank'); if (!w) window.location.href = url; }
-  catch (e) { window.location.href = url; }
+  try { var w = window.open(url, '_blank'); if (!w) window.location.href = url; } catch (e) { window.location.href = url; }
 }
 
-function showChNumOverlay() {
-  chNumValue.textContent = chNumBuffer || '—';
-  chNumOverlay.classList.add('visible');
-}
-function hideChNumOverlay() {
-  chNumOverlay.classList.remove('visible');
-}
-function handleChNumDigit(digit) {
-  if (chNumBuffer.length >= 4) chNumBuffer = '';
-  chNumBuffer += digit;
-  showChNumOverlay();
-  clearTimeout(chNumTimer);
-  chNumTimer = setTimeout(commitChNum, 1200);
-}
+/* ════════ Channel number overlay ════════ */
+function showChNumOverlay(){ chNumValue.textContent = chNumBuffer || '—'; chNumOverlay.classList.add('visible'); }
+function hideChNumOverlay(){ chNumOverlay.classList.remove('visible'); }
+function handleChNumDigit(digit) { if (chNumBuffer.length >= 4) chNumBuffer = ''; chNumBuffer += digit; showChNumOverlay(); clearTimeout(chNumTimer); chNumTimer = setTimeout(commitChNum, 1200); }
 function commitChNum() {
-  var num = chNumBuffer;
-  chNumBuffer = '';
-  clearTimeout(chNumTimer);
-  hideChNumOverlay();
+  var num = chNumBuffer; chNumBuffer = ''; clearTimeout(chNumTimer); hideChNumOverlay();
   if (!num) return;
-  var n = parseInt(num, 10);
-  var found = null;
-  for (var i = 0; i < allChannels.length; i++) {
-    if (getChannelNumber(allChannels[i]) === n) { found = allChannels[i]; break; }
-  }
+  var n = parseInt(num, 10), found = null;
+  for (var i = 0; i < allChannels.length; i++) if (getChannelNumber(allChannels[i]) === n) { found = allChannels[i]; break; }
   if (!found) { showToast('Channel ' + num + ' not found', true); return; }
   showToast('Tuning to CH ' + n + ' · ' + (found.name || ''));
   openPlayer(found);
 }
-function cancelChNum() {
-  chNumBuffer = '';
-  clearTimeout(chNumTimer);
-  hideChNumOverlay();
-}
+function cancelChNum(){ chNumBuffer = ''; clearTimeout(chNumTimer); hideChNumOverlay(); }
 
-/* Precompute which JioTV channels share a loose key */
-function computeLooseAmbiguity() {
-  var counts = {};
+/* ════════ Load EPG ════════ */
+function countCoverage() {
+  var withData = 0, airing = 0;
+  var now = Date.now();
   for (var i = 0; i < allChannels.length; i++) {
-    var lk = normalizeChannelNameLoose(allChannels[i].name);
-    if (!lk) continue;
-    counts[lk] = (counts[lk] || 0) + 1;
+    var progs = epgByChannelId[String(allChannels[i].id)];
+    if (progs && progs.length) {
+      withData++;
+      if (getCurrentProgram(progs, now)) airing++;
+    }
   }
-  looseNorm2Ambiguous = {};
-  for (var k in counts) {
-    if (counts[k] > 1) looseNorm2Ambiguous[k] = true;
-  }
-  safeLog('[loose] ambiguous keys: ' + Object.keys(looseNorm2Ambiguous).length);
+  return { withData: withData, airing: airing };
+}
+function loadEPG() {
+  var t0 = Date.now();
+  setEpgStatus('Loading guide (jioepg)…');
+  fetchAndParseEPG().then(function(result) {
+    if (result && Object.keys(result.data).length) {
+      epgByChannelId = result.data;
+      epgLoaded = true;
+      saveCache();
+      var elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+      var cov = countCoverage();
+      var pct = Math.round((cov.withData / allChannels.length) * 100);
+      var kind = pct >= 60 ? 'ok' : (pct >= 30 ? 'warn' : 'error');
+      setEpgStatus('Guide: ' + cov.withData + '/' + allChannels.length + ' ch (' + pct + '%) · ' +
+        cov.airing + ' airing now · ' + elapsed + 's', kind);
+      setTimeout(function(){ setEpgStatus(''); }, 8000);
+      refreshAllCardsEpg();
+      safeLog('[epg] DONE — ' + cov.withData + '/' + allChannels.length + ' with data, ' +
+        cov.airing + ' airing now, ' + elapsed + 's');
+    } else {
+      setEpgStatus('Guide unavailable — channels only', 'error');
+      setTimeout(function(){ setEpgStatus(''); }, 5000);
+    }
+  });
 }
 
+/* ════════ Load channels ════════ */
 function loadChannels() {
   gridEl.innerHTML = '<div class="msg"><div class="spinner"></div><div>Loading channels…</div></div>';
   var last = CHANNELS_CANDIDATES[CHANNELS_CANDIDATES.length - 1];
   fetchChannelsFrom(0)
-    .catch(function() {
-      return xhrFetch(CORS_PROXY + last, { timeout: 25000 })
-        .then(function(r){ return r.text(); })
-        .then(function(t){ return parseChannelJson(t); });
-    })
+    .catch(function() { return xhrFetch(CORS_PROXY + last, { timeout: 25000 }).then(function(r){ return r.text(); }).then(function(t){ return parseChannelJson(t); }); })
     .then(function(chs) {
       if (!chs || !chs.length) throw new Error('No channels');
-      allChannels = chs;
-      renderCategories();
-      computeLooseAmbiguity();
+      allChannels = chs; displayedChannels = chs.slice();
+      loadPrefs(); renderCategories();
       var cacheFresh = loadCache();
       renderAllCards(function() {
         if (cacheFresh) {
           refreshAllCardsEpg();
-          setEpgStatus('Guide loaded from cache');
-          setTimeout(function(){ setEpgStatus(''); }, 2500);
-        } else {
-          loadAllEPG();
-        }
+          var cov = countCoverage();
+          var pct = Math.round((cov.withData / allChannels.length) * 100);
+          setEpgStatus('Cache: ' + cov.withData + '/' + allChannels.length + ' ch (' + pct + '%) · ' +
+            cov.airing + ' airing', pct >= 60 ? 'ok' : 'warn');
+          setTimeout(function(){ setEpgStatus(''); }, 4000);
+        } else loadEPG();
       });
+      if (progressUpdateTimer) clearInterval(progressUpdateTimer);
+      progressUpdateTimer = setInterval(function(){ refreshAllCardsEpg(); }, 30000);
     })
     .catch(function(e) {
-      gridEl.innerHTML = '<div class="msg err">⚠️ Could not load channels.<br>' +
-        '<div style="color:#888;font-size:12px;margin-top:10px">' +
-        escapeHtml(e.message || '') + '</div><button id="retry">Retry</button></div>';
+      gridEl.innerHTML = '<div class="msg err">⚠️ Could not load channels.<br><div style="color:#888;font-size:12px;margin-top:10px">' + escapeHtml(e.message || '') + '</div><button id="retry">Retry</button></div>';
       var rb = document.getElementById('retry'); if (rb) rb.onclick = loadChannels;
     });
 }
 
+/* ════════ Wiring ════════ */
 var searchTimer = null;
-searchEl.addEventListener('input', function() {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(function() {
-    searchQuery = searchEl.value.trim().toLowerCase();
-    applyFilter();
-    wrapEl.scrollTop = 0;
-  }, 120);
+searchEl.addEventListener('input', function() { clearTimeout(searchTimer); searchTimer = setTimeout(function() { searchQuery = searchEl.value.trim().toLowerCase(); applyFilter(); wrapEl.scrollTop = 0; }, 150); });
+sortSelect.addEventListener('change', function() { sortMode = sortSelect.value; savePrefs(); applyFilter(); });
+viewBtn.addEventListener('click', function() {
+  viewMode = viewMode === 'grid' ? 'compact' : 'grid'; updateViewBtn(); savePrefs();
+  var cards = gridEl.querySelectorAll('.card');
+  for (var i = 0; i < cards.length; i++) { if (viewMode === 'compact') cards[i].classList.add('compact'); else cards[i].classList.remove('compact'); }
 });
-
-document.addEventListener('keydown', function(e) {
-  var k = e.keyCode;
-  var focused = document.activeElement;
-  var inModal = !detailModal.classList.contains('hidden');
-
-  if (inModal) {
-    if (k === 27 || k === 8 || k === 10009) { e.preventDefault(); closeDetails(); return; }
-    if (k === 13) {
-      if (focused === dWatch) { e.preventDefault(); if (currentDetailChannel) openPlayer(currentDetailChannel); return; }
-      if (focused === dCancel || focused === dClose) { e.preventDefault(); closeDetails(); return; }
-    }
-    if (k === 37 && focused === dWatch) { e.preventDefault(); dCancel.focus(); return; }
-    if (k === 39 && focused === dCancel) { e.preventDefault(); dWatch.focus(); return; }
-    return;
-  }
-
-  var isNumKey = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
-  if (isNumKey && focused !== searchEl) {
-    e.preventDefault();
-    var digit = String.fromCharCode(k >= 96 ? k - 48 : k);
-    handleChNumDigit(digit);
-    return;
-  }
-  if (k === 13 && chNumBuffer) { e.preventDefault(); clearTimeout(chNumTimer); commitChNum(); return; }
-  if ((k === 27 || k === 8 || k === 10009) && chNumBuffer) { e.preventDefault(); cancelChNum(); return; }
-
-  if (focused && focused.classList && focused.classList.contains('cat-chip')) {
-    var chips = categoriesEl.querySelectorAll('.cat-chip:not(.hidden)');
-    var cidx = Array.prototype.indexOf.call(chips, focused);
-    if (k === 37 && cidx > 0) { chips[cidx - 1].focus(); e.preventDefault(); }
-    else if (k === 39 && cidx < chips.length - 1) { chips[cidx + 1].focus(); e.preventDefault(); }
-    else if (k === 40) { var vc = gridEl.querySelector('.card:not(.hidden)'); if (vc) { vc.focus(); e.preventDefault(); } }
-    return;
-  }
-  if (focused === searchEl) {
-    if (k === 40) { var vc2 = gridEl.querySelector('.card:not(.hidden)'); if (vc2) { vc2.focus(); e.preventDefault(); } }
-    return;
-  }
-  if (focused && focused.classList && focused.classList.contains('card')) {
-    var visible = gridEl.querySelectorAll('.card:not(.hidden)');
-    var cardIdx = Array.prototype.indexOf.call(visible, focused);
-    var colCount = 1;
-    if (visible.length) {
-      var firstTop = visible[0].getBoundingClientRect().top, n = 1;
-      for (var ci = 1; ci < visible.length; ci++) {
-        if (Math.abs(visible[ci].getBoundingClientRect().top - firstTop) < 4) n++;
-        else break;
-      }
-      colCount = n;
-    }
-    if (k === 37) { if (cardIdx > 0) { visible[cardIdx - 1].focus(); e.preventDefault(); } }
-    else if (k === 39) { if (cardIdx < visible.length - 1) { visible[cardIdx + 1].focus(); e.preventDefault(); } }
-    else if (k === 38) {
-      if (cardIdx - colCount >= 0) { visible[cardIdx - colCount].focus(); e.preventDefault(); }
-      else {
-        var activeChip = categoriesEl.querySelector('.cat-chip.active') || categoriesEl.querySelector('.cat-chip');
-        if (activeChip) { activeChip.focus(); e.preventDefault(); }
-      }
-    }
-    else if (k === 40) { if (cardIdx + colCount < visible.length) { visible[cardIdx + colCount].focus(); e.preventDefault(); } }
-    else if (k === 13) {
-      e.preventDefault();
-      var idx = parseInt(focused.getAttribute('data-idx'), 10);
-      var ch = allChannels[idx];
-      if (ch) openDetails(ch);
-    }
-    return;
-  }
-  if (k === 40 || k === 39) {
-    var anyChip = categoriesEl.querySelector('.cat-chip');
-    if (anyChip) { anyChip.focus(); e.preventDefault(); }
-  }
-});
-
+refreshBtn.addEventListener('click', function() { showToast('Refreshing guide…'); clearCacheAndRefresh(); });
+helpBtn.addEventListener('click', function() { helpModal.classList.remove('hidden'); });
+helpClose.addEventListener('click', function() { helpModal.classList.add('hidden'); });
+helpModal.addEventListener('click', function(e) { if (e.target === helpModal) helpModal.classList.add('hidden'); });
+dTabInfo.addEventListener('click', function(){ currentDetailTab = 'info'; dTabInfo.classList.add('active'); dTabGuide.classList.remove('active'); renderDetailBody(); });
+dTabGuide.addEventListener('click', function(){ currentDetailTab = 'guide'; dTabGuide.classList.add('active'); dTabInfo.classList.remove('active'); renderDetailBody(); });
 dClose.addEventListener('click', function(e){ e.preventDefault(); closeDetails(); });
 dCancel.addEventListener('click', function(e){ e.preventDefault(); closeDetails(); });
 dWatch.addEventListener('click', function(e){ e.preventDefault(); if (currentDetailChannel) openPlayer(currentDetailChannel); });
 detailModal.addEventListener('click', function(e){ if (e.target === detailModal) closeDetails(); });
+
+document.addEventListener('keydown', function(e) {
+  var k = e.keyCode, focused = document.activeElement;
+  var inDetail = !detailModal.classList.contains('hidden');
+  var inHelp = !helpModal.classList.contains('hidden');
+  var inSearch = focused === searchEl;
+  if (inHelp) { if (k === 27 || k === 13) { e.preventDefault(); helpModal.classList.add('hidden'); } return; }
+  if (inDetail) {
+    if (k === 27 || k === 8 || k === 10009) { e.preventDefault(); closeDetails(); return; }
+    if (k === 13) { if (focused === dWatch) { e.preventDefault(); if (currentDetailChannel) openPlayer(currentDetailChannel); return; } if (focused === dCancel || focused === dClose) { e.preventDefault(); closeDetails(); return; } }
+    return;
+  }
+  if (k === 191 && !inSearch) { e.preventDefault(); helpModal.classList.remove('hidden'); return; }
+  if (k === 82 && !inSearch && !chNumBuffer) { e.preventDefault(); refreshBtn.click(); return; }
+  if (k === 83 && !inSearch && !chNumBuffer) { e.preventDefault(); searchEl.focus(); return; }
+  if (k === 70 && !inSearch && focused && focused.classList && focused.classList.contains('card')) { e.preventDefault(); var favId = focused.getAttribute('data-chid'); if (favId) toggleFavorite(favId); return; }
+  var isNumKey = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
+  if (isNumKey && !inSearch) { e.preventDefault(); handleChNumDigit(String.fromCharCode(k >= 96 ? k - 48 : k)); return; }
+  if (k === 13 && chNumBuffer) { e.preventDefault(); clearTimeout(chNumTimer); commitChNum(); return; }
+  if ((k === 27 || k === 8 || k === 10009) && chNumBuffer) { e.preventDefault(); cancelChNum(); return; }
+  if (focused && focused.classList && focused.classList.contains('cat-chip')) {
+    var chips = categoriesEl.querySelectorAll('.cat-chip'); var cidx = Array.prototype.indexOf.call(chips, focused);
+    if (k === 37 && cidx > 0) { chips[cidx - 1].focus(); e.preventDefault(); }
+    else if (k === 39 && cidx < chips.length - 1) { chips[cidx + 1].focus(); e.preventDefault(); }
+    else if (k === 40) { var vc = gridEl.querySelector('.card'); if (vc) { vc.focus(); e.preventDefault(); } }
+    return;
+  }
+  if (focused === searchEl) { if (k === 40) { var vc2 = gridEl.querySelector('.card'); if (vc2) { vc2.focus(); e.preventDefault(); } } return; }
+  if (focused && focused.classList && focused.classList.contains('card')) {
+    var visible = gridEl.querySelectorAll('.card');
+    var cardIdx = Array.prototype.indexOf.call(visible, focused);
+    var colCount = 1;
+    if (visible.length) {
+      var firstTop = visible[0].getBoundingClientRect().top, n = 1;
+      for (var ci = 1; ci < visible.length; ci++) { if (Math.abs(visible[ci].getBoundingClientRect().top - firstTop) < 4) n++; else break; }
+      colCount = n;
+    }
+    if (k === 37) { if (cardIdx > 0) { visible[cardIdx - 1].focus(); e.preventDefault(); } }
+    else if (k === 39) { if (cardIdx < visible.length - 1) { visible[cardIdx + 1].focus(); e.preventDefault(); } }
+    else if (k === 38) { if (cardIdx - colCount >= 0) { visible[cardIdx - colCount].focus(); e.preventDefault(); } else { var activeChip = categoriesEl.querySelector('.cat-chip.active') || categoriesEl.querySelector('.cat-chip'); if (activeChip) { activeChip.focus(); e.preventDefault(); } } }
+    else if (k === 40) { if (cardIdx + colCount < visible.length) { visible[cardIdx + colCount].focus(); e.preventDefault(); } }
+    else if (k === 13) { e.preventDefault(); var chid = focused.getAttribute('data-chid'); var found = null; for (var fi = 0; fi < displayedChannels.length; fi++) if (String(displayedChannels[fi].id) === chid) { found = displayedChannels[fi]; break; } if (found) openDetails(found); }
+    return;
+  }
+  if (k === 40 || k === 39) { var anyChip = categoriesEl.querySelector('.cat-chip'); if (anyChip) { anyChip.focus(); e.preventDefault(); } }
+});
 
 function boot() { loadChannels(); }
 if (document.readyState === 'complete' || document.readyState === 'interactive') setTimeout(boot, 0);
