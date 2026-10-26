@@ -8,161 +8,132 @@
 <link rel="preconnect" href="https://avkb.short.gy" crossorigin>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; -webkit-box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sans-serif; width: 100%; height: 100%; overflow: hidden; -webkit-user-select: none; user-select: none; }
-#header { background: #111; border-bottom: 1px solid #222; padding: 12px 20px; padding-top: calc(12px + env(safe-area-inset-top)); display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex-shrink: 0; }
-#header h1 { font-size: 20px; font-weight: bold; color: #4fc3f7; white-space: nowrap; margin: 0; }
-#searchWrap { flex: 1; min-width: 200px; }
-#search { width: 100%; padding: 12px 16px; font-size: 16px; background: #1a1a1a; border: 1px solid #333; color: #eee; border-radius: 6px; outline: none; font-family: inherit; -webkit-appearance: none; }
-#search:focus { border-color: #4fc3f7; background: #202020; }
-#epgStatus { font-size: 11px; color: #888; width: 100%; margin-top: 4px; display: none; }
-#epgStatus.visible { display: block; }
-#epgStatus.error { color: #ef5350; }
-#epgStatus.warn { color: #f7a23f; }
-#epgStatus.ok { color: #66bb6a; }
-.hdr-btn { padding: 9px 12px; background: #1a1a1a; border: 1px solid #333; color: #ddd; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; white-space: nowrap; transition: background .15s,border-color .15s; }
-.hdr-btn:hover { background: #242424; border-color: #4fc3f7; }
-.hdr-btn:focus { border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79,195,247,0.35); }
-#sortSelect { padding: 9px 10px; background: #1a1a1a; border: 1px solid #333; color: #ddd; border-radius: 6px; font-size: 12px; font-weight: bold; font-family: inherit; cursor: pointer; outline: none; }
-#sortSelect:focus { border-color: #4fc3f7; }
-#categories { background: #0e0e0e; border-bottom: 1px solid #222; padding: 10px 16px; overflow-x: auto; overflow-y: hidden; white-space: nowrap; flex-shrink: 0; scrollbar-width: none; }
-#categories::-webkit-scrollbar { display: none; }
-.cat-chip { display: inline-block; padding: 8px 16px; margin-right: 8px; background: #1a1a1a; border: 1px solid #2a2a2a; color: #ccc; border-radius: 20px; font-size: 13px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; white-space: nowrap; transition: background .15s, color .15s, border-color .15s; }
-.cat-chip:hover { background: #242424; color: #fff; }
-.cat-chip.active { background: #1a3a4a; border-color: #4fc3f7; color: #fff; }
-.cat-chip.fav-chip { border-color: #b8850f; color: #ffc94a; }
-.cat-chip.fav-chip.active { background: #3a2a10; border-color: #ffc94a; color: #fff; }
-.cat-chip.recent-chip { border-color: #6a3a8a; color: #c090e0; }
-.cat-chip.recent-chip.active { background: #2a1a3a; border-color: #c090e0; color: #fff; }
-.cat-chip.live-chip { border-color: #2a7a3a; color: #66d684; }
-.cat-chip.live-chip.active { background: #1a3a20; border-color: #66d684; color: #fff; }
-.cat-chip:focus { background: #1e2a35; border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79,195,247,0.35); }
-#wrap { height: calc(100vh - 130px); height: calc(100dvh - 130px); overflow-y: auto; overflow-x: hidden; padding: 14px; padding-bottom: calc(20px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling: touch; contain: layout style; }
-#grid { display: flex; flex-wrap: wrap; margin: -6px; contain: layout style; }
-.card { box-sizing: border-box; padding: 12px; margin: 6px; width: calc(100% - 12px); background: #161616; border: 2px solid transparent; border-radius: 10px; cursor: pointer; outline: none; transition: background .15s, border-color .15s; display: flex; flex-direction: column; gap: 10px; contain: layout style; position: relative; }
-.card:hover { background: #1a1e24; border-color: #2f4a5f; }
-.card:focus { background: #1a2a35; border-color: #4fc3f7; box-shadow: 0 0 0 2px rgba(79,195,247,0.3); }
-.card.hidden { display: none; }
-.card.compact { padding: 10px; gap: 6px; }
-.card.compact .card-epg, .card.compact .card-actions { display: none; }
-.card.compact .card-logo { width: 40px; height: 40px; }
-.card.compact .card-name { font-size: 13px; }
-.card-star { position: absolute; top: 8px; right: 8px; background: transparent; border: none; color: #444; font-size: 20px; line-height: 1; cursor: pointer; padding: 4px 6px; outline: none; transition: color .15s, transform .15s; z-index: 2; }
-.card-star:hover { color: #ffc94a; transform: scale(1.15); }
-.card-star.active { color: #ffc94a; }
-.card-star:focus { color: #4fc3f7; }
-.card-top { display: flex; align-items: center; gap: 12px; min-width: 0; padding-right: 24px; }
-.card-logo { width: 48px; height: 48px; border-radius: 8px; object-fit: contain; background: #222; flex-shrink: 0; }
-.card-meta { flex: 1; min-width: 0; }
-.card-name { font-size: 15px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.card-num { display: inline-block; padding: 1px 7px; margin-right: 6px; background: #1e3a4a; border: 1px solid #2f5a70; color: #7cd0f5; border-radius: 4px; font-size: 11px; font-weight: bold; letter-spacing: .5px; vertical-align: middle; }
-.card-cat { font-size: 11px; color: #7ab8d6; margin-top: 2px; text-transform: uppercase; letter-spacing: .5px; font-weight: bold; }
-.card-epg { padding: 10px 12px; background: rgba(255,255,255,0.03); border-radius: 8px; border-left: 3px solid #4fc3f7; min-height: 56px; }
-.card-epg.live { border-left-color: #66bb6a; }
-.epg-now-row { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #888; margin-bottom: 4px; }
-.epg-now-label { display: inline-block; padding: 2px 6px; background: #66bb6a; color: #fff; border-radius: 3px; font-size: 10px; font-weight: bold; letter-spacing: .5px; }
-.epg-now-label.next { background: #4fc3f7; color: #001018; }
-.epg-now-time { color: #aaa; font-size: 11px; }
-.epg-now-title { font-size: 13px; color: #ddd; font-weight: bold; line-height: 1.35; margin-bottom: 4px; }
-.epg-now-desc { font-size: 11px; color: #777; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.epg-now-meta { font-size: 11px; color: #7cd0f5; margin-bottom: 4px; }
-.epg-progress { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; overflow: hidden; margin-top: 6px; }
-.epg-progress-fill { height: 100%; background: linear-gradient(90deg, #66bb6a 0%, #4fc3f7 100%); border-radius: 2px; width: 0%; transition: width 2s linear; }
-.epg-next-mini { font-size: 11px; color: #6a8ba0; margin-top: 4px; padding-top: 4px; border-top: 1px solid #222; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.epg-next-mini b { color: #8ab8d0; }
-.epg-empty { font-size: 12px; color: #555; font-style: italic; }
-.epg-empty.has-data { color: #7a8a95; }
-.card-actions { display: flex; gap: 8px; justify-content: flex-end; }
-.card-btn { padding: 8px 14px; background: #1e5a78; border: 1px solid #4fc3f7; color: #fff; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; white-space: nowrap; }
-.card-btn:hover { background: #2a7ba0; }
-.card-btn:focus { box-shadow: 0 0 0 2px rgba(79,195,247,0.35); }
-.msg { width: 100%; padding: 60px 20px; text-align: center; font-size: 15px; color: #888; }
-.msg.err { color: #ef5350; }
-.msg button { margin-top: 16px; background: #2a2a2a; border: none; color: #eee; padding: 12px 24px; border-radius: 6px; font-size: 15px; cursor: pointer; font-family: inherit; }
-.spinner { display: inline-block; width: 28px; height: 28px; border: 3px solid #333; border-top-color: #4fc3f7; border-radius: 50%; -webkit-animation: spin 0.8s linear infinite; animation: spin 0.8s linear infinite; margin-bottom: 14px; }
-@keyframes spin { to { transform: rotate(360deg); } }
-#chNumOverlay { position: fixed; top: 22%; left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%); min-width: 200px; padding: 20px 40px; background: rgba(10,20,28,0.96); border: 3px solid #4fc3f7; border-radius: 18px; text-align: center; z-index: 2000; pointer-events: none; display: none; box-shadow: 0 8px 32px rgba(0,0,0,0.7); }
-#chNumOverlay.visible { display: block; }
-#chNumOverlay .num-label { font-size: 12px; color: #7ab8d6; letter-spacing: 2px; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; }
-#chNumOverlay .num-value { font-size: 72px; color: #fff; font-weight: bold; line-height: 1; letter-spacing: 4px; text-shadow: 0 2px 10px rgba(79,195,247,0.6); }
-#detailModal { position: fixed; top:0;left:0;right:0;bottom:0; background: rgba(0,0,0,0.88); z-index: 1500; display: flex; align-items: center; justify-content: center; padding: 16px; }
-#detailModal.hidden { display: none; }
-.detail-panel { background: #161616; border-radius: 14px; max-width: 720px; width: 100%; max-height: 92vh; display: flex; flex-direction: column; border: 1px solid #2a2a2a; overflow: hidden; }
-.detail-header { display: flex; align-items: center; gap: 14px; padding: 16px; border-bottom: 1px solid #2a2a2a; background: #121212; }
-.detail-logo { width: 56px; height: 56px; border-radius: 10px; object-fit: contain; background: #222; flex-shrink: 0; }
-.detail-meta { flex: 1; min-width: 0; }
-.detail-num { font-size: 12px; color: #4fc3f7; font-weight: bold; letter-spacing: 1px; margin-bottom: 2px; }
-.detail-name { font-size: 20px; font-weight: bold; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.detail-cat { font-size: 11px; color: #7ab8d6; text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
-.detail-close { background: transparent; border: 1px solid #333; color: #eee; width: 44px; height: 44px; border-radius: 8px; font-size: 24px; cursor: pointer; line-height: 1; flex-shrink: 0; outline: none; }
-.detail-close:hover, .detail-close:focus { background: #2a2a2a; border-color: #4fc3f7; }
-.detail-tabs { display: flex; border-bottom: 1px solid #2a2a2a; background: #101010; }
-.detail-tab { flex: 1; padding: 12px; background: transparent; border: none; color: #888; font-size: 13px; font-weight: bold; font-family: inherit; cursor: pointer; outline: none; border-bottom: 2px solid transparent; }
-.detail-tab:hover { color: #ccc; }
-.detail-tab.active { color: #4fc3f7; border-bottom-color: #4fc3f7; }
-.detail-body { overflow-y: auto; padding: 16px; flex: 1; -webkit-overflow-scrolling: touch; }
-.detail-show { padding: 14px; background: #1c1c1c; border-radius: 10px; margin-bottom: 12px; border: 1px solid #262626; }
-.detail-show.now { border-left: 4px solid #66bb6a; }
-.detail-show.next { border-left: 4px solid #4fc3f7; }
-.detail-show.past { border-left: 4px solid #444; opacity: 0.6; }
-.detail-show.none { border-left: 4px solid #444; opacity: 0.7; }
-.show-label { font-size: 11px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
-.detail-show.now .show-label { color: #66bb6a; }
-.detail-show.next .show-label { color: #4fc3f7; }
-.detail-show.past .show-label { color: #777; }
-.detail-show.none .show-label { color: #666; }
-.show-title { font-size: 16px; font-weight: bold; color: #fff; line-height: 1.3; margin-bottom: 6px; }
-.show-meta-row { font-size: 11px; color: #8aa; margin-bottom: 6px; }
-.show-image { width: 100%; max-height: 180px; border-radius: 8px; overflow: hidden; margin-bottom: 10px; background: #0a0a0a; }
-.show-image img { width: 100%; height: auto; max-height: 180px; object-fit: cover; display: block; }
-.show-desc { font-size: 13px; color: #a0a0a0; line-height: 1.5; }
-.timeline-row { display: flex; gap: 12px; padding: 10px 0; border-bottom: 1px solid #222; }
-.timeline-row:last-child { border-bottom: none; }
-.timeline-time { font-size: 12px; color: #7cd0f5; font-weight: bold; min-width: 90px; flex-shrink: 0; }
-.timeline-title { font-size: 13px; color: #ddd; flex: 1; }
-.timeline-row.live .timeline-time { color: #66bb6a; }
-.timeline-row.live .timeline-title { color: #fff; font-weight: bold; }
-.timeline-row.past { opacity: 0.5; }
-.overlap-tag { color: #7a8a95; font-size: 10px; }
-.airing-tag { background: #66bb6a; color: #fff; font-size: 9px; font-weight: bold; padding: 1px 5px; border-radius: 3px; letter-spacing: .5px; }
-.detail-actions { display: flex; gap: 10px; padding: 14px 16px; border-top: 1px solid #2a2a2a; background: #121212; flex-shrink: 0; }
-.detail-actions button { flex: 1; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; outline: none; font-family: inherit; border: none; }
-.btn-watch { background: #1e5a78; color: #fff; border: 1px solid #4fc3f7 !important; }
-.btn-watch:hover, .btn-watch:focus { background: #2a7ba0; box-shadow: 0 0 0 2px rgba(79,195,247,0.35); }
-.btn-cancel { background: #2a2a2a; color: #ddd; border: 1px solid #333 !important; }
-.btn-cancel:hover, .btn-cancel:focus { background: #3a3a3a; border-color: #4fc3f7 !important; }
-#helpModal { position: fixed; top:0;left:0;right:0;bottom:0; background: rgba(0,0,0,0.9); z-index: 1600; display: flex; align-items: center; justify-content: center; padding: 16px; }
-#helpModal.hidden { display: none; }
-.help-panel { background: #161616; border-radius: 14px; max-width: 560px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; border: 1px solid #2a2a2a; overflow: hidden; }
-.help-panel h2 { padding: 16px; border-bottom: 1px solid #2a2a2a; font-size: 18px; color: #4fc3f7; background: #121212; }
-.help-body { padding: 16px; overflow-y: auto; }
-.help-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #222; font-size: 13px; }
-.help-row:last-child { border-bottom: none; }
-.help-key { background: #2a2a2a; border: 1px solid #444; border-radius: 4px; padding: 2px 8px; color: #7cd0f5; font-family: monospace; font-size: 12px; }
-.help-desc { color: #ccc; }
-#toast { position: fixed; bottom: 30px; left: 50%; -webkit-transform: translateX(-50%); transform: translateX(-50%); background: rgba(30,30,30,0.95); color: #fff; padding: 12px 22px; border-radius: 8px; border: 1px solid #4fc3f7; font-size: 14px; z-index: 2500; opacity: 0; transition: opacity .25s, transform .25s; pointer-events: none; max-width: 90vw; text-align: center; }
-#toast.visible { opacity: 1; }
-#toast.error { border-color: #ef5350; color: #ffc7c7; }
-@media (min-width: 600px) { .card { width: calc(50% - 12px); } }
-@media (min-width: 900px) { .card { width: calc(33.333% - 12px); } }
-@media (min-width: 1280px) { .card { width: calc(33.333% - 12px); padding: 14px; } .card-logo { width: 56px; height: 56px; } .card-name { font-size: 17px; } .epg-now-title { font-size: 14px; } }
-@media (min-width: 1700px) { .card { width: calc(25% - 12px); } .card-name { font-size: 18px; } }
-@media (max-width: 480px) { #header { padding: 10px 12px; padding-top: calc(10px + env(safe-area-inset-top)); gap: 8px; } #header h1 { font-size: 16px; width: 100%; } #searchWrap { min-width: 100%; } #search { padding: 10px 12px; font-size: 15px; } #categories { padding: 8px 12px; } .cat-chip { padding: 7px 12px; font-size: 12px; } #wrap { padding: 10px; } .card { padding: 10px; gap: 8px; } .card-logo { width: 42px; height: 42px; } .card-name { font-size: 14px; } .epg-now-title { font-size: 12px; } .epg-now-desc { -webkit-line-clamp: 1; } .card-btn { padding: 7px 12px; font-size: 11px; } #chNumOverlay .num-value { font-size: 56px; } .detail-name { font-size: 17px; } .hdr-btn, #sortSelect { padding: 8px 10px; font-size: 11px; } }
+* { margin:0; padding:0; box-sizing:border-box; -webkit-box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+html, body { background:#0a0a0a; color:#eee; font-family:Arial,Helvetica,sans-serif; width:100%; height:100%; overflow:hidden; -webkit-user-select:none; user-select:none; }
+#header { background:#111; border-bottom:1px solid #222; padding:12px 20px; padding-top:calc(12px + env(safe-area-inset-top)); display:flex; align-items:center; gap:12px; flex-wrap:wrap; flex-shrink:0; }
+#header h1 { font-size:20px; font-weight:bold; color:#4fc3f7; white-space:nowrap; margin:0; }
+#searchWrap { flex:1; min-width:200px; }
+#search { width:100%; padding:12px 16px; font-size:16px; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:6px; outline:none; font-family:inherit; }
+#search:focus { border-color:#4fc3f7; background:#202020; }
+#epgStatus { font-size:11px; color:#888; width:100%; margin-top:4px; display:none; }
+#epgStatus.visible { display:block; } #epgStatus.error { color:#ef5350; } #epgStatus.warn { color:#f7a23f; } #epgStatus.ok { color:#66bb6a; }
+.hdr-btn { padding:9px 12px; background:#1a1a1a; border:1px solid #333; color:#ddd; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer; outline:none; font-family:inherit; white-space:nowrap; }
+.hdr-btn:hover { background:#242424; border-color:#4fc3f7; }
+#sortSelect { padding:9px 10px; background:#1a1a1a; border:1px solid #333; color:#ddd; border-radius:6px; font-size:12px; font-weight:bold; font-family:inherit; cursor:pointer; outline:none; }
+#categories { background:#0e0e0e; border-bottom:1px solid #222; padding:10px 16px; overflow-x:auto; overflow-y:hidden; white-space:nowrap; flex-shrink:0; scrollbar-width:none; }
+#categories::-webkit-scrollbar { display:none; }
+.cat-chip { display:inline-block; padding:8px 16px; margin-right:8px; background:#1a1a1a; border:1px solid #2a2a2a; color:#ccc; border-radius:20px; font-size:13px; font-weight:bold; cursor:pointer; outline:none; font-family:inherit; white-space:nowrap; }
+.cat-chip:hover { background:#242424; color:#fff; }
+.cat-chip.active { background:#1a3a4a; border-color:#4fc3f7; color:#fff; }
+.cat-chip.fav-chip { border-color:#b8850f; color:#ffc94a; } .cat-chip.fav-chip.active { background:#3a2a10; border-color:#ffc94a; color:#fff; }
+.cat-chip.recent-chip { border-color:#6a3a8a; color:#c090e0; } .cat-chip.recent-chip.active { background:#2a1a3a; border-color:#c090e0; color:#fff; }
+.cat-chip.live-chip { border-color:#2a7a3a; color:#66d684; } .cat-chip.live-chip.active { background:#1a3a20; border-color:#66d684; color:#fff; }
+#wrap { height:calc(100vh - 130px); height:calc(100dvh - 130px); overflow-y:auto; overflow-x:hidden; padding:14px; padding-bottom:calc(20px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling:touch; }
+#grid { display:flex; flex-wrap:wrap; margin:-6px; }
+.card { box-sizing:border-box; padding:12px; margin:6px; width:calc(100% - 12px); background:#161616; border:2px solid transparent; border-radius:10px; cursor:pointer; outline:none; display:flex; flex-direction:column; gap:10px; position:relative; }
+.card:hover { background:#1a1e24; border-color:#2f4a5f; }
+.card:focus { background:#1a2a35; border-color:#4fc3f7; box-shadow:0 0 0 2px rgba(79,195,247,0.3); }
+.card.compact { padding:10px; gap:6px; } .card.compact .card-epg, .card.compact .card-actions { display:none; } .card.compact .card-logo { width:40px; height:40px; } .card.compact .card-name { font-size:13px; }
+.card-star { position:absolute; top:8px; right:8px; background:transparent; border:none; color:#444; font-size:20px; line-height:1; cursor:pointer; padding:4px 6px; outline:none; z-index:2; }
+.card-star:hover { color:#ffc94a; transform:scale(1.15); } .card-star.active { color:#ffc94a; }
+.card-top { display:flex; align-items:center; gap:12px; min-width:0; padding-right:24px; }
+.card-logo { width:48px; height:48px; border-radius:8px; object-fit:contain; background:#222; flex-shrink:0; }
+.card-meta { flex:1; min-width:0; }
+.card-name { font-size:15px; font-weight:bold; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.card-num { display:inline-block; padding:1px 7px; margin-right:6px; background:#1e3a4a; border:1px solid #2f5a70; color:#7cd0f5; border-radius:4px; font-size:11px; font-weight:bold; vertical-align:middle; }
+.card-cat { font-size:11px; color:#7ab8d6; margin-top:2px; text-transform:uppercase; font-weight:bold; }
+.card-epg { padding:10px 12px; background:rgba(255,255,255,0.03); border-radius:8px; border-left:3px solid #4fc3f7; min-height:56px; }
+.card-epg.live { border-left-color:#66bb6a; }
+.card-epg.recent { border-left-color:#f7a23f; }
+.card-epg.upcoming { border-left-color:#4fc3f7; }
+.card-epg.far-past, .card-epg.far-future { border-left-color:#555; }
+.epg-now-row { display:flex; align-items:center; gap:8px; font-size:11px; color:#888; margin-bottom:4px; }
+.epg-now-label { display:inline-block; padding:2px 6px; background:#66bb6a; color:#fff; border-radius:3px; font-size:10px; font-weight:bold; }
+.epg-now-label.recent { background:#f7a23f; color:#001018; }
+.epg-now-label.upcoming { background:#4fc3f7; color:#001018; }
+.epg-now-label.far-past, .epg-now-label.far-future { background:#444; color:#bbb; }
+.epg-now-time { color:#aaa; font-size:11px; }
+.epg-now-title { font-size:13px; color:#ddd; font-weight:bold; line-height:1.35; margin-bottom:4px; }
+.epg-now-desc { font-size:11px; color:#777; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.epg-now-meta { font-size:11px; color:#7cd0f5; margin-bottom:4px; }
+.epg-progress { height:3px; background:rgba(255,255,255,0.08); border-radius:2px; overflow:hidden; margin-top:6px; }
+.epg-progress-fill { height:100%; background:linear-gradient(90deg, #66bb6a 0%, #4fc3f7 100%); border-radius:2px; width:0%; }
+.epg-next-mini { font-size:11px; color:#6a8ba0; margin-top:4px; padding-top:4px; border-top:1px solid #222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.epg-next-mini b { color:#8ab8d0; }
+.epg-empty { font-size:12px; color:#555; font-style:italic; }
+.card-actions { display:flex; gap:8px; justify-content:flex-end; }
+.card-btn { padding:8px 14px; background:#1e5a78; border:1px solid #4fc3f7; color:#fff; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer; outline:none; font-family:inherit; }
+.msg { width:100%; padding:60px 20px; text-align:center; font-size:15px; color:#888; }
+.spinner { display:inline-block; width:28px; height:28px; border:3px solid #333; border-top-color:#4fc3f7; border-radius:50%; animation:spin 0.8s linear infinite; margin-bottom:14px; }
+@keyframes spin { to { transform:rotate(360deg); } }
+#chNumOverlay { position:fixed; top:22%; left:50%; transform:translateX(-50%); min-width:200px; padding:20px 40px; background:rgba(10,20,28,0.96); border:3px solid #4fc3f7; border-radius:18px; text-align:center; z-index:2000; pointer-events:none; display:none; }
+#chNumOverlay.visible { display:block; }
+#chNumOverlay .num-label { font-size:12px; color:#7ab8d6; letter-spacing:2px; font-weight:bold; margin-bottom:6px; }
+#chNumOverlay .num-value { font-size:72px; color:#fff; font-weight:bold; line-height:1; letter-spacing:4px; }
+#detailModal { position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.88); z-index:1500; display:flex; align-items:center; justify-content:center; padding:16px; }
+#detailModal.hidden { display:none; }
+.detail-panel { background:#161616; border-radius:14px; max-width:720px; width:100%; max-height:92vh; display:flex; flex-direction:column; border:1px solid #2a2a2a; overflow:hidden; }
+.detail-header { display:flex; align-items:center; gap:14px; padding:16px; border-bottom:1px solid #2a2a2a; background:#121212; }
+.detail-logo { width:56px; height:56px; border-radius:10px; object-fit:contain; background:#222; flex-shrink:0; }
+.detail-meta { flex:1; min-width:0; }
+.detail-num { font-size:12px; color:#4fc3f7; font-weight:bold; margin-bottom:2px; }
+.detail-name { font-size:20px; font-weight:bold; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.detail-cat { font-size:11px; color:#7ab8d6; text-transform:uppercase; margin-top:2px; }
+.detail-close { background:transparent; border:1px solid #333; color:#eee; width:44px; height:44px; border-radius:8px; font-size:24px; cursor:pointer; flex-shrink:0; }
+.detail-tabs { display:flex; border-bottom:1px solid #2a2a2a; background:#101010; }
+.detail-tab { flex:1; padding:12px; background:transparent; border:none; color:#888; font-size:13px; font-weight:bold; font-family:inherit; cursor:pointer; border-bottom:2px solid transparent; }
+.detail-tab.active { color:#4fc3f7; border-bottom-color:#4fc3f7; }
+.detail-body { overflow-y:auto; padding:16px; flex:1; }
+.detail-show { padding:14px; background:#1c1c1c; border-radius:10px; margin-bottom:12px; border:1px solid #262626; }
+.detail-show.now { border-left:4px solid #66bb6a; }
+.detail-show.next { border-left:4px solid #4fc3f7; }
+.detail-show.recent { border-left:4px solid #f7a23f; }
+.detail-show.none { border-left:4px solid #444; opacity:0.7; }
+.show-label { font-size:11px; font-weight:bold; text-transform:uppercase; margin-bottom:6px; }
+.detail-show.now .show-label { color:#66bb6a; }
+.detail-show.next .show-label { color:#4fc3f7; }
+.detail-show.recent .show-label { color:#f7a23f; }
+.detail-show.none .show-label { color:#666; }
+.show-title { font-size:16px; font-weight:bold; color:#fff; line-height:1.3; margin-bottom:6px; }
+.show-meta-row { font-size:11px; color:#8aa; margin-bottom:6px; }
+.show-image { width:100%; max-height:180px; border-radius:8px; overflow:hidden; margin-bottom:10px; background:#0a0a0a; }
+.show-image img { width:100%; max-height:180px; object-fit:cover; display:block; }
+.show-desc { font-size:13px; color:#a0a0a0; line-height:1.5; }
+.timeline-row { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid #222; }
+.timeline-row:last-child { border-bottom:none; }
+.timeline-time { font-size:12px; color:#7cd0f5; font-weight:bold; min-width:90px; flex-shrink:0; }
+.timeline-title { font-size:13px; color:#ddd; flex:1; }
+.timeline-row.live .timeline-time { color:#66bb6a; } .timeline-row.live .timeline-title { color:#fff; font-weight:bold; }
+.timeline-row.past { opacity:0.5; }
+.airing-tag { background:#66bb6a; color:#fff; font-size:9px; font-weight:bold; padding:1px 5px; border-radius:3px; }
+.detail-actions { display:flex; gap:10px; padding:14px 16px; border-top:1px solid #2a2a2a; background:#121212; }
+.detail-actions button { flex:1; padding:14px; border-radius:8px; font-size:15px; font-weight:bold; cursor:pointer; font-family:inherit; border:none; }
+.btn-watch { background:#1e5a78; color:#fff; border:1px solid #4fc3f7 !important; }
+.btn-cancel { background:#2a2a2a; color:#ddd; border:1px solid #333 !important; }
+#helpModal { position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.9); z-index:1600; display:flex; align-items:center; justify-content:center; padding:16px; }
+#helpModal.hidden { display:none; }
+.help-panel { background:#161616; border-radius:14px; max-width:560px; width:100%; max-height:90vh; display:flex; flex-direction:column; border:1px solid #2a2a2a; overflow:hidden; }
+.help-panel h2 { padding:16px; border-bottom:1px solid #2a2a2a; font-size:18px; color:#4fc3f7; background:#121212; }
+.help-body { padding:16px; overflow-y:auto; }
+.help-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #222; font-size:13px; }
+.help-key { background:#2a2a2a; border:1px solid #444; border-radius:4px; padding:2px 8px; color:#7cd0f5; font-family:monospace; font-size:12px; }
+#toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:rgba(30,30,30,0.95); color:#fff; padding:12px 22px; border-radius:8px; border:1px solid #4fc3f7; font-size:14px; z-index:2500; opacity:0; transition:opacity .25s; pointer-events:none; max-width:90vw; }
+#toast.visible { opacity:1; }
+#toast.error { border-color:#ef5350; color:#ffc7c7; }
+@media (min-width: 600px) { .card { width:calc(50% - 12px); } }
+@media (min-width: 900px) { .card { width:calc(33.333% - 12px); } }
+@media (min-width: 1700px) { .card { width:calc(25% - 12px); } }
+@media (max-width: 480px) { #header h1 { font-size:16px; width:100%; } #searchWrap { min-width:100%; } .card-logo { width:42px; height:42px; } .hdr-btn, #sortSelect { padding:8px 10px; font-size:11px; } }
 </style>
 </head>
 <body>
 <div id="header">
   <h1>📺 JTV</h1>
   <div id="searchWrap"><input id="search" type="search" placeholder="Search channels or shows…" autocomplete="off"></div>
-  <select id="sortSelect" title="Sort channels">
-    <option value="default">Sort: Default</option>
-    <option value="number">Sort: Number</option>
-    <option value="name">Sort: Name A-Z</option>
-    <option value="category">Sort: Category</option>
-  </select>
-  <button class="hdr-btn" id="viewBtn" type="button" title="Toggle view">▦ Grid</button>
-  <button class="hdr-btn" id="refreshBtn" type="button" title="Refresh guide">⟳ EPG</button>
-  <button class="hdr-btn" id="helpBtn" type="button" title="Help">?</button>
+  <select id="sortSelect"><option value="default">Sort: Default</option><option value="number">Sort: Number</option><option value="name">Sort: Name A-Z</option><option value="category">Sort: Category</option></select>
+  <button class="hdr-btn" id="viewBtn" type="button">▦ Grid</button>
+  <button class="hdr-btn" id="refreshBtn" type="button">⟳ EPG</button>
+  <button class="hdr-btn" id="helpBtn" type="button">?</button>
   <div id="epgStatus"></div>
 </div>
 <div id="categories"></div>
@@ -174,22 +145,12 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
   <div class="detail-panel">
     <div class="detail-header">
       <img class="detail-logo" id="dLogo" src="" alt="" onerror="this.style.visibility='hidden'">
-      <div class="detail-meta">
-        <div class="detail-num" id="dNum"></div>
-        <div class="detail-name" id="dName"></div>
-        <div class="detail-cat" id="dCat"></div>
-      </div>
+      <div class="detail-meta"><div class="detail-num" id="dNum"></div><div class="detail-name" id="dName"></div><div class="detail-cat" id="dCat"></div></div>
       <button class="detail-close" id="dClose" tabindex="0" type="button">×</button>
     </div>
-    <div class="detail-tabs">
-      <button class="detail-tab active" id="dTabInfo" type="button">Now / Next</button>
-      <button class="detail-tab" id="dTabGuide" type="button">Full Day Guide</button>
-    </div>
+    <div class="detail-tabs"><button class="detail-tab active" id="dTabInfo" type="button">Now / Next</button><button class="detail-tab" id="dTabGuide" type="button">Full Guide</button></div>
     <div class="detail-body" id="dBody"></div>
-    <div class="detail-actions">
-      <button class="btn-cancel" id="dCancel" tabindex="0" type="button">✕ Close</button>
-      <button class="btn-watch" id="dWatch" tabindex="0" type="button">▶ Watch Live</button>
-    </div>
+    <div class="detail-actions"><button class="btn-cancel" id="dCancel" type="button">✕ Close</button><button class="btn-watch" id="dWatch" type="button">▶ Watch Live</button></div>
   </div>
 </div>
 
@@ -197,20 +158,14 @@ html, body { background: #0a0a0a; color: #eee; font-family: Arial, Helvetica, sa
   <div class="help-panel">
     <h2>⌨️ Keyboard Shortcuts</h2>
     <div class="help-body">
-      <div class="help-row"><span class="help-desc">Focus search</span><span class="help-key">/ or S</span></div>
-      <div class="help-row"><span class="help-desc">Type channel number</span><span class="help-key">0-9</span></div>
-      <div class="help-row"><span class="help-desc">Confirm channel number</span><span class="help-key">Enter</span></div>
-      <div class="help-row"><span class="help-desc">Cancel channel number</span><span class="help-key">Esc / Backspace</span></div>
-      <div class="help-row"><span class="help-desc">Navigate cards</span><span class="help-key">← ↑ → ↓</span></div>
-      <div class="help-row"><span class="help-desc">Open details / Watch</span><span class="help-key">Enter</span></div>
-      <div class="help-row"><span class="help-desc">Toggle favorite</span><span class="help-key">F</span></div>
-      <div class="help-row"><span class="help-desc">Show Help</span><span class="help-key">?</span></div>
-      <div class="help-row"><span class="help-desc">Refresh guide</span><span class="help-key">R</span></div>
-      <div class="help-row"><span class="help-desc">Close any overlay</span><span class="help-key">Esc</span></div>
+      <div class="help-row"><span>Focus search</span><span class="help-key">/ or S</span></div>
+      <div class="help-row"><span>Type channel number</span><span class="help-key">0-9</span></div>
+      <div class="help-row"><span>Confirm channel</span><span class="help-key">Enter</span></div>
+      <div class="help-row"><span>Cancel / Close</span><span class="help-key">Esc</span></div>
+      <div class="help-row"><span>Favorite</span><span class="help-key">F</span></div>
+      <div class="help-row"><span>Refresh guide</span><span class="help-key">R</span></div>
     </div>
-    <div class="detail-actions">
-      <button id="helpClose" type="button" style="flex:1;padding:14px;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;font-family:inherit;background:#2a2a2a;color:#ddd;border:1px solid #333;">Close</button>
-    </div>
+    <div class="detail-actions"><button id="helpClose" type="button" style="flex:1;padding:14px;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;font-family:inherit;background:#2a2a2a;color:#ddd;border:1px solid #333;">Close</button></div>
   </div>
 </div>
 
@@ -221,11 +176,8 @@ if (typeof Promise === 'undefined') {
   (function(){function P(e){var s=this;s._s=0;s._v=null;s._h=[];function r(v){if(s._s)return;s._s=1;s._v=v;f(s);}function j(v){if(s._s)return;s._s=2;s._v=v;f(s);}function f(p){if(p._s===0)return;var hs=p._h;p._h=[];for(var i=0;i<hs.length;i++)h(p,hs[i]);}function h(p,hd){if(p._s===1){if(hd.of){try{var x=hd.of(p._v);if(x&&typeof x.then==='function')x.then(hd.r,hd.j);else hd.r(x);}catch(e){hd.j(e);}}else hd.r(p._v);}else{if(hd.or){try{var y=hd.or(p._v);if(y&&typeof y.then==='function')y.then(hd.r,hd.j);else hd.r(y);}catch(e){hd.j(e);}}else hd.j(p._v);}}s.then=function(of,or){return new P(function(res,rej){var hd={of:of,or:or,r:res,j:rej};if(s._s)h(s,hd);else s._h.push(hd);});};s['catch']=function(or){return s.then(null,or);};try{e(r,j);}catch(e){j(e);}}P.resolve=function(v){return new P(function(r){r(v);});};P.reject=function(v){return new P(function(r,j){j(v);});};P.all=function(a){return new P(function(r,j){var o=[],d=0;if(!a.length)return r(o);for(var i=0;i<a.length;i++)(function(x){a[x].then(function(v){o[x]=v;if(++d===a.length)r(o);},j);})(i);});};window.Promise=P;})();
 }
 if (!Array.prototype.includes) Array.prototype.includes = function(x){ return this.indexOf(x) !== -1; };
-if (!Element.prototype.closest) { Element.prototype.closest = function(sel) { var el = this; while (el) { if (el.matches && el.matches(sel)) return el; el = el.parentElement; } return null; }; }
-
 var rAF = window.requestAnimationFrame || function(cb){ return setTimeout(function(){ cb(Date.now()); }, 16); };
 function safeLog(){ try{ console.log.apply(console,arguments);}catch(e){} }
-function safeWarn(){ try{ console.warn.apply(console,arguments);}catch(e){} }
 
 function xhrFetch(url, opts) {
   opts = opts || {};
@@ -234,10 +186,7 @@ function xhrFetch(url, opts) {
     xhr.open(opts.method || 'GET', url, true);
     xhr.timeout = opts.timeout || 20000;
     if (opts.headers) for (var k in opts.headers) if (opts.headers.hasOwnProperty(k)) try { xhr.setRequestHeader(k, opts.headers[k]); } catch(e){}
-    xhr.onload = function() {
-      if (xhr.status >= 200 && xhr.status < 300) resolve({ ok:true, status: xhr.status, text: function(){ return Promise.resolve(xhr.responseText); }, json: function(){ return Promise.resolve(JSON.parse(xhr.responseText)); } });
-      else reject(new Error('HTTP ' + xhr.status));
-    };
+    xhr.onload = function() { if (xhr.status >= 200 && xhr.status < 300) resolve({ ok:true, status: xhr.status, text: function(){ return Promise.resolve(xhr.responseText); }, json: function(){ return Promise.resolve(JSON.parse(xhr.responseText)); } }); else reject(new Error('HTTP ' + xhr.status)); };
     xhr.onerror = function(){ reject(new Error('Network error')); };
     xhr.ontimeout = function(){ reject(new Error('Timeout')); };
     try { xhr.send(opts.body || null); } catch(e){ reject(e); }
@@ -260,59 +209,25 @@ function xhrFetchBuffer(url, opts) {
 var CHANNELS_CANDIDATES = ['/jstr4web.json', 'https://jjtvxweb.pages.dev/jstr4web.json'];
 var CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
 var EPG_URL = 'https://avkb.short.gy/jioepg.xml.gz';
-var EPG_CACHE_KEY = 'jtv_epg_cache_v13';
+var EPG_CACHE_KEY = 'jtv_epg_cache_v15';
 var EPG_CACHE_TTL_MS = 4 * 60 * 60 * 1000;
-var EPG_TRIM_BEFORE_H = 12;
-var EPG_TRIM_AFTER_H = 48;
-var FAV_KEY = 'jtv_favorites_v1';
-var RECENT_KEY = 'jtv_recents_v1';
-var PREF_KEY = 'jtv_prefs_v1';
+var FAV_KEY = 'jtv_favorites_v1', RECENT_KEY = 'jtv_recents_v1', PREF_KEY = 'jtv_prefs_v1';
 
-var gridEl = document.getElementById('grid');
-var searchEl = document.getElementById('search');
-var categoriesEl = document.getElementById('categories');
-var wrapEl = document.getElementById('wrap');
-var epgStatusEl = document.getElementById('epgStatus');
-var chNumOverlay = document.getElementById('chNumOverlay');
-var chNumValue = document.getElementById('chNumValue');
-var detailModal = document.getElementById('detailModal');
-var helpModal = document.getElementById('helpModal');
-var dLogo = document.getElementById('dLogo');
-var dNum = document.getElementById('dNum');
-var dName = document.getElementById('dName');
-var dCat = document.getElementById('dCat');
-var dBody = document.getElementById('dBody');
-var dClose = document.getElementById('dClose');
-var dCancel = document.getElementById('dCancel');
-var dWatch = document.getElementById('dWatch');
-var dTabInfo = document.getElementById('dTabInfo');
-var dTabGuide = document.getElementById('dTabGuide');
-var toastEl = document.getElementById('toast');
-var sortSelect = document.getElementById('sortSelect');
-var viewBtn = document.getElementById('viewBtn');
-var refreshBtn = document.getElementById('refreshBtn');
-var helpBtn = document.getElementById('helpBtn');
-var helpClose = document.getElementById('helpClose');
+var gridEl = document.getElementById('grid'), searchEl = document.getElementById('search'), categoriesEl = document.getElementById('categories');
+var wrapEl = document.getElementById('wrap'), epgStatusEl = document.getElementById('epgStatus');
+var chNumOverlay = document.getElementById('chNumOverlay'), chNumValue = document.getElementById('chNumValue');
+var detailModal = document.getElementById('detailModal'), helpModal = document.getElementById('helpModal');
+var dLogo = document.getElementById('dLogo'), dNum = document.getElementById('dNum'), dName = document.getElementById('dName'), dCat = document.getElementById('dCat');
+var dBody = document.getElementById('dBody'), dClose = document.getElementById('dClose'), dCancel = document.getElementById('dCancel'), dWatch = document.getElementById('dWatch');
+var dTabInfo = document.getElementById('dTabInfo'), dTabGuide = document.getElementById('dTabGuide');
+var toastEl = document.getElementById('toast'), sortSelect = document.getElementById('sortSelect'), viewBtn = document.getElementById('viewBtn');
+var refreshBtn = document.getElementById('refreshBtn'), helpBtn = document.getElementById('helpBtn'), helpClose = document.getElementById('helpClose');
 
-var allChannels = [];
-var displayedChannels = [];
-var selectedCategory = 'all';
-var searchQuery = '';
-var cardMap = {};
-var currentDetailChannel = null;
-var currentDetailTab = 'info';
-var chNumBuffer = '';
-var chNumTimer = null;
-var toastTimer = null;
-
-var favorites = {};
-var recents = [];
-var sortMode = 'default';
-var viewMode = 'grid';
-
-var epgByChannelId = {};
-var epgLoaded = false;
-var progressUpdateTimer = null;
+var allChannels = [], displayedChannels = [], selectedCategory = 'all', searchQuery = '';
+var cardMap = {}, currentDetailChannel = null, currentDetailTab = 'info';
+var chNumBuffer = '', chNumTimer = null, toastTimer = null;
+var favorites = {}, recents = [], sortMode = 'default', viewMode = 'grid';
+var epgByChannelId = {}, epgLoaded = false, progressUpdateTimer = null;
 
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function truncate(s,n){ if(!s) return ''; return s.length > n ? s.substring(0, n-1) + '…' : s; }
@@ -321,10 +236,8 @@ function formatRange(s, e){ return formatTimeOnly(s) + ' - ' + formatTimeOnly(e)
 function setEpgStatus(text, kind){
   if (!epgStatusEl) return;
   if (!text) { epgStatusEl.classList.remove('visible','error','warn','ok'); epgStatusEl.textContent = ''; return; }
-  epgStatusEl.textContent = text;
-  epgStatusEl.classList.add('visible');
-  epgStatusEl.classList.remove('error','warn','ok');
-  if (kind) epgStatusEl.classList.add(kind);
+  epgStatusEl.textContent = text; epgStatusEl.classList.add('visible');
+  epgStatusEl.classList.remove('error','warn','ok'); if (kind) epgStatusEl.classList.add(kind);
 }
 function showToast(msg, isError){
   toastEl.textContent = msg; toastEl.classList.add('visible');
@@ -332,7 +245,7 @@ function showToast(msg, isError){
   clearTimeout(toastTimer); toastTimer = setTimeout(function(){ toastEl.classList.remove('visible'); }, 2500);
 }
 
-/* ════════ ID / name normalization ════════ */
+/* ════════ ID / name helpers ════════ */
 function extractNumericId(id) { if (!id) return null; var m = String(id).match(/(\d{1,6})\s*$/); return m ? m[1] : null; }
 function normalizeChannelName(name) {
   if (!name) return '';
@@ -352,8 +265,7 @@ function loadPrefs(){
   try { favorites = JSON.parse(localStorage.getItem(FAV_KEY) || '{}'); } catch(e){ favorites = {}; }
   try { recents = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch(e){ recents = []; }
   try { var p = JSON.parse(localStorage.getItem(PREF_KEY) || '{}'); if (p.sortMode) sortMode = p.sortMode; if (p.viewMode) viewMode = p.viewMode; } catch(e){}
-  if (sortSelect) sortSelect.value = sortMode;
-  updateViewBtn();
+  if (sortSelect) sortSelect.value = sortMode; updateViewBtn();
 }
 function savePrefs(){ try { localStorage.setItem(PREF_KEY, JSON.stringify({ sortMode: sortMode, viewMode: viewMode })); } catch(e){} }
 function saveFavorites(){ try { localStorage.setItem(FAV_KEY, JSON.stringify(favorites)); } catch(e){} }
@@ -370,48 +282,32 @@ function toggleFavorite(chId){
 }
 function addRecent(chId){ chId = String(chId); recents = [chId].concat(recents.filter(function(x){ return x !== chId; })).slice(0, 20); saveRecents(); }
 
-/* ════════ ROBUST EPG date parse ════════ */
-/* Handles: YYYYMMDDHHMMSS +HHMM | YYYYMMDDHHMMSS+HHMM | YYYYMMDDHHMMSS +HH:MM |
-   YYYYMMDDHHMMSS+HH:MM | YYYYMMDDHHMMSS | YYYYMMDDHHMMSS IST | YYYYMMDDHHMMSS UTC
-   Default timezone when none is present: IST (+0530) — matches jioepg source.
-*/
+/* ════════ EPG date parse ════════ */
 function parseEPGDate(dateStr) {
   if (!dateStr) return null;
   var s = String(dateStr).trim();
-  /* Extract 14-digit datetime at the start */
   var m = s.match(/^(\d{14})/);
-  if (!m) return null;
-  var dt = m[1];
-  /* Extract timezone from the rest of the string */
-  var tzPart = s.substring(14).trim();
-  var tz = '+0530';  /* default: IST */
-  if (tzPart) {
-    /* Try +HHMM, +HH:MM, -HHMM, -HH:MM */
-    var tzm = tzPart.match(/([+-])(\d{1,2}):?(\d{2})?/);
-    if (tzm) {
-      var sign = tzm[1] === '-' ? -1 : 1;
-      var tzH = parseInt(tzm[2], 10) || 0;
-      var tzM = parseInt(tzm[3] || '0', 10) || 0;
-      tz = (sign < 0 ? '-' : '+') + (tzH < 10 ? '0' : '') + tzH + (tzM < 10 ? '0' : '') + tzM;
+  if (m) {
+    var dt = m[1];
+    var tzPart = s.substring(14).trim();
+    var tz = '+0530';
+    if (tzPart) {
+      var tzm = tzPart.match(/([+-])(\d{1,2}):?(\d{2})?/);
+      if (tzm) { var sign = tzm[1] === '-' ? -1 : 1; var tzH = parseInt(tzm[2], 10) || 0; var tzM = parseInt(tzm[3] || '0', 10) || 0; tz = (sign < 0 ? '-' : '+') + (tzH < 10 ? '0' : '') + tzH + (tzM < 10 ? '0' : '') + tzM; }
+      else if (/IST/i.test(tzPart)) tz = '+0530';
+      else if (/UTC|GMT/i.test(tzPart)) tz = '+0000';
     }
-    /* Named zones */
-    else if (/IST/i.test(tzPart)) tz = '+0530';
-    else if (/UTC|GMT/i.test(tzPart)) tz = '+0000';
+    var year = parseInt(dt.slice(0,4), 10), month = parseInt(dt.slice(4,6), 10) - 1, day = parseInt(dt.slice(6,8), 10);
+    var hour = parseInt(dt.slice(8,10), 10), minute = parseInt(dt.slice(10,12), 10), second = parseInt(dt.slice(12,14), 10) || 0;
+    if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) return null;
+    var ms = Date.UTC(year, month, day, hour, minute, second);
+    var sign2 = tz.charAt(0) === '-' ? -1 : 1;
+    var tzH2 = parseInt(tz.substr(1,2), 10) || 0, tzM2 = parseInt(tz.substr(3,2), 10) || 0;
+    return ms - (tzH2 * 3600 + tzM2 * 60) * 1000 * sign2;
   }
-  var year = parseInt(dt.slice(0, 4), 10);
-  var month = parseInt(dt.slice(4, 6), 10) - 1;
-  var day = parseInt(dt.slice(6, 8), 10);
-  var hour = parseInt(dt.slice(8, 10), 10);
-  var minute = parseInt(dt.slice(10, 12), 10);
-  var second = parseInt(dt.slice(12, 14), 10) || 0;
-  if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) return null;
-  var ms = Date.UTC(year, month, day, hour, minute, second);
-  var sign2 = tz.charAt(0) === '-' ? -1 : 1;
-  var tzH2 = parseInt(tz.substr(1, 2), 10) || 0;
-  var tzM2 = parseInt(tz.substr(3, 2), 10) || 0;
-  return ms - (tzH2 * 3600 + tzM2 * 60) * 1000 * sign2;
+  try { var d = new Date(s).getTime(); if (!isNaN(d)) return d; } catch(e) {}
+  return null;
 }
-
 function bytesToUtf8String(bytes) {
   if (typeof TextDecoder !== 'undefined') { try { return new TextDecoder('utf-8').decode(bytes); } catch (e) {} }
   var result = '', i = 0;
@@ -427,14 +323,7 @@ function bytesToUtf8String(bytes) {
 function chunkedUngzip(bytes) {
   return new Promise(function(resolve, reject) {
     if (typeof pako === 'undefined') { reject(new Error('pako not loaded')); return; }
-    try {
-      var t0 = Date.now();
-      var inflator = new pako.Inflate({ to: 'string', chunkSize: 1024 * 1024 });
-      inflator.push(bytes, true);
-      if (inflator.err) { reject(new Error('inflate failed: ' + inflator.msg)); return; }
-      safeLog('[pako] ' + bytes.length + ' bytes in ' + (Date.now() - t0) + 'ms');
-      resolve(inflator.result);
-    } catch (e) { reject(e); }
+    try { var inflator = new pako.Inflate({ to: 'string', chunkSize: 1024 * 1024 }); inflator.push(bytes, true); if (inflator.err) { reject(new Error('inflate failed')); return; } resolve(inflator.result); } catch (e) { reject(e); }
   });
 }
 function decodeXmlEntities(s) {
@@ -447,33 +336,27 @@ function decodeXmlEntities(s) {
   });
 }
 
-/* ════════ Channel lookup map ════════ */
+/* ════════ Channel lookup ════════ */
 function buildChannelLookup() {
-  var byId = {}, byNumeric = {}, byName = {}, byLoose = {};
-  var nameLists = {}, looseLists = {};
+  var byId = {}, byNumeric = {}, nameLists = {}, looseLists = {};
   for (var i = 0; i < allChannels.length; i++) {
     var ch = allChannels[i], idStr = String(ch.id);
     byId[idStr] = ch;
-    var num = extractNumericId(idStr);
-    if (num && !byNumeric[num]) byNumeric[num] = ch;
-    var norm = normalizeChannelName(ch.name);
-    if (norm) { if (!nameLists[norm]) nameLists[norm] = []; nameLists[norm].push(ch); }
-    var loose = normalizeChannelNameLoose(ch.name);
-    if (loose) { if (!looseLists[loose]) looseLists[loose] = []; looseLists[loose].push(ch); }
+    var num = extractNumericId(idStr); if (num && !byNumeric[num]) byNumeric[num] = ch;
+    var norm = normalizeChannelName(ch.name); if (norm) { if (!nameLists[norm]) nameLists[norm] = []; nameLists[norm].push(ch); }
+    var loose = normalizeChannelNameLoose(ch.name); if (loose) { if (!looseLists[loose]) looseLists[loose] = []; looseLists[loose].push(ch); }
   }
+  var byName = {}, byLoose = {};
   for (var n in nameLists) if (nameLists[n].length === 1) byName[n] = nameLists[n][0];
   for (var l in looseLists) if (looseLists[l].length === 1) byLoose[l] = looseLists[l][0];
   return { byId: byId, byNumeric: byNumeric, byName: byName, byLoose: byLoose };
 }
 function findMatchingChannel(lookup, xmltvId, xmltvName) {
   if (lookup.byId[xmltvId]) return lookup.byId[xmltvId];
-  var num = extractNumericId(xmltvId);
-  if (num && lookup.byNumeric[num]) return lookup.byNumeric[num];
+  var num = extractNumericId(xmltvId); if (num && lookup.byNumeric[num]) return lookup.byNumeric[num];
   if (xmltvName) {
-    var norm = normalizeChannelName(xmltvName);
-    if (norm && lookup.byName[norm]) return lookup.byName[norm];
-    var loose = normalizeChannelNameLoose(xmltvName);
-    if (loose && lookup.byLoose[loose]) return lookup.byLoose[loose];
+    var norm = normalizeChannelName(xmltvName); if (norm && lookup.byName[norm]) return lookup.byName[norm];
+    var loose = normalizeChannelNameLoose(xmltvName); if (loose && lookup.byLoose[loose]) return lookup.byLoose[loose];
   }
   return null;
 }
@@ -481,9 +364,7 @@ function findMatchingChannel(lookup, xmltvId, xmltvName) {
 /* ════════ XMLTV parser ════════ */
 function processXmlText(xmlText, label) {
   if (!xmlText || xmlText.length < 500) throw new Error('XML too small');
-  if (xmlText.indexOf('<tv') === -1 && xmlText.indexOf('<?xml') === -1) throw new Error('Not XMLTV');
   var t0 = Date.now();
-
   var idToName = {};
   var chRe = /<channel\s+([^>]*?)>([\s\S]*?)<\/channel>/g, cm;
   while ((cm = chRe.exec(xmlText)) !== null) {
@@ -491,8 +372,7 @@ function processXmlText(xmlText, label) {
     var dnM = cm[2].match(/<display-name[^>]*>([\s\S]*?)<\/display-name>/);
     if (dnM) idToName[idM[1]] = decodeXmlEntities(dnM[1]).trim();
   }
-
-  var rawByChannel = {}, progCount = 0;
+  var rawByChannel = {}, progCount = 0, badStart = 0, badStop = 0;
   var progRe = /<programme\s+([^>]*?)>([\s\S]*?)<\/programme>/g, pm;
   while ((pm = progRe.exec(xmlText)) !== null) {
     var attrs = pm[1], inner = pm[2];
@@ -501,57 +381,42 @@ function processXmlText(xmlText, label) {
     if (!chMatch || !startMatch) continue;
     var rawId = chMatch[1];
     var pdcMatch = attrs.match(/\bpdc-start="([^"]*)"/);
-    var startMs = parseEPGDate(pdcMatch ? pdcMatch[1] : startMatch[1]);
-    if (!startMs) continue;
+    var startMs = null;
+    if (pdcMatch) startMs = parseEPGDate(pdcMatch[1]);
+    if (!startMs) startMs = parseEPGDate(startMatch[1]);
+    if (!startMs) { badStart++; continue; }
     var stopMatch = attrs.match(/\bstop="([^"]*)"/);
-    var endMs = stopMatch ? parseEPGDate(stopMatch[1]) : (startMs + 3600000);
-    if (!endMs || endMs <= startMs) continue;
-
+    var endMs = null;
+    if (stopMatch) endMs = parseEPGDate(stopMatch[1]);
+    if (!endMs || endMs <= startMs) { badStop++; endMs = startMs + 3600000; }
     var titleM = inner.match(/<title[^>]*>([\s\S]*?)<\/title>/);
     var descM = inner.match(/<desc[^>]*>([\s\S]*?)<\/desc>/);
     var iconM = inner.match(/<icon\s+[^>]*\bsrc="([^"]*)"/);
-    var epM = inner.match(/<episode-num[^>]*>([\s\S]*?)<\/episode-num>/);
-    var seasonM = inner.match(/<episode-num\s+system="xmltv_ns"[^>]*>([\s\S]*?)<\/episode-num>/);
     var catM = inner.match(/<category[^>]*>([\s\S]*?)<\/category>/);
-
-    var desc = descM ? decodeXmlEntities(descM[1]).trim() : '';
-    if (desc.length > 400) desc = desc.substring(0, 400);
+    var seasonM = inner.match(/<episode-num\s+system="xmltv_ns"[^>]*>([\s\S]*?)<\/episode-num>/);
+    var epM = inner.match(/<episode-num[^>]*>([\s\S]*?)<\/episode-num>/);
+    var desc = descM ? decodeXmlEntities(descM[1]).trim() : ''; if (desc.length > 400) desc = desc.substring(0, 400);
     var epStr = '';
     if (seasonM) { var sp = seasonM[1].split('/'); epStr = 'S' + ((parseInt(sp[0],10)||0)+1) + ' E' + ((parseInt(sp[1],10)||0)+1); }
     else if (epM) epStr = decodeXmlEntities(epM[1]).trim();
-
-    var entry = {
-      t: titleM ? decodeXmlEntities(titleM[1]).trim() : 'No title',
-      d: desc, s: startMs, e: endMs,
-      ic: iconM ? iconM[1] : '',
-      ep: epStr,
-      g: catM ? decodeXmlEntities(catM[1]).trim() : ''
-    };
+    var entry = { t: titleM ? decodeXmlEntities(titleM[1]).trim() : 'No title', d: desc, s: startMs, e: endMs, ic: iconM ? iconM[1] : '', ep: epStr, g: catM ? decodeXmlEntities(catM[1]).trim() : '' };
     if (!rawByChannel[rawId]) rawByChannel[rawId] = [];
     rawByChannel[rawId].push(entry);
     progCount++;
   }
-
   var lookup = buildChannelLookup();
-  var result = {};
-  var matched = 0, unmatched = 0, unmatchedSamples = [];
-
+  var result = {}, matched = 0, unmatched = 0, unmatchedSamples = [];
   for (var rawId in rawByChannel) {
     if (!rawByChannel.hasOwnProperty(rawId)) continue;
     var progs = rawByChannel[rawId];
     var dispName = idToName[rawId] || '';
     var ch = findMatchingChannel(lookup, rawId, dispName);
-    if (!ch) {
-      unmatched++;
-      if (unmatchedSamples.length < 5) unmatchedSamples.push(rawId + (dispName ? '(' + dispName + ')' : ''));
-      continue;
-    }
+    if (!ch) { unmatched++; if (unmatchedSamples.length < 5) unmatchedSamples.push(rawId); continue; }
     var key = String(ch.id);
     if (!result[key]) result[key] = [];
     for (var p = 0; p < progs.length; p++) result[key].push(progs[p]);
     matched++;
   }
-
   for (var k in result) {
     if (!result.hasOwnProperty(k)) continue;
     result[k].sort(function(a,b){ return a.s - b.s; });
@@ -562,93 +427,47 @@ function processXmlText(xmlText, label) {
       if (!seen[dk]) { seen[dk] = true; deduped.push(pr); }
     }
     result[k] = deduped;
+    for (var j = 0; j < result[k].length - 1; j++) if (result[k][j].e < result[k][j+1].s) result[k][j].e = result[k][j+1].s;
   }
-
-  /* ── Gap fill: extend each program's end to the next program's start ── */
-  var now = Date.now();
-  var sampleStart = null, sampleEnd = null;
-  for (var kk in result) {
-    if (!result.hasOwnProperty(kk)) continue;
-    var arr = result[kk];
-    if (!arr.length) continue;
-    if (sampleStart === null) sampleStart = arr[0].s;
-    if (sampleEnd === null || arr[arr.length - 1].e > sampleEnd) sampleEnd = arr[arr.length - 1].e;
-    for (var j = 0; j < arr.length - 1; j++) {
-      if (arr[j].e < arr[j+1].s) arr[j].e = arr[j+1].s;
-    }
-  }
-
-  safeLog('[epg] ' + label + ' → ' + progCount + ' programmes, matched ' + matched +
-    ' → ' + Object.keys(result).length + ' jtv channels, unmatched ' + unmatched +
-    ', ' + (Date.now() - t0) + 'ms');
-  if (sampleStart && sampleEnd) {
-    var shiftH = ((sampleStart - now) / 3600000).toFixed(1);
-    safeLog('[epg] sample range: ' + new Date(sampleStart).toISOString() + ' → ' +
-      new Date(sampleEnd).toISOString() + ' (first program is ' + shiftH + 'h from now)');
-  }
-  if (unmatchedSamples.length) safeLog('[epg] unmatched samples: ' + unmatchedSamples.join(', '));
-
-  return { data: result, programCount: progCount, matched: matched, unmatched: unmatched };
+  safeLog('[epg] ' + label + ': ' + progCount + ' progs, badStart=' + badStart + ' badStop=' + badStop + ', matched=' + matched + ' → ' + Object.keys(result).length + ' channels, unmatched=' + unmatched);
+  if (unmatchedSamples.length) safeLog('[epg] unmatched: ' + unmatchedSamples.join(', '));
+  return { data: result, programCount: progCount, matched: matched, unmatched: unmatched, badStart: badStart, badStop: badStop };
 }
-
 function fetchAndParseEPG() {
-  if (typeof pako === 'undefined') { safeWarn('[epg] pako missing'); return Promise.resolve(null); }
-  safeLog('[epg] fetching ' + EPG_URL);
-  var t0 = Date.now();
+  if (typeof pako === 'undefined') return Promise.resolve(null);
   return xhrFetchBuffer(EPG_URL, { timeout: 180000 })
     .then(function(buf) {
-      if (!buf) throw new Error('Empty response');
+      if (!buf) throw new Error('Empty');
       var bytes = new Uint8Array(buf);
-      safeLog('[epg] downloaded ' + bytes.length + ' bytes in ' + (Date.now()-t0) + 'ms');
       if (bytes.length < 500) throw new Error('Too small');
       if (bytes[0] === 0x1f && bytes[1] === 0x8b) return chunkedUngzip(bytes).then(function(x){ return processXmlText(x, 'jioepg'); });
       return processXmlText(bytesToUtf8String(bytes), 'jioepg');
     })
-    .catch(function(e) {
-      safeWarn('[epg] direct failed: ' + e.message + ' — trying proxy');
+    .catch(function() {
       return xhrFetchBuffer(CORS_PROXY + EPG_URL, { timeout: 180000 })
         .then(function(buf) {
           var bytes = new Uint8Array(buf);
-          if (bytes.length < 500) throw new Error('Too small via proxy');
+          if (bytes.length < 500) throw new Error('Too small');
           if (bytes[0] === 0x1f && bytes[1] === 0x8b) return chunkedUngzip(bytes).then(function(x){ return processXmlText(x, 'jioepg (proxy)'); });
           return processXmlText(bytesToUtf8String(bytes), 'jioepg (proxy)');
         })
-        .catch(function(e2) { safeWarn('[epg] proxy failed: ' + e2.message); return null; });
+        .catch(function(){ return null; });
     });
 }
 
-/* ════════ Cache (trim keeping 12h past + 48h future) ════════ */
-function trimForCache(progs, now) {
-  var min = now - EPG_TRIM_BEFORE_H * 3600000;
-  var max = now + EPG_TRIM_AFTER_H * 3600000;
-  var out = [];
-  for (var i = 0; i < progs.length; i++) {
-    if (progs[i].e >= min && progs[i].s < max) out.push(progs[i]);
-  }
-  return out;
-}
+/* ════════ Cache ════════ */
 function saveCache() {
-  var now = Date.now();
-  var attempts = [EPG_TRIM_AFTER_H, 24, 12];
+  var now = Date.now(), minS = now - 12 * 3600000;
+  var attempts = [48, 24, 12];
   for (var a = 0; a < attempts.length; a++) {
-    var hours = attempts[a];
-    var maxS = now + hours * 3600000;
-    var min = now - EPG_TRIM_BEFORE_H * 3600000;
-    var out = {}, cnt = 0;
+    var maxS = now + attempts[a] * 3600000, out = {}, cnt = 0;
     for (var key in epgByChannelId) {
       if (!epgByChannelId.hasOwnProperty(key)) continue;
-      var filtered = [];
-      var arr = epgByChannelId[key];
-      for (var i = 0; i < arr.length; i++) {
-        if (arr[i].e >= min && arr[i].s < maxS) filtered.push(arr[i]);
-      }
-      if (filtered.length) { out[key] = filtered; cnt += filtered.length; }
+      var filt = [], arr = epgByChannelId[key];
+      for (var i = 0; i < arr.length; i++) if (arr[i].e >= minS && arr[i].s < maxS) filt.push(arr[i]);
+      if (filt.length) { out[key] = filt; cnt += filt.length; }
     }
-    try {
-      localStorage.setItem(EPG_CACHE_KEY, JSON.stringify({ v: 13, fetchedAt: now, hours: hours, data: out }));
-      safeLog('[cache] saved ' + Object.keys(out).length + ' ch / ' + cnt + ' progs (' + hours + 'h)');
-      return;
-    } catch (e) { safeWarn('[cache] save failed at ' + hours + 'h: ' + e.message); }
+    try { localStorage.setItem(EPG_CACHE_KEY, JSON.stringify({ v: 15, fetchedAt: now, hours: attempts[a], data: out })); safeLog('[cache] saved ' + Object.keys(out).length + ' ch / ' + cnt + ' progs'); return; } catch (e) {}
   }
 }
 function loadCache() {
@@ -656,33 +475,13 @@ function loadCache() {
     var raw = localStorage.getItem(EPG_CACHE_KEY);
     if (!raw) return false;
     var c = JSON.parse(raw);
-    if (!c || !c.data || c.v !== 13) return false;
+    if (!c || !c.data || c.v !== 15) return false;
     var fresh = (Date.now() - c.fetchedAt) < EPG_CACHE_TTL_MS;
     var n = 0;
     for (var id in c.data) { if (!c.data.hasOwnProperty(id)) continue; epgByChannelId[id] = c.data[id]; n++; }
     if (!n) return false;
-    /* Sanity: what fraction of channels have a current program? */
-    var now = Date.now();
-    var withData = 0, airing = 0;
-    for (var i = 0; i < allChannels.length; i++) {
-      var progs = epgByChannelId[String(allChannels[i].id)];
-      if (progs && progs.length) {
-        withData++;
-        if (getCurrentProgram(progs, now)) airing++;
-      }
-    }
-    var airingRatio = withData > 0 ? airing / withData : 0;
-    safeLog('[cache] restored ' + n + ' channels (fresh=' + fresh + '), ' +
-      withData + ' have data, ' + airing + ' currently airing (' +
-      Math.round(airingRatio * 100) + '%)');
-    /* If cache has data but almost nothing airing, treat as stale */
-    if (withData > 0 && airingRatio < 0.2) {
-      safeWarn('[cache] suspicious — only ' + Math.round(airingRatio * 100) + '% airing; ignoring cache');
-      epgByChannelId = {};
-      return false;
-    }
-    epgLoaded = n > 0;
-    return fresh && epgLoaded;
+    epgLoaded = true;
+    return fresh;
   } catch (e) { return false; }
 }
 function clearCacheAndRefresh() {
@@ -692,35 +491,54 @@ function clearCacheAndRefresh() {
   loadEPG();
 }
 
-/* ════════ Program lookups (gap-aware + grace fallback) ════════ */
-function getCurrentProgram(progs, now) {
+/* ════════ Program state (5 tiers) ════════ */
+var STATE_RECENT_MS = 6 * 3600000;   /* 6h */
+var STATE_UPCOMING_MS = 12 * 3600000; /* 12h */
+
+function getProgramState(progs, now) {
   if (!progs || !progs.length) return null;
   now = now || Date.now();
-  var best = null;
+
+  /* 1. Strict live */
+  var live = null;
   for (var i = 0; i < progs.length; i++) {
     var p = progs[i];
-    if (p.s <= now && p.e > now) {
-      if (!best || p.s > best.s) best = p;
-    }
+    if (p.s <= now && p.e > now) { if (!live || p.s > live.s) live = p; }
   }
-  if (best) return best;
-  /* Grace fallback: most recently ended program within 4 hours */
-  var recent = null, grace = 4 * 3600000;
+  if (live) return { p: live, state: 'live' };
+
+  /* 2. Recent — ended within 6h */
+  var recent = null;
   for (var j = 0; j < progs.length; j++) {
     var q = progs[j];
-    if (q.e <= now && (now - q.e) < grace) {
-      if (!recent || q.e > recent.e) recent = q;
-    }
+    if (q.e <= now && (now - q.e) <= STATE_RECENT_MS) { if (!recent || q.e > recent.e) recent = q; }
   }
-  return recent;
+  if (recent) return { p: recent, state: 'recent' };
+
+  /* 3. Upcoming — starts within 12h */
+  var upcoming = null;
+  for (var k = 0; k < progs.length; k++) {
+    var u = progs[k];
+    if (u.s > now && (u.s - now) <= STATE_UPCOMING_MS) { if (!upcoming || u.s < upcoming.s) upcoming = u; }
+  }
+  if (upcoming) return { p: upcoming, state: 'upcoming' };
+
+  /* 4/5. Closest — always show something if we have data */
+  var closest = null, closestDist = Infinity, closestPast = false;
+  for (var m = 0; m < progs.length; m++) {
+    var c = progs[m];
+    var dist = c.s > now ? (c.s - now) : (c.e < now ? (now - c.e) : 0);
+    if (dist < closestDist) { closestDist = dist; closest = c; closestPast = c.e < now; }
+  }
+  if (closest) return { p: closest, state: closestPast ? 'far-past' : 'far-future' };
+  return null;
 }
+function getStrictLive(progs, now) { var r = getProgramState(progs, now); return r && r.state === 'live' ? r : null; }
+function getCurrentProgram(progs, now) { var r = getProgramState(progs, now); return r ? r.p : null; }
 function getNextProgram(progs, afterMs) {
   if (!progs || !progs.length) return null;
   var ref = afterMs || Date.now(), best = null;
-  for (var i = 0; i < progs.length; i++) {
-    var p = progs[i];
-    if (p.s > ref && (!best || p.s < best.s)) best = p;
-  }
+  for (var i = 0; i < progs.length; i++) { var p = progs[i]; if (p.s > ref && (!best || p.s < best.s)) best = p; }
   return best;
 }
 function getChannelNumber(ch) {
@@ -730,43 +548,42 @@ function getChannelNumber(ch) {
   if (typeof id === 'string') { var n = parseInt(id, 10); if (!isNaN(n) && String(n) === id) return n; }
   return null;
 }
-function progProgress(cur) {
-  if (!cur) return 0;
-  var total = cur.e - cur.s, elapsed = Date.now() - cur.s;
-  return Math.max(0, Math.min(100, (elapsed / total) * 100));
+function progProgress(state) {
+  if (!state || state.state !== 'live') return 0;
+  var total = state.p.e - state.p.s;
+  if (total <= 0) return 0;
+  return Math.max(0, Math.min(100, ((Date.now() - state.p.s) / total) * 100));
 }
 
 /* ════════ Card EPG ════════ */
+function stateLabel(state) {
+  if (state === 'live') return { text: '● NOW', cls: '' };
+  if (state === 'recent') return { text: '◑ RECENT', cls: 'recent' };
+  if (state === 'upcoming') return { text: '◐ NEXT', cls: 'upcoming' };
+  if (state === 'far-past') return { text: '⊖ PREVIOUS', cls: 'far-past' };
+  if (state === 'far-future') return { text: '⊕ LATER', cls: 'far-future' };
+  return { text: '', cls: '' };
+}
 function buildEpgBlockHtml(ch) {
   if (!epgLoaded) return '<div class="card-epg"><div class="epg-empty">Loading guide…</div></div>';
   var progs = epgByChannelId[String(ch.id)];
-  var hasData = !!(progs && progs.length);
-  var current = getCurrentProgram(progs);
-  var next = getNextProgram(progs, current ? current.e : Date.now());
-  if (!current && !next) {
-    if (hasData) return '<div class="card-epg"><div class="epg-empty has-data">Guide data present — no current or next programme</div></div>';
-    return '<div class="card-epg"><div class="epg-empty">No guide data</div></div>';
-  }
-  var html = '<div class="card-epg' + (current ? ' live' : '') + '">';
-  if (current) {
-    html += '<div class="epg-now-row"><span class="epg-now-label">● NOW</span>' +
-            '<span class="epg-now-time">' + formatRange(current.s, current.e) + '</span></div>' +
-            '<div class="epg-now-title">' + escapeHtml(current.t || 'No Title') + '</div>';
-    if (current.ep || current.g) html += '<div class="epg-now-meta">' + (current.ep ? escapeHtml(current.ep) : '') + (current.ep && current.g ? ' · ' : '') + (current.g ? escapeHtml(current.g) : '') + '</div>';
-    if (current.d) html += '<div class="epg-now-desc">' + escapeHtml(truncate(current.d, 120)) + '</div>';
-    html += '<div class="epg-progress"><div class="epg-progress-fill" style="width:' + progProgress(current).toFixed(1) + '%"></div></div>';
+  var st = getProgramState(progs);
+  if (!st) return '<div class="card-epg"><div class="epg-empty">' + (progs && progs.length ? 'No guide data' : 'No guide data') + '</div></div>';
+  var p = st.p, lbl = stateLabel(st.state);
+  var html = '<div class="card-epg ' + st.state + '">';
+  html += '<div class="epg-now-row"><span class="epg-now-label ' + lbl.cls + '">' + lbl.text + '</span><span class="epg-now-time">' + formatRange(p.s, p.e) + '</span></div>';
+  html += '<div class="epg-now-title">' + escapeHtml(p.t || 'No Title') + '</div>';
+  if (p.ep || p.g) html += '<div class="epg-now-meta">' + (p.ep ? escapeHtml(p.ep) : '') + (p.ep && p.g ? ' · ' : '') + (p.g ? escapeHtml(p.g) : '') + '</div>';
+  if (p.d) html += '<div class="epg-now-desc">' + escapeHtml(truncate(p.d, 120)) + '</div>';
+  if (st.state === 'live') {
+    html += '<div class="epg-progress"><div class="epg-progress-fill" style="width:' + progProgress(st).toFixed(1) + '%"></div></div>';
+    var next = getNextProgram(progs, p.e);
     if (next) html += '<div class="epg-next-mini">Next: <b>' + escapeHtml(truncate(next.t, 40)) + '</b> at ' + formatTimeOnly(next.s) + '</div>';
-  } else {
-    html += '<div class="epg-now-row"><span class="epg-now-label next">NEXT</span>' +
-            '<span class="epg-now-time">' + formatTimeOnly(next.s) + '</span></div>' +
-            '<div class="epg-now-title">' + escapeHtml(next.t || 'No Title') + '</div>';
-    if (next.d) html += '<div class="epg-now-desc">' + escapeHtml(truncate(next.d, 120)) + '</div>';
   }
   return html + '</div>';
 }
 function updateCardEpg(id) {
   var entry = cardMap[id]; if (!entry) return;
-  if (entry.el.classList.contains('hidden')) return;
   var html = buildEpgBlockHtml(entry.ch);
   if (html !== entry.lastEpg) { entry.epg.innerHTML = html; entry.lastEpg = html; }
 }
@@ -782,29 +599,26 @@ function parseChannelJson(text) {
   var c = String(text).trim();
   if (c.charCodeAt(0) === 0xFEFF) c = c.slice(1);
   try { var p = JSON.parse(c); if (Array.isArray(p)) return p; if (p && Array.isArray(p.channels)) return p.channels; } catch(e){}
-  try { var p2 = JSON.parse('[' + c.replace(/,\s*$/, '') + ']'); if (Array.isArray(p2)) return p2; } catch(e){}
   throw new Error('Invalid JSON');
 }
 function fetchChannelsFrom(idx) {
   if (idx >= CHANNELS_CANDIDATES.length) return Promise.reject(new Error('All failed'));
-  return xhrFetch(CHANNELS_CANDIDATES[idx], { headers: { 'X-Requested-With': 'XMLHttpRequest' }, timeout: 20000 })
+  return xhrFetch(CHANNELS_CANDIDATES[idx], { timeout: 20000 })
     .then(function(r){ return r.text(); })
     .then(function(t){ var p = parseChannelJson(t); if (p && p.length) return p; throw new Error('Empty'); })
     .catch(function(){ return fetchChannelsFrom(idx + 1); });
 }
 
-/* ════════ Card render ════════ */
+/* ════════ Cards ════════ */
 function buildCardHtml(ch, idx) {
   var cat = ch.category || ch.group || 'Other';
   var num = getChannelNumber(ch);
   var numHtml = num !== null ? '<span class="card-num">' + num + '</span>' : '';
   var starActive = favorites[String(ch.id)] ? ' active' : '';
   return '<div class="card" tabindex="0" data-idx="' + idx + '" data-chid="' + escapeHtml(String(ch.id)) + '">' +
-    '<button class="card-star' + starActive + '" data-chid="' + escapeHtml(String(ch.id)) + '" type="button" title="Favorite">★</button>' +
-    '<div class="card-top">' +
-      '<img class="card-logo" src="' + escapeHtml(ch.logo || '') + '" alt="" onerror="this.style.visibility=\'hidden\'">' +
-      '<div class="card-meta"><div class="card-name">' + numHtml + escapeHtml(ch.name || 'Unknown') + '</div><div class="card-cat">' + escapeHtml(cat) + '</div></div>' +
-    '</div>' + buildEpgBlockHtml(ch) +
+    '<button class="card-star' + starActive + '" data-chid="' + escapeHtml(String(ch.id)) + '" type="button">★</button>' +
+    '<div class="card-top"><img class="card-logo" src="' + escapeHtml(ch.logo || '') + '" alt="" onerror="this.style.visibility=\'hidden\'"><div class="card-meta"><div class="card-name">' + numHtml + escapeHtml(ch.name || 'Unknown') + '</div><div class="card-cat">' + escapeHtml(cat) + '</div></div></div>' +
+    buildEpgBlockHtml(ch) +
     '<div class="card-actions"><button class="card-btn" type="button">▶ Watch</button></div>' +
   '</div>';
 }
@@ -820,37 +634,26 @@ function renderAllCards(onDone) {
     if (i < list.length) rAF(step);
     else { buildCardMap(); if (onDone) onDone(); }
   }
-  if (!list.length) {
-    gridEl.innerHTML = '<div class="msg">No channels match your filter.<br><button id="clearFilterBtn" type="button">Clear filters</button></div>';
-    var cb = document.getElementById('clearFilterBtn');
-    if (cb) cb.onclick = function(){ selectedCategory = 'all'; searchQuery = ''; searchEl.value = ''; applyFilter(); };
-    if (onDone) onDone();
-    return;
-  }
+  if (!list.length) { gridEl.innerHTML = '<div class="msg">No channels match your filter.</div>'; if (onDone) onDone(); return; }
   rAF(step);
 }
 function buildCardMap() {
   cardMap = {};
   var cards = gridEl.querySelectorAll('.card');
   for (var i = 0; i < cards.length; i++) {
-    var card = cards[i];
-    var idx = parseInt(card.getAttribute('data-idx'), 10);
-    var ch = displayedChannels[idx];
-    if (!ch) continue;
-    var epgBox = card.querySelector('.card-epg');
-    cardMap[String(ch.id)] = { el: card, epg: epgBox, ch: ch, lastEpg: '' };
+    var card = cards[i], idx = parseInt(card.getAttribute('data-idx'), 10);
+    var ch = displayedChannels[idx]; if (!ch) continue;
+    cardMap[String(ch.id)] = { el: card, epg: card.querySelector('.card-epg'), ch: ch, lastEpg: '' };
     (function(cardEl, channel) {
       cardEl.addEventListener('click', function(e) { if (e.target.closest && (e.target.closest('.card-btn') || e.target.closest('.card-star'))) return; openDetails(channel); });
-      cardEl.addEventListener('keydown', function(ev) {
-        if (ev.keyCode === 13) { var tgt = ev.target; if (tgt && tgt.classList && (tgt.classList.contains('card-btn') || tgt.classList.contains('card-star'))) return; ev.preventDefault(); openDetails(channel); }
-      });
+      cardEl.addEventListener('keydown', function(ev) { if (ev.keyCode === 13) { ev.preventDefault(); openDetails(channel); } });
       var playBtn = cardEl.querySelector('.card-btn'); if (playBtn) playBtn.addEventListener('click', function(e) { e.stopPropagation(); openPlayer(channel); });
       var star = cardEl.querySelector('.card-star'); if (star) star.addEventListener('click', function(e) { e.stopPropagation(); toggleFavorite(channel.id); });
     })(card, ch);
   }
 }
 
-/* ════════ Sort / Filter ════════ */
+/* ════════ Sort / filter ════════ */
 function sortChannels(arr) {
   var copy = arr.slice();
   if (sortMode === 'number') copy.sort(function(a,b){ var na = getChannelNumber(a), nb = getChannelNumber(b); if (na === null && nb === null) return (a.name || '').localeCompare(b.name || ''); if (na === null) return 1; if (nb === null) return -1; return na - nb; });
@@ -862,32 +665,24 @@ function channelMatches(ch, q, cat) {
   var chCat = ch.category || ch.group || 'Other';
   if (cat === 'favorites') { if (!favorites[String(ch.id)]) return false; }
   else if (cat === 'recents') { if (recents.indexOf(String(ch.id)) === -1) return false; }
-  else if (cat === 'live') { if (!getCurrentProgram(epgByChannelId[String(ch.id)])) return false; }
+  else if (cat === 'live') { var st = getProgramState(epgByChannelId[String(ch.id)]); if (!st || st.state !== 'live') return false; }
   else if (cat !== 'all' && chCat !== cat) return false;
   if (q) {
-    var nameLow = (ch.name || '').toLowerCase();
-    var catLow = chCat.toLowerCase();
+    var nameLow = (ch.name || '').toLowerCase(), catLow = chCat.toLowerCase();
     if (nameLow.indexOf(q) === -1 && catLow.indexOf(q) === -1) {
       var progs = epgByChannelId[String(ch.id)];
       if (!progs) return false;
-      var found = false, now = Date.now();
-      for (var i = 0; i < progs.length && i < 50; i++) {
-        var p = progs[i];
-        if (p.e < now - 3600000) continue;
-        if (p.s > now + 86400000 * 2) break;
-        if ((p.t || '').toLowerCase().indexOf(q) !== -1 || (p.d || '').toLowerCase().indexOf(q) !== -1) { found = true; break; }
-      }
+      var found = false;
+      for (var i = 0; i < progs.length; i++) if ((progs[i].t || '').toLowerCase().indexOf(q) !== -1 || (progs[i].d || '').toLowerCase().indexOf(q) !== -1) { found = true; break; }
       if (!found) return false;
     }
   }
   return true;
 }
 function applyFilter() {
-  var q = searchQuery, cat = selectedCategory;
-  var visible = [];
+  var q = searchQuery, cat = selectedCategory, visible = [];
   for (var i = 0; i < allChannels.length; i++) if (channelMatches(allChannels[i], q, cat)) visible.push(allChannels[i]);
-  visible = sortChannels(visible);
-  displayedChannels = visible;
+  displayedChannels = sortChannels(visible);
   renderAllCards(function(){
     if (viewMode === 'compact') { var cards = gridEl.querySelectorAll('.card'); for (var k = 0; k < cards.length; k++) cards[k].classList.add('compact'); }
     refreshAllCardsEpg();
@@ -896,20 +691,16 @@ function applyFilter() {
 function renderCategories() {
   var set = {};
   for (var i = 0; i < allChannels.length; i++) { var cat = allChannels[i].category || allChannels[i].group || 'Other'; set[cat] = true; }
-  var cats = ['all'];
-  for (var k in set) if (set.hasOwnProperty(k)) cats.push(k);
+  var cats = ['all']; for (var k in set) if (set.hasOwnProperty(k)) cats.push(k);
   cats.sort(function(a,b){ if(a==='all') return -1; if(b==='all') return 1; return a.toLowerCase().localeCompare(b.toLowerCase()); });
-  var html = '';
-  html += '<button class="cat-chip fav-chip' + (selectedCategory==='favorites'?' active':'') + '" data-cat="favorites" type="button">★ Favorites</button>';
+  var html = '<button class="cat-chip fav-chip' + (selectedCategory==='favorites'?' active':'') + '" data-cat="favorites" type="button">★ Favorites</button>';
   html += '<button class="cat-chip recent-chip' + (selectedCategory==='recents'?' active':'') + '" data-cat="recents" type="button">🕐 Recent</button>';
-  html += '<button class="cat-chip live-chip' + (selectedCategory==='live'?' active':'') + '" data-cat="live" type="button">● On Now</button>';
+  html += '<button class="cat-chip live-chip' + (selectedCategory==='live'?' active':'') + '" data-cat="live" type="button">● Live</button>';
   html += '<button class="cat-chip' + (selectedCategory==='all'?' active':'') + '" data-cat="all" type="button">All</button>';
   for (var j = 0; j < cats.length; j++) { if (cats[j] === 'all') continue; var a = cats[j] === selectedCategory ? ' active' : ''; html += '<button class="cat-chip' + a + '" data-cat="' + escapeHtml(cats[j]) + '" type="button">' + escapeHtml(cats[j]) + '</button>'; }
   categoriesEl.innerHTML = html;
   var chips = categoriesEl.querySelectorAll('.cat-chip');
-  for (var c = 0; c < chips.length; c++) {
-    (function(chip){ chip.addEventListener('click', function(){ selectedCategory = chip.getAttribute('data-cat'); renderCategories(); applyFilter(); wrapEl.scrollTop = 0; }); })(chips[c]);
-  }
+  for (var c = 0; c < chips.length; c++) (function(chip){ chip.addEventListener('click', function(){ selectedCategory = chip.getAttribute('data-cat'); renderCategories(); applyFilter(); wrapEl.scrollTop = 0; }); })(chips[c]);
 }
 
 /* ════════ Detail modal ════════ */
@@ -921,48 +712,48 @@ function openDetails(ch) {
   dName.textContent = ch.name || 'Unknown';
   dCat.textContent = ch.category || ch.group || 'Other';
   dLogo.src = ch.logo || ''; dLogo.style.visibility = ch.logo ? 'visible' : 'hidden';
-  renderDetailBody(); detailModal.classList.remove('hidden'); dWatch.focus();
+  renderDetailBody(); detailModal.classList.remove('hidden');
 }
 function renderDetailBody() { if (!currentDetailChannel) return; if (currentDetailTab === 'info') renderInfoTab(currentDetailChannel); else renderGuideTab(currentDetailChannel); }
 function renderInfoTab(ch) {
   var progs = epgByChannelId[String(ch.id)] || [];
-  var current = getCurrentProgram(progs);
-  var next = getNextProgram(progs, current ? current.e : Date.now());
+  var st = getProgramState(progs);
+  var next = st ? getNextProgram(progs, st.p.e) : getNextProgram(progs, Date.now());
   var body = '';
-  if (current) {
-    body += '<div class="detail-show now"><div class="show-label">● NOW · ' + formatRange(current.s, current.e) + '</div><div class="show-title">' + escapeHtml(current.t || 'No Title') + '</div>';
-    if (current.ep || current.g) body += '<div class="show-meta-row">' + (current.ep ? escapeHtml(current.ep) : '') + (current.g ? ' · ' + escapeHtml(current.g) : '') + '</div>';
-    if (current.ic) body += '<div class="show-image"><img src="' + escapeHtml(current.ic) + '" alt="" onerror="this.parentNode.style.display=\'none\'"></div>';
-    if (current.d) body += '<div class="show-desc">' + escapeHtml(current.d) + '</div>';
-    body += '<div class="epg-progress"><div class="epg-progress-fill" style="width:' + progProgress(current).toFixed(1) + '%"></div></div></div>';
-  } else if (progs.length) body += '<div class="detail-show none"><div class="show-label">● NOW</div><div class="show-title">No current programme (' + progs.length + ' in guide)</div></div>';
-  else if (epgLoaded) body += '<div class="detail-show none"><div class="show-label">● NOW</div><div class="show-title">No guide data for this channel</div></div>';
+  if (st) {
+    var cls = st.state === 'live' ? 'now' : (st.state === 'recent' ? 'recent' : (st.state === 'upcoming' ? 'next' : 'none'));
+    var lbl = stateLabel(st.state).text;
+    body += '<div class="detail-show ' + cls + '"><div class="show-label">' + lbl + ' · ' + formatRange(st.p.s, st.p.e) + '</div><div class="show-title">' + escapeHtml(st.p.t || 'No Title') + '</div>';
+    if (st.p.ep || st.p.g) body += '<div class="show-meta-row">' + (st.p.ep ? escapeHtml(st.p.ep) : '') + (st.p.g ? ' · ' + escapeHtml(st.p.g) : '') + '</div>';
+    if (st.p.ic) body += '<div class="show-image"><img src="' + escapeHtml(st.p.ic) + '" onerror="this.parentNode.style.display=\'none\'"></div>';
+    if (st.p.d) body += '<div class="show-desc">' + escapeHtml(st.p.d) + '</div>';
+    if (st.state === 'live') body += '<div class="epg-progress"><div class="epg-progress-fill" style="width:' + progProgress(st).toFixed(1) + '%"></div></div>';
+    body += '</div>';
+  } else if (epgLoaded) body += '<div class="detail-show none"><div class="show-label">● NOW</div><div class="show-title">No guide data for this channel</div></div>';
   else body += '<div class="detail-show none"><div class="show-label">● NOW</div><div class="show-title">Loading guide…</div></div>';
   if (next) {
     body += '<div class="detail-show next"><div class="show-label">○ NEXT · ' + formatRange(next.s, next.e) + '</div><div class="show-title">' + escapeHtml(next.t || 'No Title') + '</div>';
-    if (next.ep || next.g) body += '<div class="show-meta-row">' + (next.ep ? escapeHtml(next.ep) : '') + (next.g ? ' · ' + escapeHtml(next.g) : '') + '</div>';
-    if (next.ic) body += '<div class="show-image"><img src="' + escapeHtml(next.ic) + '" alt="" onerror="this.parentNode.style.display=\'none\'"></div>';
-    if (next.d) body += '<div class="show-desc">' + escapeHtml(next.d) + '</div></div>';
-  } else if (epgLoaded) body += '<div class="detail-show none"><div class="show-label">○ NEXT</div><div class="show-title">No upcoming programme</div></div>';
+    if (next.d) body += '<div class="show-desc">' + escapeHtml(next.d) + '</div>';
+    body += '</div>';
+  }
   dBody.innerHTML = body;
 }
 function renderGuideTab(ch) {
   var progs = epgByChannelId[String(ch.id)] || [];
   if (!progs.length) { dBody.innerHTML = '<div class="msg" style="padding:30px">No guide data for this channel.</div>'; return; }
   var now = Date.now();
-  var best = getCurrentProgram(progs);
+  var strictLive = getStrictLive(progs, now);
   var todayStart = new Date(); todayStart.setHours(0,0,0,0);
   var todayEnd = todayStart.getTime() + 86400000;
   var filtered = progs.filter(function(p){ return p.e > todayStart.getTime() && p.s < todayEnd; });
-  if (!filtered.length) filtered = progs.slice(0, 24);
+  if (!filtered.length) filtered = progs.slice(0, 30);
   var body = '';
   for (var i = 0; i < filtered.length; i++) {
     var p = filtered[i];
-    var isLive = p.s <= now && p.e > now;
-    var isBest = best && best === p;
+    var isLive = strictLive && strictLive.p === p;
     var isPast = p.e <= now;
-    var cls = isBest ? ' live' : (isPast ? ' past' : '');
-    var badge = isBest ? ' <span class="airing-tag">● AIRING</span>' : (isLive ? ' <span class="overlap-tag">(overlap)</span>' : '');
+    var cls = isLive ? ' live' : (isPast ? ' past' : '');
+    var badge = isLive ? ' <span class="airing-tag">● AIRING</span>' : '';
     body += '<div class="timeline-row' + cls + '"><div class="timeline-time">' + formatRange(p.s, p.e) + '</div><div class="timeline-title">' + escapeHtml(p.t || 'No Title') + (p.ep ? ' <span style="color:#7cd0f5;font-size:11px">' + escapeHtml(p.ep) + '</span>' : '') + badge + '</div></div>';
   }
   dBody.innerHTML = body;
@@ -993,45 +784,47 @@ function handleChNumDigit(digit) { if (chNumBuffer.length >= 4) chNumBuffer = ''
 function commitChNum() {
   var num = chNumBuffer; chNumBuffer = ''; clearTimeout(chNumTimer); hideChNumOverlay();
   if (!num) return;
-  var n = parseInt(num, 10), found = null;
-  for (var i = 0; i < allChannels.length; i++) if (getChannelNumber(allChannels[i]) === n) { found = allChannels[i]; break; }
-  if (!found) { showToast('Channel ' + num + ' not found', true); return; }
-  showToast('Tuning to CH ' + n + ' · ' + (found.name || ''));
-  openPlayer(found);
+  var n = parseInt(num, 10);
+  for (var i = 0; i < allChannels.length; i++) if (getChannelNumber(allChannels[i]) === n) { showToast('Tuning to CH ' + n + ' · ' + (allChannels[i].name || '')); openPlayer(allChannels[i]); return; }
+  showToast('Channel ' + num + ' not found', true);
 }
 function cancelChNum(){ chNumBuffer = ''; clearTimeout(chNumTimer); hideChNumOverlay(); }
 
-/* ════════ Load EPG ════════ */
+/* ════════ Coverage stats ════════ */
 function countCoverage() {
-  var withData = 0, airing = 0;
-  var now = Date.now();
+  var now = Date.now(), withData = 0, live = 0, recent = 0, upcoming = 0, farPast = 0, farFuture = 0;
   for (var i = 0; i < allChannels.length; i++) {
     var progs = epgByChannelId[String(allChannels[i].id)];
     if (progs && progs.length) {
       withData++;
-      if (getCurrentProgram(progs, now)) airing++;
+      var st = getProgramState(progs, now);
+      if (st) {
+        if (st.state === 'live') live++;
+        else if (st.state === 'recent') recent++;
+        else if (st.state === 'upcoming') upcoming++;
+        else if (st.state === 'far-past') farPast++;
+        else if (st.state === 'far-future') farFuture++;
+      }
     }
   }
-  return { withData: withData, airing: airing };
+  return { withData: withData, live: live, recent: recent, upcoming: upcoming, farPast: farPast, farFuture: farFuture };
 }
+
+/* ════════ Load EPG ════════ */
 function loadEPG() {
   var t0 = Date.now();
   setEpgStatus('Loading guide (jioepg)…');
   fetchAndParseEPG().then(function(result) {
     if (result && Object.keys(result.data).length) {
-      epgByChannelId = result.data;
-      epgLoaded = true;
-      saveCache();
+      epgByChannelId = result.data; epgLoaded = true; saveCache();
       var elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-      var cov = countCoverage();
-      var pct = Math.round((cov.withData / allChannels.length) * 100);
+      var cov = countCoverage(), total = allChannels.length;
+      var pct = Math.round((cov.withData / total) * 100);
       var kind = pct >= 60 ? 'ok' : (pct >= 30 ? 'warn' : 'error');
-      setEpgStatus('Guide: ' + cov.withData + '/' + allChannels.length + ' ch (' + pct + '%) · ' +
-        cov.airing + ' airing now · ' + elapsed + 's', kind);
-      setTimeout(function(){ setEpgStatus(''); }, 8000);
+      setEpgStatus('Guide: ' + cov.withData + '/' + total + ' ch (' + pct + '%) · ' + cov.live + ' live · ' + cov.recent + ' recent · ' + cov.upcoming + ' next · ' + cov.farPast + ' past · ' + cov.farFuture + ' future · ' + elapsed + 's', kind);
+      setTimeout(function(){ setEpgStatus(''); }, 14000);
       refreshAllCardsEpg();
-      safeLog('[epg] DONE — ' + cov.withData + '/' + allChannels.length + ' with data, ' +
-        cov.airing + ' airing now, ' + elapsed + 's');
+      safeLog('[epg] DONE — ' + cov.withData + '/' + total + ' ch · live=' + cov.live + ' recent=' + cov.recent + ' upcoming=' + cov.upcoming + ' farPast=' + cov.farPast + ' farFuture=' + cov.farFuture);
     } else {
       setEpgStatus('Guide unavailable — channels only', 'error');
       setTimeout(function(){ setEpgStatus(''); }, 5000);
@@ -1054,34 +847,24 @@ function loadChannels() {
         if (cacheFresh) {
           refreshAllCardsEpg();
           var cov = countCoverage();
-          var pct = Math.round((cov.withData / allChannels.length) * 100);
-          setEpgStatus('Cache: ' + cov.withData + '/' + allChannels.length + ' ch (' + pct + '%) · ' +
-            cov.airing + ' airing', pct >= 60 ? 'ok' : 'warn');
-          setTimeout(function(){ setEpgStatus(''); }, 4000);
+          setEpgStatus('Cache: ' + cov.withData + '/' + allChannels.length + ' · ' + cov.live + ' live · ' + cov.recent + ' recent · ' + cov.upcoming + ' next · ' + cov.farPast + ' past · ' + cov.farFuture + ' future');
+          setTimeout(function(){ setEpgStatus(''); }, 6000);
         } else loadEPG();
       });
       if (progressUpdateTimer) clearInterval(progressUpdateTimer);
       progressUpdateTimer = setInterval(function(){ refreshAllCardsEpg(); }, 30000);
     })
-    .catch(function(e) {
-      gridEl.innerHTML = '<div class="msg err">⚠️ Could not load channels.<br><div style="color:#888;font-size:12px;margin-top:10px">' + escapeHtml(e.message || '') + '</div><button id="retry">Retry</button></div>';
-      var rb = document.getElementById('retry'); if (rb) rb.onclick = loadChannels;
-    });
+    .catch(function() { gridEl.innerHTML = '<div class="msg err">⚠️ Could not load channels.<br><button onclick="location.reload()">Retry</button></div>'; });
 }
 
 /* ════════ Wiring ════════ */
 var searchTimer = null;
 searchEl.addEventListener('input', function() { clearTimeout(searchTimer); searchTimer = setTimeout(function() { searchQuery = searchEl.value.trim().toLowerCase(); applyFilter(); wrapEl.scrollTop = 0; }, 150); });
 sortSelect.addEventListener('change', function() { sortMode = sortSelect.value; savePrefs(); applyFilter(); });
-viewBtn.addEventListener('click', function() {
-  viewMode = viewMode === 'grid' ? 'compact' : 'grid'; updateViewBtn(); savePrefs();
-  var cards = gridEl.querySelectorAll('.card');
-  for (var i = 0; i < cards.length; i++) { if (viewMode === 'compact') cards[i].classList.add('compact'); else cards[i].classList.remove('compact'); }
-});
+viewBtn.addEventListener('click', function() { viewMode = viewMode === 'grid' ? 'compact' : 'grid'; updateViewBtn(); savePrefs(); var cards = gridEl.querySelectorAll('.card'); for (var i = 0; i < cards.length; i++) { if (viewMode === 'compact') cards[i].classList.add('compact'); else cards[i].classList.remove('compact'); } });
 refreshBtn.addEventListener('click', function() { showToast('Refreshing guide…'); clearCacheAndRefresh(); });
 helpBtn.addEventListener('click', function() { helpModal.classList.remove('hidden'); });
 helpClose.addEventListener('click', function() { helpModal.classList.add('hidden'); });
-helpModal.addEventListener('click', function(e) { if (e.target === helpModal) helpModal.classList.add('hidden'); });
 dTabInfo.addEventListener('click', function(){ currentDetailTab = 'info'; dTabInfo.classList.add('active'); dTabGuide.classList.remove('active'); renderDetailBody(); });
 dTabGuide.addEventListener('click', function(){ currentDetailTab = 'guide'; dTabGuide.classList.add('active'); dTabInfo.classList.remove('active'); renderDetailBody(); });
 dClose.addEventListener('click', function(e){ e.preventDefault(); closeDetails(); });
@@ -1091,48 +874,23 @@ detailModal.addEventListener('click', function(e){ if (e.target === detailModal)
 
 document.addEventListener('keydown', function(e) {
   var k = e.keyCode, focused = document.activeElement;
-  var inDetail = !detailModal.classList.contains('hidden');
-  var inHelp = !helpModal.classList.contains('hidden');
-  var inSearch = focused === searchEl;
+  var inDetail = !detailModal.classList.contains('hidden'), inHelp = !helpModal.classList.contains('hidden'), inSearch = focused === searchEl;
   if (inHelp) { if (k === 27 || k === 13) { e.preventDefault(); helpModal.classList.add('hidden'); } return; }
-  if (inDetail) {
-    if (k === 27 || k === 8 || k === 10009) { e.preventDefault(); closeDetails(); return; }
-    if (k === 13) { if (focused === dWatch) { e.preventDefault(); if (currentDetailChannel) openPlayer(currentDetailChannel); return; } if (focused === dCancel || focused === dClose) { e.preventDefault(); closeDetails(); return; } }
-    return;
-  }
+  if (inDetail) { if (k === 27 || k === 8) { e.preventDefault(); closeDetails(); } return; }
   if (k === 191 && !inSearch) { e.preventDefault(); helpModal.classList.remove('hidden'); return; }
   if (k === 82 && !inSearch && !chNumBuffer) { e.preventDefault(); refreshBtn.click(); return; }
   if (k === 83 && !inSearch && !chNumBuffer) { e.preventDefault(); searchEl.focus(); return; }
-  if (k === 70 && !inSearch && focused && focused.classList && focused.classList.contains('card')) { e.preventDefault(); var favId = focused.getAttribute('data-chid'); if (favId) toggleFavorite(favId); return; }
+  if (k === 70 && focused && focused.classList && focused.classList.contains('card')) { e.preventDefault(); var favId = focused.getAttribute('data-chid'); if (favId) toggleFavorite(favId); return; }
   var isNumKey = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
   if (isNumKey && !inSearch) { e.preventDefault(); handleChNumDigit(String.fromCharCode(k >= 96 ? k - 48 : k)); return; }
   if (k === 13 && chNumBuffer) { e.preventDefault(); clearTimeout(chNumTimer); commitChNum(); return; }
-  if ((k === 27 || k === 8 || k === 10009) && chNumBuffer) { e.preventDefault(); cancelChNum(); return; }
-  if (focused && focused.classList && focused.classList.contains('cat-chip')) {
-    var chips = categoriesEl.querySelectorAll('.cat-chip'); var cidx = Array.prototype.indexOf.call(chips, focused);
-    if (k === 37 && cidx > 0) { chips[cidx - 1].focus(); e.preventDefault(); }
-    else if (k === 39 && cidx < chips.length - 1) { chips[cidx + 1].focus(); e.preventDefault(); }
-    else if (k === 40) { var vc = gridEl.querySelector('.card'); if (vc) { vc.focus(); e.preventDefault(); } }
-    return;
-  }
-  if (focused === searchEl) { if (k === 40) { var vc2 = gridEl.querySelector('.card'); if (vc2) { vc2.focus(); e.preventDefault(); } } return; }
+  if ((k === 27 || k === 8) && chNumBuffer) { e.preventDefault(); cancelChNum(); return; }
   if (focused && focused.classList && focused.classList.contains('card')) {
-    var visible = gridEl.querySelectorAll('.card');
-    var cardIdx = Array.prototype.indexOf.call(visible, focused);
-    var colCount = 1;
-    if (visible.length) {
-      var firstTop = visible[0].getBoundingClientRect().top, n = 1;
-      for (var ci = 1; ci < visible.length; ci++) { if (Math.abs(visible[ci].getBoundingClientRect().top - firstTop) < 4) n++; else break; }
-      colCount = n;
-    }
-    if (k === 37) { if (cardIdx > 0) { visible[cardIdx - 1].focus(); e.preventDefault(); } }
-    else if (k === 39) { if (cardIdx < visible.length - 1) { visible[cardIdx + 1].focus(); e.preventDefault(); } }
-    else if (k === 38) { if (cardIdx - colCount >= 0) { visible[cardIdx - colCount].focus(); e.preventDefault(); } else { var activeChip = categoriesEl.querySelector('.cat-chip.active') || categoriesEl.querySelector('.cat-chip'); if (activeChip) { activeChip.focus(); e.preventDefault(); } } }
-    else if (k === 40) { if (cardIdx + colCount < visible.length) { visible[cardIdx + colCount].focus(); e.preventDefault(); } }
-    else if (k === 13) { e.preventDefault(); var chid = focused.getAttribute('data-chid'); var found = null; for (var fi = 0; fi < displayedChannels.length; fi++) if (String(displayedChannels[fi].id) === chid) { found = displayedChannels[fi]; break; } if (found) openDetails(found); }
-    return;
+    var visible = gridEl.querySelectorAll('.card'), cardIdx = Array.prototype.indexOf.call(visible, focused);
+    if (k === 37 && cardIdx > 0) { visible[cardIdx - 1].focus(); e.preventDefault(); }
+    else if (k === 39 && cardIdx < visible.length - 1) { visible[cardIdx + 1].focus(); e.preventDefault(); }
+    else if (k === 13) { e.preventDefault(); var chid = focused.getAttribute('data-chid'); for (var fi = 0; fi < displayedChannels.length; fi++) if (String(displayedChannels[fi].id) === chid) { openDetails(displayedChannels[fi]); return; } }
   }
-  if (k === 40 || k === 39) { var anyChip = categoriesEl.querySelector('.cat-chip'); if (anyChip) { anyChip.focus(); e.preventDefault(); } }
 });
 
 function boot() { loadChannels(); }
