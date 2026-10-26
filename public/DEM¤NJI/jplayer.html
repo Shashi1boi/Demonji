@@ -17,7 +17,7 @@ html,body { background:#000; width:100%; height:100%; overflow:hidden; font-fami
 #topBar { position:absolute; top:0; left:0; right:0; z-index:10; padding:12px 16px; padding-top:calc(12px + env(safe-area-inset-top)); background:linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0)); display:flex; align-items:center; gap:10px; transition:opacity .3s ease, visibility .3s ease; pointer-events:none; }
 #topBar.hidden { opacity:0; visibility:hidden; }
 .top-btn { pointer-events:auto; background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.28); color:#fff; border-radius:8px; padding:10px 14px; min-height:44px; font-size:14px; font-weight:bold; cursor:pointer; font-family:inherit; white-space:nowrap; flex-shrink:0; }
-.top-btn:focus { background:rgba(30,90,120,0.95); border-color:#4fc3f7; box-shadow:0 0 0 2px rgba(79,195,247,0.45); outline:none; }
+.top-btn:focus { background:rgba(30,90,120,0.95); border-color:#4fc3f7; outline:none; }
 #titleWrap { flex:1; min-width:0; display:flex; align-items:center; justify-content:center; gap:8px; pointer-events:none; }
 #chNum { padding:3px 9px; background:rgba(79,195,247,0.18); border:1px solid rgba(79,195,247,0.5); color:#7cd0f5; border-radius:6px; font-size:13px; font-weight:bold; }
 #chNum:empty { display:none; }
@@ -132,10 +132,6 @@ html,body { background:#000; width:100%; height:100%; overflow:hidden; font-fami
 <div id="guideModal" class="overlay hidden"><div class="overlay-panel"><h2 id="guideTitle">📅 Full Guide</h2><div class="overlay-body" id="guideBody"></div><div class="overlay-footer"><button id="guideClose" type="button">Close</button></div></div></div>
 <div id="miniModal" class="overlay hidden"><div class="overlay-panel"><h2>📺 Channel List</h2><div class="overlay-body"><div id="miniStrip" class="mini-channel-strip">Loading…</div></div><div class="overlay-footer"><button id="miniClose" type="button">Close</button></div></div></div>
 <div id="helpModal" class="overlay hidden"><div class="overlay-panel"><h2>⌨️ Shortcuts</h2><div class="overlay-body">
-<div class="help-row"><span>Enter top bar</span><span class="help-key">↑</span></div>
-<div class="help-row"><span>Leave top bar</span><span class="help-key">↓</span></div>
-<div class="help-row"><span>Navigate top bar</span><span class="help-key">← / →</span></div>
-<div class="help-row"><span>Activate button</span><span class="help-key">Enter</span></div>
 <div class="help-row"><span>Channel number</span><span class="help-key">0-9</span></div>
 <div class="help-row"><span>Channel up / down</span><span class="help-key">PgUp / PgDn</span></div>
 <div class="help-row"><span>Volume up / down</span><span class="help-key">+ / −</span></div>
@@ -194,12 +190,6 @@ var programUpdateTimer = null, bannerHideTimer = null, progressTimer = null;
 var autoplayAttempted = false, reconnectAttempts = 0, reconnectTimer = null;
 var lastChannelId = null, lastProgramKey = '';
 var chNumBuffer = '', chNumTimer = null, toastTimer = null;
-
-/* Top-bar keyboard nav grace — makes the bar visible briefly so the user
-   can SEE the focused button. After 5 s it fades back out on its own — the
-   Shaka-driven auto-hide takes over again. */
-var topBarNavUntil = 0;
-var topBarNavTimer = null;
 
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function formatTimeOnly(ms){ var d = new Date(ms), h = d.getHours(), m = d.getMinutes(); var ap = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12; return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap; }
@@ -345,7 +335,18 @@ function showDthBanner(ms) {
   if (ms && ms > 0) bannerHideTimer = setTimeout(hideDthBanner, ms);
 }
 function hideDthBanner(){ dthBanner.classList.remove('visible'); stopProgressUpdates(); if (bannerHideTimer) { clearTimeout(bannerHideTimer); bannerHideTimer = null; } }
-function peekBanner(ms){ if (!dthBanner.classList.contains('visible')) showDthBanner(ms || 5000); }
+/* peekBanner — show banner OR extend its visible timer. This makes the banner
+   behave just like the Shaka controls: any interaction (arrow key, mouse move,
+   tap) wakes it up and keeps it visible for `ms` before it fades again. */
+function peekBanner(ms){
+  ms = ms || 5000;
+  if (!dthBanner.classList.contains('visible')) {
+    showDthBanner(ms);
+  } else {
+    if (bannerHideTimer) clearTimeout(bannerHideTimer);
+    bannerHideTimer = setTimeout(hideDthBanner, ms);
+  }
+}
 function startBannerRefreshTimer(){ if (programUpdateTimer) clearInterval(programUpdateTimer); programUpdateTimer = setInterval(function() { if (dthBanner.classList.contains('visible')) updateDthBanner(); }, 15000); }
 
 function openGuide() {
@@ -497,9 +498,7 @@ function initPlayer() {
   return true;
 }
 
-/* ════════ AUTO-HIDE — exactly like before, driven by Shaka ════════
-   Except while the keyboard nav grace window is active, so the user can
-   see the button they are focused on. Grace auto-expires after 5 s. */
+/* ════════ AUTO-HIDE — pure mirror of Shaka's own controls state ════════ */
 function syncTopBar() {
   var last = null, attempts = 0;
   function check() {
@@ -507,14 +506,16 @@ function syncTopBar() {
     var ctrl = videoContainer.querySelector('.shaka-controls-container');
     if (!ctrl) { if (attempts < 30) setTimeout(check, 200); return; }
     setInterval(function() {
-      /* If the keyboard nav grace window is active, keep the bar visible. */
-      if (Date.now() < topBarNavUntil) {
-        if (topBar.classList.contains('hidden')) topBar.classList.remove('hidden');
-        last = false;
-        return;
+      var isHidden = false;
+      try {
+        var cs = window.getComputedStyle(ctrl);
+        isHidden = ctrl.classList.contains('shaka-hidden') ||
+                   ctrl.offsetParent === null ||
+                   cs.visibility === 'hidden' ||
+                   parseFloat(cs.opacity) === 0;
+      } catch (e) {
+        isHidden = ctrl.classList.contains('shaka-hidden');
       }
-      /* Otherwise mirror Shaka's own hide/show state — pure auto-hide. */
-      var isHidden = ctrl.classList.contains('shaka-hidden') || ctrl.offsetParent === null;
       if (isHidden !== last) {
         last = isHidden;
         if (isHidden) topBar.classList.add('hidden');
@@ -523,27 +524,6 @@ function syncTopBar() {
     }, 150);
   }
   check();
-}
-
-/* ════════ KEYBOARD NAV GRACE ════════ */
-function pokeTopBar() {
-  topBarNavUntil = Date.now() + 5000;
-  topBar.classList.remove('hidden');
-  if (topBarNavTimer) clearTimeout(topBarNavTimer);
-  topBarNavTimer = setTimeout(function() {
-    topBarNavUntil = 0;
-    /* Let auto-hide take back over; blur any leftover focused button */
-    if (topBar.contains(document.activeElement) && document.activeElement.blur) {
-      try { document.activeElement.blur(); } catch (e) {}
-    }
-  }, 5000);
-}
-function releaseTopBarNow() {
-  topBarNavUntil = 0;
-  if (topBarNavTimer) { clearTimeout(topBarNavTimer); topBarNavTimer = null; }
-  if (topBar.contains(document.activeElement) && document.activeElement.blur) {
-    try { document.activeElement.blur(); } catch (e) {}
-  }
 }
 
 function scheduleReconnect() {
@@ -609,8 +589,10 @@ helpModal.addEventListener('click', function(e){ if (e.target === helpModal) hel
 statsClose.addEventListener('click', function(){ statsModal.classList.add('hidden'); });
 statsModal.addEventListener('click', function(e){ if (e.target === statsModal) statsModal.classList.add('hidden'); });
 videoContainer.addEventListener('click', function(e) { if (e.target.closest && (e.target.closest('.shaka-overlays-container') || e.target.closest('#unmuteBtn') || e.target.closest('#tapToPlay'))) return; peekBanner(5000); });
+videoContainer.addEventListener('touchstart', function(e) { if (e.target.closest && (e.target.closest('.shaka-overlays-container') || e.target.closest('#unmuteBtn') || e.target.closest('#tapToPlay'))) return; peekBanner(5000); }, { passive: true });
 
-/* ═══════════ KEY HANDLER ═══════════ */
+/* ═══════════ KEYBOARD — arrow keys wake the banner (like Shaka controls),
+   single-key shortcuts remain, NO custom top-bar focus navigation. ═══════════ */
 document.addEventListener('keydown', function(e) {
   var k = e.keyCode;
 
@@ -620,6 +602,13 @@ document.addEventListener('keydown', function(e) {
       e.preventDefault();
       guideModal.classList.add('hidden'); miniModal.classList.add('hidden'); helpModal.classList.add('hidden'); statsModal.classList.add('hidden');
     }
+    return;
+  }
+
+  /* Arrow keys — wake banner AND let Shaka also see them (no preventDefault).
+     Mirrors how Shaka's own controls reappear on any arrow press. */
+  if (k === 37 || k === 38 || k === 39 || k === 40) {
+    peekBanner(5000);
     return;
   }
 
@@ -650,56 +639,6 @@ document.addEventListener('keydown', function(e) {
     return;
   }
   if (k === 77) { e.preventDefault(); videoEl.muted = !videoEl.muted; showToast(videoEl.muted ? 'Muted' : 'Unmuted'); return; }
-
-  var inTopBar = topBar.contains(document.activeElement);
-
-  /* ↑ — open top bar (grace-visible) and focus its first button */
-  if (k === 38) {
-    e.preventDefault();
-    pokeTopBar();
-    if (!inTopBar) {
-      requestAnimationFrame(function() { try { backBtn.focus(); } catch (err) {} });
-    }
-    peekBanner(4000);
-    return;
-  }
-
-  /* ↓ — leave top bar; if in video, lower volume */
-  if (k === 40) {
-    e.preventDefault();
-    if (inTopBar) {
-      releaseTopBarNow();
-    } else {
-      if (videoEl.volume > 0) videoEl.volume = Math.max(0, videoEl.volume - 0.1);
-      showToast('Volume ' + Math.round(videoEl.volume * 100) + '%');
-    }
-    peekBanner(3000);
-    return;
-  }
-
-  /* ←/→/Enter while inside the top bar */
-  if (inTopBar) {
-    var barBtns = [backBtn, guideBtn, fitBtn, helpBtn];
-    var bidx = barBtns.indexOf(document.activeElement);
-    if (k === 37) {
-      e.preventDefault(); pokeTopBar();
-      if (bidx > 0) barBtns[bidx - 1].focus();
-      return;
-    }
-    if (k === 39) {
-      e.preventDefault(); pokeTopBar();
-      if (bidx < barBtns.length - 1) barBtns[bidx + 1].focus();
-      return;
-    }
-    if (k === 13) {
-      e.preventDefault(); pokeTopBar();
-      if (document.activeElement === backBtn) goBack();
-      else if (document.activeElement === guideBtn) openGuide();
-      else if (document.activeElement === fitBtn) applyFitMode(fitModeIndex + 1);
-      else if (document.activeElement === helpBtn) helpModal.classList.remove('hidden');
-      return;
-    }
-  }
 
   if (k === 70) { e.preventDefault(); applyFitMode(fitModeIndex + 1); return; }
   if (k === 27 || k === 461) { e.preventDefault(); goBack(); return; }
