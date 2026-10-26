@@ -49,6 +49,7 @@ html,body { background:#0a0a0a; color:#eee; font-family:Arial,Helvetica,sans-ser
 .epg-now-title { font-size:13px; color:#ddd; font-weight:bold; line-height:1.35; margin-bottom:4px; }
 .epg-now-desc { font-size:11px; color:#777; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .epg-now-meta { font-size:11px; color:#7cd0f5; margin-bottom:4px; }
+.epg-warn { font-size:10px; color:#f7a23f; margin-top:4px; }
 .epg-progress { height:3px; background:rgba(255,255,255,0.08); border-radius:2px; overflow:hidden; margin-top:6px; }
 .epg-progress-fill { height:100%; background:linear-gradient(90deg, #66bb6a 0%, #4fc3f7 100%); border-radius:2px; width:0%; }
 .epg-next-mini { font-size:11px; color:#6a8ba0; margin-top:4px; padding-top:4px; border-top:1px solid #222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -96,6 +97,7 @@ html,body { background:#0a0a0a; color:#eee; font-family:Arial,Helvetica,sans-ser
 .timeline-title { font-size:13px; color:#ddd; flex:1; }
 .timeline-row.live .timeline-time { color:#66bb6a; } .timeline-row.live .timeline-title { color:#fff; font-weight:bold; }
 .timeline-row.past { opacity:0.5; }
+.timeline-day-header { padding:12px 0 6px; font-size:11px; color:#4fc3f7; font-weight:bold; text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid #2a4a5a; margin-bottom:4px; }
 .airing-tag { background:#66bb6a; color:#fff; font-size:9px; font-weight:bold; padding:1px 5px; border-radius:3px; }
 .detail-actions { display:flex; gap:10px; padding:14px 16px; border-top:1px solid #2a2a2a; background:#121212; }
 .detail-actions button { flex:1; padding:14px; border-radius:8px; font-size:15px; font-weight:bold; cursor:pointer; font-family:inherit; border:none; }
@@ -200,10 +202,11 @@ function xhrFetchBuffer(url, opts) {
 var CHANNELS_CANDIDATES = ['/jstr4web.json', 'https://jjtvxweb.pages.dev/jstr4web.json'];
 var CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
 var EPG_URL = 'https://avkb.short.gy/jioepg.xml.gz';
-var EPG_CACHE_KEY = 'jtv_epg_cache_v17';
+var EPG_CACHE_KEY = 'jtv_epg_cache_v18';
 var EPG_CACHE_TTL_MS = 4 * 60 * 60 * 1000;
 var FAV_KEY = 'jtv_favorites_v1', RECENT_KEY = 'jtv_recents_v1', PREF_KEY = 'jtv_prefs_v1';
 var OVERRUN_GRACE_MS = 45 * 60 * 1000;
+var EXHAUST_EXTEND_MS = 60 * 60 * 1000;
 
 var gridEl = document.getElementById('grid'), searchEl = document.getElementById('search'), categoriesEl = document.getElementById('categories');
 var wrapEl = document.getElementById('wrap'), epgStatusEl = document.getElementById('epgStatus');
@@ -220,11 +223,22 @@ var cardMap = {}, currentDetailChannel = null, currentDetailTab = 'info';
 var chNumBuffer = '', chNumTimer = null, toastTimer = null;
 var favorites = {}, recents = [], sortMode = 'default', viewMode = 'grid';
 var epgByChannelId = {}, epgLoaded = false, progressUpdateTimer = null;
+var midnightTimer = null, exhaustRetryTimer = null;
 
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function truncate(s,n){ if(!s) return ''; return s.length > n ? s.substring(0, n-1) + '…' : s; }
 function formatTimeOnly(ms){ var d = new Date(ms), h = d.getHours(), m = d.getMinutes(); var ap = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12; return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap; }
 function formatRange(s, e){ return formatTimeOnly(s) + ' - ' + formatTimeOnly(e); }
+function formatDayLabel(ms){
+  var d = new Date(ms), now = new Date();
+  var dDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  var nDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  var diff = Math.round((dDay - nDay) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  if (diff === -1) return 'Yesterday';
+  return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+}
 function setEpgStatus(text, kind){
   if (!epgStatusEl) return;
   if (!text) { epgStatusEl.classList.remove('visible','error','warn','ok'); epgStatusEl.textContent = ''; return; }
@@ -270,29 +284,49 @@ function toggleFavorite(chId){
 }
 function addRecent(chId){ chId = String(chId); recents = [chId].concat(recents.filter(function(x){ return x !== chId; })).slice(0, 20); saveRecents(); }
 
+/* ════════ ROBUST EPG DATE PARSER ════════
+   Handles: YYYYMMDDHHMMSS +HHMM | +HH:MM | +HHMM | Z | ISO | YYYYMMDDHHMM (12-digit) */
 function parseEPGDate(dateStr) {
   if (!dateStr) return null;
   var s = String(dateStr).trim();
+  if (!s) return null;
+
+  /* ISO / RFC with explicit Z suffix */
+  if (/Z$/.test(s)) {
+    try { var dZ = new Date(s).getTime(); if (!isNaN(dZ)) return dZ; } catch(e){}
+  }
+
+  /* XMLTV 14-digit */
   var m = s.match(/^(\d{14})/);
   if (m) {
-    var dt = m[1], tzPart = s.substring(14).trim(), tz = '+0530';
-    if (tzPart) {
-      var tzm = tzPart.match(/([+-])(\d{1,2}):?(\d{2})?/);
-      if (tzm) { var sign = tzm[1] === '-' ? -1 : 1; var tzH = parseInt(tzm[2], 10) || 0; var tzM = parseInt(tzm[3] || '0', 10) || 0; tz = (sign < 0 ? '-' : '+') + (tzH < 10 ? '0' : '') + tzH + (tzM < 10 ? '0' : '') + tzM; }
-      else if (/IST/i.test(tzPart)) tz = '+0530';
-      else if (/UTC|GMT/i.test(tzPart)) tz = '+0000';
+    var dt = m[1], rest = s.substring(14).trim(), tz = '+0530';
+    if (rest) {
+      var tzm = rest.match(/([+-])(\d{1,2}):?(\d{2})?/);
+      if (tzm) { var sg = tzm[1] === '-' ? -1 : 1; var th = parseInt(tzm[2], 10) || 0; var tm = parseInt(tzm[3] || '0', 10) || 0; tz = (sg < 0 ? '-' : '+') + (th < 10 ? '0' : '') + th + (tm < 10 ? '0' : '') + tm; }
+      else if (/IST/i.test(rest)) tz = '+0530';
+      else if (/UTC|GMT/i.test(rest)) tz = '+0000';
     }
     var year = parseInt(dt.slice(0,4), 10), month = parseInt(dt.slice(4,6), 10) - 1, day = parseInt(dt.slice(6,8), 10);
     var hour = parseInt(dt.slice(8,10), 10), minute = parseInt(dt.slice(10,12), 10), second = parseInt(dt.slice(12,14), 10) || 0;
     if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) return null;
     var ms = Date.UTC(year, month, day, hour, minute, second);
-    var sign2 = tz.charAt(0) === '-' ? -1 : 1;
-    var tzH2 = parseInt(tz.substr(1,2), 10) || 0, tzM2 = parseInt(tz.substr(3,2), 10) || 0;
-    return ms - (tzH2 * 3600 + tzM2 * 60) * 1000 * sign2;
+    var sg2 = tz.charAt(0) === '-' ? -1 : 1;
+    var th2 = parseInt(tz.substr(1,2), 10) || 0, tm2 = parseInt(tz.substr(3,2), 10) || 0;
+    return ms - (th2 * 3600 + tm2 * 60) * 1000 * sg2;
   }
-  try { var d = new Date(s).getTime(); if (!isNaN(d)) return d; } catch(e) {}
+
+  /* 12-digit (no seconds) — append "00" and retry */
+  var m12 = s.match(/^(\d{12})/);
+  if (m12) {
+    var s14 = m12[1] + '00' + s.substring(12);
+    return parseEPGDate(s14);
+  }
+
+  /* Fall back to native Date (ISO/RFC) */
+  try { var d = new Date(s).getTime(); if (!isNaN(d)) return d; } catch(e){}
   return null;
 }
+
 function bytesToUtf8String(bytes) {
   if (typeof TextDecoder !== 'undefined') { try { return new TextDecoder('utf-8').decode(bytes); } catch (e) {} }
   var result = '', i = 0;
@@ -408,7 +442,7 @@ function processXmlText(xmlText, label) {
     result[k] = deduped;
     for (var j = 0; j < result[k].length - 1; j++) if (result[k][j].e < result[k][j+1].s) result[k][j].e = result[k][j+1].s;
   }
-  safeLog('[epg] ' + label + ': ' + progCount + ' progs, badStart=' + badStart + ' badStop=' + badStop + ', matched=' + matched + ' → ' + Object.keys(result).length + ' ch');
+  safeLog('[epg] ' + label + ': ' + progCount + ' progs, badStart=' + badStart + ' badStop=' + badStop + ', matched=' + matched + ' → ' + Object.keys(result).length + ' ch, unmatched=' + unmatched);
   return { data: result, programCount: progCount, matched: matched, unmatched: unmatched };
 }
 function fetchAndParseEPG() {
@@ -431,6 +465,7 @@ function fetchAndParseEPG() {
     });
 }
 
+/* ════════ Cache — trim to -12h / +48h; content freshness check ════════ */
 function saveCache() {
   var now = Date.now(), minS = now - 12 * 3600000;
   var attempts = [48, 24, 12];
@@ -442,7 +477,7 @@ function saveCache() {
       for (var i = 0; i < arr.length; i++) if (arr[i].e >= minS && arr[i].s < maxS) filt.push(arr[i]);
       if (filt.length) { out[key] = filt; cnt += filt.length; }
     }
-    try { localStorage.setItem(EPG_CACHE_KEY, JSON.stringify({ v: 17, fetchedAt: now, hours: attempts[a], data: out })); return; } catch (e) {}
+    try { localStorage.setItem(EPG_CACHE_KEY, JSON.stringify({ v: 18, fetchedAt: now, hours: attempts[a], data: out })); safeLog('[cache] saved ' + Object.keys(out).length + ' ch / ' + cnt + ' progs (' + attempts[a] + 'h)'); return; } catch (e) { safeLog('[cache] save failed at ' + attempts[a] + 'h'); }
   }
 }
 function loadCache() {
@@ -450,13 +485,21 @@ function loadCache() {
     var raw = localStorage.getItem(EPG_CACHE_KEY);
     if (!raw) return false;
     var c = JSON.parse(raw);
-    if (!c || !c.data || c.v !== 17) return false;
-    var fresh = (Date.now() - c.fetchedAt) < EPG_CACHE_TTL_MS;
-    var n = 0;
-    for (var id in c.data) { if (!c.data.hasOwnProperty(id)) continue; epgByChannelId[id] = c.data[id]; n++; }
+    if (!c || !c.data || c.v !== 18) return false;
+    var timeFresh = (Date.now() - c.fetchedAt) < EPG_CACHE_TTL_MS;
+    var n = 0, newestEnd = 0;
+    for (var id in c.data) {
+      if (!c.data.hasOwnProperty(id)) continue;
+      epgByChannelId[id] = c.data[id];
+      for (var i = 0; i < c.data[id].length; i++) if (c.data[id][i].e > newestEnd) newestEnd = c.data[id][i].e;
+      n++;
+    }
     if (!n) return false;
+    var contentFresh = newestEnd > Date.now() + 60 * 60 * 1000;
+    safeLog('[cache] ' + n + ' ch · newest=' + new Date(newestEnd).toLocaleString() + ' · timeFresh=' + timeFresh + ' contentFresh=' + contentFresh);
     epgLoaded = true;
-    return fresh;
+    if (!timeFresh || !contentFresh) { safeLog('[cache] stale — will refetch'); return false; }
+    return true;
   } catch (e) { return false; }
 }
 function clearCacheAndRefresh() {
@@ -466,35 +509,25 @@ function clearCacheAndRefresh() {
   loadEPG();
 }
 
-/* ════════ ⭐ UNIFIED LIVE STATE — picks best program, always "live" ════════ */
+/* ════════ Program state — returns displayed-end extension when source exhausted ════════ */
 function getProgramState(progs, now) {
   if (!progs || !progs.length) return null;
   now = now || Date.now();
-  var getS = function(p) { return p.start instanceof Date ? p.start.getTime() : p.s; };
-  var getE = function(p) { return p.end instanceof Date ? p.end.getTime() : p.e; };
 
-  /* 1. STRICT — program window covers now */
   var strict = null;
   for (var i = 0; i < progs.length; i++) {
     var p = progs[i];
-    var ps = p.s, pe = p.e;   /* jtv uses .s/.e */
-    if (ps <= now && pe > now) {
-      if (!strict || ps > strict.s) strict = p;
-    }
+    if (p.s <= now && p.e > now) { if (!strict || p.s > strict.s) strict = p; }
   }
-  if (strict) return { p: strict, s: strict.s, e: strict.e, state: 'live', strict: true };
+  if (strict) return { p: strict, s: strict.s, e: strict.e, actualEnd: strict.e, state: 'live', strict: true, exhausted: false };
 
-  /* 2. OVERRUN GRACE — ended within 45 min */
   var grace = null;
   for (var g = 0; g < progs.length; g++) {
     var pg = progs[g];
-    if (pg.s <= now && pg.e <= now && (now - pg.e) < OVERRUN_GRACE_MS) {
-      if (!grace || pg.e > grace.e) grace = pg;
-    }
+    if (pg.s <= now && pg.e <= now && (now - pg.e) < OVERRUN_GRACE_MS) { if (!grace || pg.e > grace.e) grace = pg; }
   }
-  if (grace) return { p: grace, s: grace.s, e: grace.e, state: 'live', strict: false };
+  if (grace) return { p: grace, s: grace.s, e: grace.e, actualEnd: grace.e, state: 'live', strict: false, exhausted: false };
 
-  /* 3. CLOSEST — nearest program in either direction */
   var closest = null, closestDist = Infinity, closestPast = false;
   for (var m = 0; m < progs.length; m++) {
     var c = progs[m];
@@ -506,9 +539,12 @@ function getProgramState(progs, now) {
       closestDist = dist; closest = c; closestPast = isPast;
     }
   }
-  if (closest) return { p: closest, s: closest.s, e: closest.e, state: 'live', strict: false };
+  if (!closest) return null;
 
-  return null;
+  /* Source exhausted → display end extended so the card keeps ticking */
+  var exhausted = closestPast && (now - closest.e) > OVERRUN_GRACE_MS;
+  var displayEnd = exhausted ? Math.max(closest.e, now + EXHAUST_EXTEND_MS) : closest.e;
+  return { p: closest, s: closest.s, e: displayEnd, actualEnd: closest.e, state: 'live', strict: false, exhausted: exhausted };
 }
 function getNextProgram(progs, current, now) {
   if (!progs || !progs.length) return null;
@@ -547,7 +583,8 @@ function buildEpgBlockHtml(ch) {
   if (p.ep || p.g) html += '<div class="epg-now-meta">' + (p.ep ? escapeHtml(p.ep) : '') + (p.ep && p.g ? ' · ' : '') + (p.g ? escapeHtml(p.g) : '') + '</div>';
   if (p.d) html += '<div class="epg-now-desc">' + escapeHtml(truncate(p.d, 120)) + '</div>';
   if (prog !== null) html += '<div class="epg-progress"><div class="epg-progress-fill" style="width:' + prog.toFixed(1) + '%"></div></div>';
-  var next = getNextProgram(progs, p);
+  if (st.exhausted) html += '<div class="epg-warn">⚠ Guide ends ' + formatTimeOnly(st.actualEnd) + ' — refresh pending</div>';
+  var next = getNextProgram(progs, p, Date.now());
   if (next) html += '<div class="epg-next-mini">Next: <b>' + escapeHtml(truncate(next.t, 40)) + '</b> at ' + formatTimeOnly(next.s) + '</div>';
   return html + '</div>';
 }
@@ -690,8 +727,9 @@ function renderInfoTab(ch) {
     if (p.ic) body += '<div class="show-image"><img src="' + escapeHtml(p.ic) + '" onerror="this.parentNode.style.display=\'none\'"></div>';
     if (p.d) body += '<div class="show-desc">' + escapeHtml(p.d) + '</div>';
     if (prog !== null) body += '<div class="epg-progress"><div class="epg-progress-fill" style="width:' + prog.toFixed(1) + '%"></div></div>';
+    if (st.exhausted) body += '<div class="epg-warn">⚠ Guide data ends ' + formatTimeOnly(st.actualEnd) + ' — refreshing soon</div>';
     body += '</div>';
-    var next = getNextProgram(progs, p);
+    var next = getNextProgram(progs, p, Date.now());
     if (next) {
       body += '<div class="detail-show next"><div class="show-label">○ NEXT · ' + formatRange(next.s, next.e) + '</div><div class="show-title">' + escapeHtml(next.t || 'No Title') + '</div>';
       if (next.d) body += '<div class="show-desc">' + escapeHtml(next.d) + '</div>';
@@ -701,17 +739,31 @@ function renderInfoTab(ch) {
   else body += '<div class="detail-show none"><div class="show-label">● LIVE</div><div class="show-title">Loading guide…</div></div>';
   dBody.innerHTML = body;
 }
+
+/* ════════ FULL GUIDE — now shows 3 days with day headers ════════ */
 function renderGuideTab(ch) {
   var progs = epgByChannelId[String(ch.id)] || [];
   if (!progs.length) { dBody.innerHTML = '<div class="msg" style="padding:30px">No guide data for this channel.</div>'; return; }
-  var now = Date.now(), st = getProgramState(progs), strict = st ? st.strict : false, actualLive = strict ? st.p : null;
-  var todayStart = new Date(); todayStart.setHours(0,0,0,0);
-  var todayEnd = todayStart.getTime() + 86400000;
-  var filtered = progs.filter(function(p){ return p.e > todayStart.getTime() && p.s < todayEnd; });
-  if (!filtered.length) filtered = progs.slice(0, 30);
-  var body = '';
+  var now = Date.now();
+  var st = getProgramState(progs);
+  var actualLive = st && st.strict ? st.p : null;
+
+  /* Show from start of today through end of 2 more days */
+  var rangeStart = new Date(); rangeStart.setHours(0,0,0,0);
+  var rangeStartMs = rangeStart.getTime();
+  var rangeEndMs = rangeStartMs + 3 * 86400000;
+
+  var filtered = progs.filter(function(p){ return p.e > rangeStartMs && p.s < rangeEndMs; });
+  if (!filtered.length) filtered = progs.slice(0, 60);
+
+  var body = '', lastDayKey = '';
   for (var i = 0; i < filtered.length; i++) {
     var p = filtered[i];
+    var dayKey = new Date(p.s).toDateString();
+    if (dayKey !== lastDayKey) {
+      body += '<div class="timeline-day-header">' + formatDayLabel(p.s) + '</div>';
+      lastDayKey = dayKey;
+    }
     var isLive = actualLive && actualLive === p;
     var isPast = p.e <= now;
     var cls = isLive ? ' live' : (isPast ? ' past' : '');
@@ -750,31 +802,87 @@ function commitChNum() {
 }
 function cancelChNum(){ chNumBuffer = ''; clearTimeout(chNumTimer); hideChNumOverlay(); }
 
+/* ════════ Source info helper ════════ */
+function computeEpgRange() {
+  var oldest = Infinity, newest = 0;
+  for (var id in epgByChannelId) {
+    if (!epgByChannelId.hasOwnProperty(id)) continue;
+    var progs = epgByChannelId[id];
+    for (var i = 0; i < progs.length; i++) {
+      if (progs[i].s < oldest) oldest = progs[i].s;
+      if (progs[i].e > newest) newest = progs[i].e;
+    }
+  }
+  return { oldest: oldest, newest: newest };
+}
 function countLive() {
   var c = 0;
   for (var i = 0; i < allChannels.length; i++) if (epgByChannelId[String(allChannels[i].id)]) c++;
   return c;
 }
+
+/* ════════ Auto-refresh at 00:02 + retry every 30 min if source still stale ════════ */
+function scheduleMidnightRefresh() {
+  if (midnightTimer) clearTimeout(midnightTimer);
+  var now = new Date();
+  var next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 2, 0);
+  var delay = Math.max(60000, next.getTime() - now.getTime());
+  safeLog('[epg] midnight refresh scheduled in ' + Math.round(delay/60000) + ' min');
+  midnightTimer = setTimeout(function() {
+    safeLog('[epg] midnight rollover — refreshing');
+    clearCacheAndRefresh();
+    if (exhaustRetryTimer) clearTimeout(exhaustRetryTimer);
+    exhaustRetryTimer = setTimeout(function checkStale() {
+      var r = computeEpgRange();
+      if (r.newest < Date.now() + 60 * 60 * 1000) {
+        safeLog('[epg] source still stale — retrying');
+        clearCacheAndRefresh();
+        exhaustRetryTimer = setTimeout(checkStale, 30 * 60 * 1000);
+      } else {
+        scheduleMidnightRefresh();
+      }
+    }, 30 * 60 * 1000);
+  }, delay);
+}
+
+/* ════════ Load EPG ════════ */
 function loadEPG() {
   var t0 = Date.now();
   setEpgStatus('Loading guide (jioepg)…');
   fetchAndParseEPG().then(function(result) {
     if (result && Object.keys(result.data).length) {
       epgByChannelId = result.data; epgLoaded = true; saveCache();
+
+      var range = computeEpgRange();
+      var now = Date.now();
+      var hoursTotal = ((range.newest - range.oldest) / 3600000).toFixed(1);
+      var hoursAhead = ((range.newest - now) / 3600000).toFixed(1);
+      safeLog('[epg] range: ' + new Date(range.oldest).toLocaleString() + ' → ' + new Date(range.newest).toLocaleString());
+      safeLog('[epg] ' + hoursTotal + 'h total, ' + hoursAhead + 'h ahead of now');
+
       var elapsed = ((Date.now() - t0) / 1000).toFixed(1);
       var live = countLive(), total = allChannels.length;
       var pct = Math.round((live / total) * 100);
       var kind = pct >= 60 ? 'ok' : (pct >= 30 ? 'warn' : 'error');
-      setEpgStatus('Guide: ' + live + '/' + total + ' channels live (' + pct + '%) · ' + elapsed + 's', kind);
+      setEpgStatus('Guide: ' + live + '/' + total + ' ch (' + pct + '%) · ends in ' + hoursAhead + 'h · ' + elapsed + 's', kind);
       setTimeout(function(){ setEpgStatus(''); }, 12000);
       refreshAllCardsEpg();
-      safeLog('[epg] DONE — ' + live + '/' + total + ' live');
+
+      /* Detect source exhaustion */
+      if (range.newest < now + 60 * 60 * 1000) {
+        safeLog('[epg] source exhausted (ends in <1h) — will retry in 15 min');
+        if (exhaustRetryTimer) clearTimeout(exhaustRetryTimer);
+        exhaustRetryTimer = setTimeout(function(){ safeLog('[epg] retrying stale source'); clearCacheAndRefresh(); }, 15 * 60 * 1000);
+      }
+      scheduleMidnightRefresh();
     } else {
       setEpgStatus('Guide unavailable — channels only', 'error');
       setTimeout(function(){ setEpgStatus(''); }, 5000);
     }
   });
 }
+
+/* ════════ Load channels ════════ */
 function loadChannels() {
   gridEl.innerHTML = '<div class="msg"><div class="spinner"></div><div>Loading channels…</div></div>';
   var last = CHANNELS_CANDIDATES[CHANNELS_CANDIDATES.length - 1];
@@ -789,8 +897,11 @@ function loadChannels() {
         if (cacheFresh) {
           refreshAllCardsEpg();
           var live = countLive();
-          setEpgStatus('Cache: ' + live + '/' + allChannels.length + ' channels live');
+          var range = computeEpgRange();
+          var hoursAhead = ((range.newest - Date.now()) / 3600000).toFixed(1);
+          setEpgStatus('Cache: ' + live + '/' + allChannels.length + ' ch · ends in ' + hoursAhead + 'h');
           setTimeout(function(){ setEpgStatus(''); }, 5000);
+          scheduleMidnightRefresh();
         } else loadEPG();
       });
       if (progressUpdateTimer) clearInterval(progressUpdateTimer);
@@ -799,6 +910,7 @@ function loadChannels() {
     .catch(function() { gridEl.innerHTML = '<div class="msg err">⚠️ Could not load channels.<br><button onclick="location.reload()">Retry</button></div>'; });
 }
 
+/* ════════ Wiring ════════ */
 var searchTimer = null;
 searchEl.addEventListener('input', function() { clearTimeout(searchTimer); searchTimer = setTimeout(function() { searchQuery = searchEl.value.trim().toLowerCase(); applyFilter(); wrapEl.scrollTop = 0; }, 150); });
 sortSelect.addEventListener('change', function() { sortMode = sortSelect.value; savePrefs(); applyFilter(); });
