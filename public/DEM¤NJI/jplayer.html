@@ -14,10 +14,11 @@ html,body { background:#000; width:100%; height:100%; overflow:hidden; font-fami
 #videoContainer { position:absolute; top:0; left:0; right:0; bottom:0; background:#000; overflow:hidden; }
 #video { width:100%; height:100%; background:#000; object-fit:contain; display:block; }
 #video.fit-contain { object-fit:contain !important; } #video.fit-cover { object-fit:cover !important; } #video.fit-stretch { object-fit:fill !important; }
-#topBar { position:absolute; top:0; left:0; right:0; z-index:10; padding:12px 16px; padding-top:calc(12px + env(safe-area-inset-top)); background:linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0)); display:flex; align-items:center; gap:10px; transition:opacity .3s, visibility .3s; pointer-events:none; }
-#topBar.hidden { opacity:0; visibility:hidden; }
+#topBar { position:absolute; top:0; left:0; right:0; z-index:10; padding:12px 16px; padding-top:calc(12px + env(safe-area-inset-top)); background:linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0)); display:flex; align-items:center; gap:10px; transition:opacity .3s ease; pointer-events:none; }
+#topBar.hidden { opacity:0; }
+#topBar.hidden .top-btn { pointer-events:none; }
 .top-btn { pointer-events:auto; background:rgba(255,255,255,0.14); border:1px solid rgba(255,255,255,0.28); color:#fff; border-radius:8px; padding:10px 14px; min-height:44px; font-size:14px; font-weight:bold; cursor:pointer; font-family:inherit; white-space:nowrap; flex-shrink:0; }
-.top-btn:focus { background:rgba(30,90,120,0.9); border-color:#4fc3f7; }
+.top-btn:focus { background:rgba(30,90,120,0.95); border-color:#4fc3f7; box-shadow:0 0 0 2px rgba(79,195,247,0.45); outline:none; }
 #titleWrap { flex:1; min-width:0; display:flex; align-items:center; justify-content:center; gap:8px; pointer-events:none; }
 #chNum { padding:3px 9px; background:rgba(79,195,247,0.18); border:1px solid rgba(79,195,247,0.5); color:#7cd0f5; border-radius:6px; font-size:13px; font-weight:bold; }
 #chNum:empty { display:none; }
@@ -132,13 +133,17 @@ html,body { background:#000; width:100%; height:100%; overflow:hidden; font-fami
 <div id="guideModal" class="overlay hidden"><div class="overlay-panel"><h2 id="guideTitle">📅 Full Guide</h2><div class="overlay-body" id="guideBody"></div><div class="overlay-footer"><button id="guideClose" type="button">Close</button></div></div></div>
 <div id="miniModal" class="overlay hidden"><div class="overlay-panel"><h2>📺 Channel List</h2><div class="overlay-body"><div id="miniStrip" class="mini-channel-strip">Loading…</div></div><div class="overlay-footer"><button id="miniClose" type="button">Close</button></div></div></div>
 <div id="helpModal" class="overlay hidden"><div class="overlay-panel"><h2>⌨️ Shortcuts</h2><div class="overlay-body">
+<div class="help-row"><span>Enter / leave top bar</span><span class="help-key">↑ / ↓</span></div>
+<div class="help-row"><span>Navigate top bar buttons</span><span class="help-key">← / →</span></div>
+<div class="help-row"><span>Activate button</span><span class="help-key">Enter</span></div>
 <div class="help-row"><span>Channel number</span><span class="help-key">0-9</span></div>
-<div class="help-row"><span>Full guide</span><span class="help-key">G</span></div>
-<div class="help-row"><span>Mini list</span><span class="help-key">L</span></div>
-<div class="help-row"><span>Stats</span><span class="help-key">I</span></div>
-<div class="help-row"><span>Volume ↑ / ↓</span><span class="help-key">↑ / ↓</span></div>
+<div class="help-row"><span>Channel up / down</span><span class="help-key">PgUp / PgDn</span></div>
+<div class="help-row"><span>Volume up / down</span><span class="help-key">+ / −</span></div>
 <div class="help-row"><span>Mute</span><span class="help-key">M</span></div>
-<div class="help-row"><span>Next / Prev</span><span class="help-key">PgUp / PgDn</span></div>
+<div class="help-row"><span>Full guide</span><span class="help-key">G</span></div>
+<div class="help-row"><span>Mini channel list</span><span class="help-key">L</span></div>
+<div class="help-row"><span>Stream stats</span><span class="help-key">I</span></div>
+<div class="help-row"><span>Fit mode cycle</span><span class="help-key">F</span></div>
 <div class="help-row"><span>Back to last channel</span><span class="help-key">Backspace</span></div>
 </div><div class="overlay-footer"><button id="helpClose" type="button">Close</button></div></div></div>
 <div id="statsModal" class="overlay hidden"><div class="overlay-panel"><h2>📊 Stats</h2><div class="overlay-body" id="statsBody"></div><div class="overlay-footer"><button id="statsClose" type="button">Close</button></div></div></div>
@@ -189,6 +194,7 @@ var programUpdateTimer = null, bannerHideTimer = null, progressTimer = null;
 var autoplayAttempted = false, reconnectAttempts = 0, reconnectTimer = null;
 var lastChannelId = null, lastProgramKey = '';
 var chNumBuffer = '', chNumTimer = null, toastTimer = null;
+var topBarFocusGrace = 0;
 
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function formatTimeOnly(ms){ var d = new Date(ms), h = d.getHours(), m = d.getMinutes(); var ap = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12; return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap; }
@@ -229,7 +235,6 @@ function getProgramsFromCache(cache, ch) {
   return null;
 }
 
-/* ════════ ⭐ UNIFIED LIVE STATE ════════ */
 function getProgramState(progs, now) {
   if (!progs || !progs.length) return null;
   now = now || Date.now();
@@ -492,7 +497,17 @@ function syncTopBar() {
     attempts++;
     var ctrl = videoContainer.querySelector('.shaka-controls-container');
     if (!ctrl) { if (attempts < 30) setTimeout(check, 200); return; }
-    setInterval(function() { var isHidden = ctrl.classList.contains('shaka-hidden') || ctrl.offsetParent === null; if (isHidden !== last) { last = isHidden; if (isHidden) topBar.classList.add('hidden'); else topBar.classList.remove('hidden'); } }, 200);
+    setInterval(function() {
+      var shakaHidden = ctrl.classList.contains('shaka-hidden') || ctrl.offsetParent === null;
+      var focusedInBar = topBar.contains(document.activeElement) || Date.now() < topBarFocusGrace;
+      var shouldHide = shakaHidden && !focusedInBar;
+      if (shouldHide !== last) {
+        last = shouldHide;
+        if (shouldHide) topBar.classList.add('hidden');
+        else topBar.classList.remove('hidden');
+      }
+      if (focusedInBar) topBar.classList.remove('hidden');
+    }, 150);
   }
   check();
 }
@@ -559,27 +574,112 @@ helpModal.addEventListener('click', function(e){ if (e.target === helpModal) hel
 statsClose.addEventListener('click', function(){ statsModal.classList.add('hidden'); });
 statsModal.addEventListener('click', function(e){ if (e.target === statsModal) statsModal.classList.add('hidden'); });
 videoContainer.addEventListener('click', function(e) { if (e.target.closest && (e.target.closest('.shaka-overlays-container') || e.target.closest('#unmuteBtn') || e.target.closest('#tapToPlay'))) return; peekBanner(5000); });
+
+/* ═══════════ KEY HANDLER — top bar navigation + volume on +/− ═══════════ */
 document.addEventListener('keydown', function(e) {
   var k = e.keyCode;
+
+  /* Modal overlays block everything except Escape/Back */
   var inOverlay = !guideModal.classList.contains('hidden') || !miniModal.classList.contains('hidden') || !helpModal.classList.contains('hidden') || !statsModal.classList.contains('hidden');
-  if (inOverlay) { if (k === 27 || k === 8) { e.preventDefault(); guideModal.classList.add('hidden'); miniModal.classList.add('hidden'); helpModal.classList.add('hidden'); statsModal.classList.add('hidden'); } return; }
+  if (inOverlay) {
+    if (k === 27 || k === 8 || k === 10009) {
+      e.preventDefault();
+      guideModal.classList.add('hidden'); miniModal.classList.add('hidden'); helpModal.classList.add('hidden'); statsModal.classList.add('hidden');
+    }
+    return;
+  }
+
+  /* Channel number entry (digits, Enter to commit, Esc/Backspace to cancel) */
   var isNumKey = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
   if (isNumKey) { e.preventDefault(); handleChNumDigit(String.fromCharCode(k >= 96 ? k - 48 : k)); return; }
   if (k === 13 && chNumBuffer) { e.preventDefault(); clearTimeout(chNumTimer); commitChNum(); return; }
   if ((k === 27 || k === 8) && chNumBuffer) { e.preventDefault(); cancelChNum(); return; }
+
+  /* Shortcut keys (always available) */
   if (k === 71) { e.preventDefault(); openGuide(); return; }
   if (k === 76) { e.preventDefault(); openMiniGuide(); return; }
   if (k === 73) { e.preventDefault(); openStats(); return; }
   if (k === 72) { e.preventDefault(); helpModal.classList.remove('hidden'); return; }
+
+  /* Channel up/down & previous */
   if (k === 33) { e.preventDefault(); switchChannelByOffset(1); return; }
   if (k === 34) { e.preventDefault(); switchChannelByOffset(-1); return; }
   if (k === 8) { e.preventDefault(); switchToPreviousChannel(); return; }
-  if (k === 38) { e.preventDefault(); if (videoEl.volume < 1) videoEl.volume = Math.min(1, videoEl.volume + 0.1); showToast('Volume ' + Math.round(videoEl.volume * 100) + '%'); return; }
-  if (k === 40) { e.preventDefault(); if (videoEl.volume > 0) videoEl.volume = Math.max(0, videoEl.volume - 0.1); showToast('Volume ' + Math.round(videoEl.volume * 100) + '%'); return; }
+
+  /* Volume on + / − (keys 187/107 and 189/109) */
+  if ((k === 187 || k === 107) && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    if (videoEl.volume < 1) videoEl.volume = Math.min(1, videoEl.volume + 0.1);
+    showToast('Volume ' + Math.round(videoEl.volume * 100) + '%');
+    return;
+  }
+  if ((k === 189 || k === 109) && !e.ctrlKey && !e.metaKey) {
+    e.preventDefault();
+    if (videoEl.volume > 0) videoEl.volume = Math.max(0, videoEl.volume - 0.1);
+    showToast('Volume ' + Math.round(videoEl.volume * 100) + '%');
+    return;
+  }
   if (k === 77) { e.preventDefault(); videoEl.muted = !videoEl.muted; showToast(videoEl.muted ? 'Muted' : 'Unmuted'); return; }
+
+  /* ══════ TOP BAR NAVIGATION ══════ */
+  var inTopBar = topBar.contains(document.activeElement);
+
+  /* ↑ — enter top bar (or stay, if already there) */
+  if (k === 38) {
+    e.preventDefault();
+    topBarFocusGrace = Date.now() + 400;
+    topBar.classList.remove('hidden');
+    if (!inTopBar) {
+      requestAnimationFrame(function() { backBtn.focus(); });
+    }
+    peekBanner(4000);
+    return;
+  }
+
+  /* ↓ — leave top bar; if in video, lower volume */
+  if (k === 40) {
+    e.preventDefault();
+    if (inTopBar) {
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    } else {
+      if (videoEl.volume > 0) videoEl.volume = Math.max(0, videoEl.volume - 0.1);
+      showToast('Volume ' + Math.round(videoEl.volume * 100) + '%');
+    }
+    peekBanner(3000);
+    return;
+  }
+
+  /* ← / → / Enter while focused on a top-bar button */
+  if (inTopBar) {
+    var barBtns = [backBtn, guideBtn, fitBtn, helpBtn];
+    var bidx = barBtns.indexOf(document.activeElement);
+    if (k === 37) {
+      e.preventDefault();
+      topBarFocusGrace = Date.now() + 400;
+      if (bidx > 0) barBtns[bidx - 1].focus();
+      return;
+    }
+    if (k === 39) {
+      e.preventDefault();
+      topBarFocusGrace = Date.now() + 400;
+      if (bidx < barBtns.length - 1) barBtns[bidx + 1].focus();
+      return;
+    }
+    if (k === 13) {
+      e.preventDefault();
+      if (document.activeElement === backBtn) goBack();
+      else if (document.activeElement === guideBtn) openGuide();
+      else if (document.activeElement === fitBtn) applyFitMode(fitModeIndex + 1);
+      else if (document.activeElement === helpBtn) helpModal.classList.remove('hidden');
+      return;
+    }
+  }
+
+  /* Other single-key shortcuts */
   if (k === 70) { e.preventDefault(); applyFitMode(fitModeIndex + 1); return; }
   if (k === 27 || k === 461) { e.preventDefault(); goBack(); return; }
 });
+
 videoEl.addEventListener('playing', function(){ hidePlaceholder(); isLoading = false; if (videoEl.muted) unmuteBtn.classList.remove('hidden'); else unmuteBtn.classList.add('hidden'); });
 function boot() {
   var channelId = getQueryParam('id');
