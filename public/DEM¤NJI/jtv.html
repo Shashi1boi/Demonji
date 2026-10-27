@@ -48,13 +48,18 @@ html,body { background:#0a0a0a; color:#eee; font-family:Arial,Helvetica,sans-ser
 .card-cat { font-size:11px; color:#7ab8d6; margin-top:2px; text-transform:uppercase; font-weight:bold; }
 .card-lang { font-size:11px; color:#a0b8c8; text-transform:capitalize; font-weight:normal; }
 .card-epg { padding:10px 12px; background:rgba(255,255,255,0.03); border-radius:8px; border-left:3px solid #66bb6a; min-height:56px; }
+.card-epg.upcoming { border-left-color:#4fc3f7; }
+.card-epg.stale { border-left-color:#f7a23f; opacity:0.75; }
 .epg-now-row { display:flex; align-items:center; gap:8px; font-size:11px; color:#888; margin-bottom:4px; }
 .epg-now-label { display:inline-block; padding:2px 6px; background:#66bb6a; color:#fff; border-radius:3px; font-size:10px; font-weight:bold; letter-spacing:.5px; }
+.epg-now-label.next { background:#4fc3f7; color:#001018; }
+.epg-now-label.stale { background:#f7a23f; color:#001018; }
 .epg-now-time { color:#aaa; font-size:11px; }
 .epg-now-title { font-size:13px; color:#ddd; font-weight:bold; line-height:1.35; margin-bottom:4px; }
+.card-epg.stale .epg-now-title { color:#b0b0b0; }
 .epg-now-desc { font-size:11px; color:#777; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
 .epg-now-meta { font-size:11px; color:#7cd0f5; margin-bottom:4px; }
-.epg-warn { font-size:10px; color:#f7a23f; margin-top:4px; }
+.epg-stale-hint { font-size:10px; color:#f7a23f; margin-top:4px; }
 .epg-progress { height:3px; background:rgba(255,255,255,0.08); border-radius:2px; overflow:hidden; margin-top:6px; }
 .epg-progress-fill { height:100%; background:linear-gradient(90deg, #66bb6a 0%, #4fc3f7 100%); border-radius:2px; width:0%; }
 .epg-next-mini { font-size:11px; color:#6a8ba0; margin-top:4px; padding-top:4px; border-top:1px solid #222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
@@ -89,16 +94,19 @@ html,body { background:#0a0a0a; color:#eee; font-family:Arial,Helvetica,sans-ser
 .detail-show { padding:14px; background:#1c1c1c; border-radius:10px; margin-bottom:12px; border:1px solid #262626; }
 .detail-show.now { border-left:4px solid #66bb6a; }
 .detail-show.next { border-left:4px solid #4fc3f7; }
+.detail-show.stale { border-left:4px solid #f7a23f; }
 .detail-show.none { border-left:4px solid #444; opacity:0.7; }
 .show-label { font-size:11px; font-weight:bold; text-transform:uppercase; margin-bottom:6px; }
 .detail-show.now .show-label { color:#66bb6a; }
 .detail-show.next .show-label { color:#4fc3f7; }
+.detail-show.stale .show-label { color:#f7a23f; }
 .detail-show.none .show-label { color:#666; }
 .show-title { font-size:16px; font-weight:bold; color:#fff; line-height:1.3; margin-bottom:6px; }
 .show-meta-row { font-size:11px; color:#8aa; margin-bottom:6px; }
 .show-image { width:100%; max-height:180px; border-radius:8px; overflow:hidden; margin-bottom:10px; background:#0a0a0a; }
 .show-image img { width:100%; max-height:180px; object-fit:cover; display:block; }
 .show-desc { font-size:13px; color:#a0a0a0; line-height:1.5; }
+.show-stale-hint { font-size:11px; color:#f7a23f; margin-top:6px; }
 .timeline-row { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid #222; }
 .timeline-row:last-child { border-bottom:none; }
 .timeline-time { font-size:12px; color:#7cd0f5; font-weight:bold; min-width:90px; flex-shrink:0; }
@@ -106,6 +114,7 @@ html,body { background:#0a0a0a; color:#eee; font-family:Arial,Helvetica,sans-ser
 .timeline-row.live .timeline-time { color:#66bb6a; } .timeline-row.live .timeline-title { color:#fff; font-weight:bold; }
 .timeline-row.past { opacity:0.5; }
 .timeline-day-header { padding:12px 0 6px; font-size:11px; color:#4fc3f7; font-weight:bold; text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid #2a4a5a; margin-bottom:4px; }
+.stale-banner { padding:12px; background:rgba(247,162,63,0.1); border-left:3px solid #f7a23f; border-radius:6px; margin-bottom:12px; font-size:12px; color:#f7a23f; }
 .airing-tag { background:#66bb6a; color:#fff; font-size:9px; font-weight:bold; padding:1px 5px; border-radius:3px; }
 .detail-actions { display:flex; gap:10px; padding:14px 16px; border-top:1px solid #2a2a2a; background:#121212; }
 .detail-actions button { flex:1; padding:14px; border-radius:8px; font-size:15px; font-weight:bold; cursor:pointer; font-family:inherit; border:none; }
@@ -222,11 +231,10 @@ var CHANNELS_CANDIDATES = ['/jstr4web.json', 'https://jjtvxweb.pages.dev/jstr4we
 var CATALOG_URL = 'https://raw.githubusercontent.com/mitthu786/tvepg/refs/heads/main/jiotv/jiodata.json';
 var CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
 var EPG_URL = 'https://avkb.short.gy/jioepg.xml.gz';
-var EPG_CACHE_KEY = 'jtv_epg_cache_v18';
+var EPG_CACHE_KEY = 'jtv_epg_cache_v20';
 var EPG_CACHE_TTL_MS = 4 * 60 * 60 * 1000;
 var FAV_KEY = 'jtv_favorites_v1', RECENT_KEY = 'jtv_recents_v1', PREF_KEY = 'jtv_prefs_v1';
 var OVERRUN_GRACE_MS = 45 * 60 * 1000;
-var EXHAUST_EXTEND_MS = 60 * 60 * 1000;
 
 var gridEl = document.getElementById('grid'), searchEl = document.getElementById('search'), categoriesEl = document.getElementById('categories');
 var wrapEl = document.getElementById('wrap'), epgStatusEl = document.getElementById('epgStatus');
@@ -257,7 +265,7 @@ function formatDayLabel(ms){
   if (diff === 0) return 'Today';
   if (diff === 1) return 'Tomorrow';
   if (diff === -1) return 'Yesterday';
-  return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 function setEpgStatus(text, kind){
   if (!epgStatusEl) return;
@@ -304,7 +312,6 @@ function toggleFavorite(chId){
 }
 function addRecent(chId){ chId = String(chId); recents = [chId].concat(recents.filter(function(x){ return x !== chId; })).slice(0, 20); saveRecents(); }
 
-/* ════════ EPG date parser ════════ */
 function parseEPGDate(dateStr) {
   if (!dateStr) return null;
   var s = String(dateStr).trim();
@@ -332,7 +339,6 @@ function parseEPGDate(dateStr) {
   try { var d = new Date(s).getTime(); if (!isNaN(d)) return d; } catch(e){}
   return null;
 }
-
 function bytesToUtf8String(bytes) {
   if (typeof TextDecoder !== 'undefined') { try { return new TextDecoder('utf-8').decode(bytes); } catch (e) {} }
   var result = '', i = 0;
@@ -361,7 +367,6 @@ function decodeXmlEntities(s) {
   });
 }
 
-/* ════════ Channel catalog fetch + merge ════════ */
 function fetchStreamChannels() {
   var last = CHANNELS_CANDIDATES[CHANNELS_CANDIDATES.length - 1];
   return fetchChannelsFrom(0).catch(function() {
@@ -373,20 +378,12 @@ function fetchStreamChannels() {
 function fetchCatalogMeta() {
   return xhrFetch(CATALOG_URL, { timeout: 25000 })
     .then(function(r){ return r.text(); })
-    .then(function(t) {
-      var d = JSON.parse(t);
-      if (Array.isArray(d)) return d;
-      if (d && Array.isArray(d.channels)) return d.channels;
-      return [];
-    })
+    .then(function(t) { var d = JSON.parse(t); return Array.isArray(d) ? d : (d && Array.isArray(d.channels) ? d.channels : []); })
     .catch(function() {
-      safeLog('[catalog] direct failed — trying proxy');
+      safeLog('[catalog] direct failed — proxy');
       return xhrFetch(CORS_PROXY + CATALOG_URL, { timeout: 30000 })
         .then(function(r){ return r.text(); })
-        .then(function(t) {
-          var d = JSON.parse(t);
-          return Array.isArray(d) ? d : (d && Array.isArray(d.channels) ? d.channels : []);
-        })
+        .then(function(t) { var d = JSON.parse(t); return Array.isArray(d) ? d : (d && Array.isArray(d.channels) ? d.channels : []); })
         .catch(function() { safeLog('[catalog] unavailable — stream metadata only'); return null; });
     });
 }
@@ -396,51 +393,35 @@ function mergeChannelMetadata(streamChannels, catalogChannels) {
     var c = catalogChannels[i]; if (!c) continue;
     var cid = (c.channel_id != null) ? String(c.channel_id) : null;
     if (cid) byId[cid] = c;
-    if (c.channel_name) {
-      var norm = normalizeChannelName(c.channel_name);
-      if (norm) { if (!nameLists[norm]) nameLists[norm] = []; nameLists[norm].push(c); }
-    }
+    if (c.channel_name) { var norm = normalizeChannelName(c.channel_name); if (norm) { if (!nameLists[norm]) nameLists[norm] = []; nameLists[norm].push(c); } }
   }
   var byName = {};
   for (var n in nameLists) if (nameLists[n].length === 1) byName[n] = nameLists[n][0];
 
   var merged = [];
   for (var j = 0; j < streamChannels.length; j++) {
-    var s = streamChannels[j];
-    var idStr = String(s.id);
-    var numId = extractNumericId(idStr);
+    var s = streamChannels[j], idStr = String(s.id), numId = extractNumericId(idStr);
     var meta = byId[idStr] || (numId ? byId[numId] : null);
-    if (!meta && s.name) {
-      var sn = normalizeChannelName(s.name);
-      if (sn && byName[sn]) meta = byName[sn];
-    }
-
+    if (!meta && s.name) { var sn = normalizeChannelName(s.name); if (sn && byName[sn]) meta = byName[sn]; }
     var isHD = false, isCatchup = false;
     if (meta) {
       isHD = String(meta.isHD || '').toLowerCase() === 'true';
       isCatchup = String(meta.isCatchupAvailable || '').toLowerCase() === 'true';
     }
-
     merged.push({
-      /* Stream fields preserved exactly */
-      id: s.id, url: s.url, url1: s.url1, url2: s.url2, url3: s.url3,
-      keyId: s.keyId, key: s.key, keys: s.keys,
-      /* Metadata: prefer catalog, fall back to stream */
+      id: s.id, url: s.url, url1: s.url1, url2: s.url2, url3: s.url3, keyId: s.keyId, key: s.key, keys: s.keys,
       name: (meta && meta.channel_name) || s.name || 'Unknown',
       logo: (meta && meta.logoUrl) || s.logo || '',
       category: (meta && meta.channelCategoryId) || s.category || s.group || 'Other',
       language: (meta && meta.channelLanguageId) || '',
-      isHD: isHD, isCatchup: isCatchup,
-      hasCatalog: !!meta
+      isHD: isHD, isCatchup: isCatchup, hasCatalog: !!meta
     });
   }
-  var withMeta = 0;
-  for (var k = 0; k < merged.length; k++) if (merged[k].hasCatalog) withMeta++;
-  safeLog('[catalog] merged ' + withMeta + '/' + merged.length + ' channels with jiodata metadata');
+  var withMeta = 0; for (var k = 0; k < merged.length; k++) if (merged[k].hasCatalog) withMeta++;
+  safeLog('[catalog] merged ' + withMeta + '/' + merged.length + ' channels');
   return merged;
 }
 
-/* ════════ EPG channel lookup ════════ */
 function buildChannelLookup() {
   var byId = {}, byNumeric = {}, nameLists = {}, looseLists = {};
   for (var i = 0; i < allChannels.length; i++) {
@@ -465,7 +446,6 @@ function findMatchingChannel(lookup, xmltvId, xmltvName) {
   return null;
 }
 
-/* ════════ XMLTV parser ════════ */
 function processXmlText(xmlText, label) {
   if (!xmlText || xmlText.length < 500) throw new Error('XML too small');
   var t0 = Date.now(), idToName = {};
@@ -552,19 +532,44 @@ function fetchAndParseEPG() {
     });
 }
 
-/* ════════ Cache ════════ */
-function saveCache() {
-  var now = Date.now(), minS = now - 12 * 3600000;
-  var attempts = [48, 24, 12];
-  for (var a = 0; a < attempts.length; a++) {
-    var maxS = now + attempts[a] * 3600000, out = {}, cnt = 0;
-    for (var key in epgByChannelId) {
-      if (!epgByChannelId.hasOwnProperty(key)) continue;
-      var filt = [], arr = epgByChannelId[key];
-      for (var i = 0; i < arr.length; i++) if (arr[i].e >= minS && arr[i].s < maxS) filt.push(arr[i]);
-      if (filt.length) { out[key] = filt; cnt += filt.length; }
+/* ════════ Cache: 6h past + up to 72h future ════════ */
+function buildCacheForWindow(now, beforeH, afterH, stripAfterH) {
+  var cfgMin = now - beforeH * 3600000;
+  var cfgMax = now + afterH * 3600000;
+  var nearCutoff = now + stripAfterH * 3600000;
+  var out = {}, cnt = 0;
+  for (var key in epgByChannelId) {
+    if (!epgByChannelId.hasOwnProperty(key)) continue;
+    var filt = [], arr = epgByChannelId[key];
+    for (var i = 0; i < arr.length; i++) {
+      var p = arr[i];
+      if (p.e < cfgMin || p.s >= cfgMax) continue;
+      if (p.s > nearCutoff) filt.push({ t: p.t, s: p.s, e: p.e, ep: p.ep || '', g: p.g || '' });
+      else filt.push({ t: p.t, d: p.d || '', s: p.s, e: p.e, ic: p.ic || '', ep: p.ep || '', g: p.g || '' });
     }
-    try { localStorage.setItem(EPG_CACHE_KEY, JSON.stringify({ v: 18, fetchedAt: now, hours: attempts[a], data: out })); safeLog('[cache] saved ' + Object.keys(out).length + ' ch / ' + cnt + ' progs (' + attempts[a] + 'h)'); return; } catch (e) { safeLog('[cache] save failed at ' + attempts[a] + 'h'); }
+    if (filt.length) { out[key] = filt; cnt += filt.length; }
+  }
+  return { data: out, channelCount: Object.keys(out).length, progCount: cnt };
+}
+function saveCache() {
+  var now = Date.now();
+  var plans = [
+    { before: 6, after: 72, strip: 6, label: '6h/72h full' },
+    { before: 6, after: 60, strip: 6, label: '6h/60h full' },
+    { before: 6, after: 48, strip: 6, label: '6h/48h · strip>6h' },
+    { before: 6, after: 36, strip: 6, label: '6h/36h · strip>6h' },
+    { before: 4, after: 30, strip: 4, label: '4h/30h · strip>4h' },
+    { before: 2, after: 24, strip: 2, label: '2h/24h · strip>2h' }
+  ];
+  for (var a = 0; a < plans.length; a++) {
+    var pl = plans[a];
+    var built = buildCacheForWindow(now, pl.before, pl.after, pl.strip);
+    if (!built.channelCount) continue;
+    try {
+      localStorage.setItem(EPG_CACHE_KEY, JSON.stringify({ v: 20, fetchedAt: now, plan: pl.label, data: built.data }));
+      safeLog('[cache] saved ' + built.channelCount + ' ch / ' + built.progCount + ' progs · ' + pl.label);
+      return;
+    } catch (e) { safeLog('[cache] save failed at ' + pl.label); }
   }
 }
 function loadCache() {
@@ -572,20 +577,25 @@ function loadCache() {
     var raw = localStorage.getItem(EPG_CACHE_KEY);
     if (!raw) return false;
     var c = JSON.parse(raw);
-    if (!c || !c.data || c.v !== 18) return false;
+    if (!c || !c.data || c.v !== 20) return false;
     var timeFresh = (Date.now() - c.fetchedAt) < EPG_CACHE_TTL_MS;
-    var n = 0, newestEnd = 0;
+    var n = 0, newestEnd = 0, oldestStart = Infinity;
     for (var id in c.data) {
       if (!c.data.hasOwnProperty(id)) continue;
       epgByChannelId[id] = c.data[id];
-      for (var i = 0; i < c.data[id].length; i++) if (c.data[id][i].e > newestEnd) newestEnd = c.data[id][i].e;
+      for (var i = 0; i < c.data[id].length; i++) {
+        if (c.data[id][i].e > newestEnd) newestEnd = c.data[id][i].e;
+        if (c.data[id][i].s < oldestStart) oldestStart = c.data[id][i].s;
+      }
       n++;
     }
     if (!n) return false;
-    var contentFresh = newestEnd > Date.now() + 60 * 60 * 1000;
-    safeLog('[cache] ' + n + ' ch · newest=' + new Date(newestEnd).toLocaleString() + ' · timeFresh=' + timeFresh + ' contentFresh=' + contentFresh);
+    var contentFresh = newestEnd > Date.now() + 6 * 3600000;
+    var spanH = ((newestEnd - oldestStart) / 3600000).toFixed(1);
+    var aheadH = ((newestEnd - Date.now()) / 3600000).toFixed(1);
+    safeLog('[cache] ' + n + ' ch · ' + spanH + 'h span · ' + aheadH + 'h ahead · plan=' + (c.plan || '?'));
     epgLoaded = true;
-    if (!timeFresh || !contentFresh) { safeLog('[cache] stale — will refetch'); return false; }
+    if (!timeFresh || !contentFresh) { safeLog('[cache] stale — refetch'); return false; }
     return true;
   } catch (e) { return false; }
 }
@@ -596,28 +606,31 @@ function clearCacheAndRefresh() {
   loadEPG();
 }
 
-/* ════════ Program state ════════ */
+/* ════════ ⭐ THREE-STATE PROGRAM LOOKUP ════════
+   live      — strict window or ≤45 min overrun grace
+   upcoming  — next program is in the future
+   stale     — nothing live, nothing upcoming; last program ended long ago */
 function getProgramState(progs, now) {
   if (!progs || !progs.length) return null;
   now = now || Date.now();
+
   var strict = null;
   for (var i = 0; i < progs.length; i++) { var p = progs[i]; if (p.s <= now && p.e > now) { if (!strict || p.s > strict.s) strict = p; } }
-  if (strict) return { p: strict, s: strict.s, e: strict.e, actualEnd: strict.e, state: 'live', strict: true, exhausted: false };
+  if (strict) return { p: strict, s: strict.s, e: strict.e, state: 'live', stale: false };
+
   var grace = null;
   for (var g = 0; g < progs.length; g++) { var pg = progs[g]; if (pg.s <= now && pg.e <= now && (now - pg.e) < OVERRUN_GRACE_MS) { if (!grace || pg.e > grace.e) grace = pg; } }
-  if (grace) return { p: grace, s: grace.s, e: grace.e, actualEnd: grace.e, state: 'live', strict: false, exhausted: false };
-  var closest = null, closestDist = Infinity, closestPast = false;
-  for (var m = 0; m < progs.length; m++) {
-    var c = progs[m]; var dist, isPast;
-    if (c.e <= now) { dist = now - c.e; isPast = true; }
-    else if (c.s > now) { dist = c.s - now; isPast = false; }
-    else continue;
-    if (dist < closestDist || (dist === closestDist && isPast && !closestPast)) { closestDist = dist; closest = c; closestPast = isPast; }
+  if (grace) return { p: grace, s: grace.s, e: grace.e, state: 'live', stale: false };
+
+  var upcoming = null;
+  for (var u = 0; u < progs.length; u++) {
+    var pu = progs[u];
+    if (pu.s > now && (!upcoming || pu.s < upcoming.s)) upcoming = pu;
   }
-  if (!closest) return null;
-  var exhausted = closestPast && (now - closest.e) > OVERRUN_GRACE_MS;
-  var displayEnd = exhausted ? Math.max(closest.e, now + EXHAUST_EXTEND_MS) : closest.e;
-  return { p: closest, s: closest.s, e: displayEnd, actualEnd: closest.e, state: 'live', strict: false, exhausted: exhausted };
+  if (upcoming) return { p: upcoming, s: upcoming.s, e: upcoming.e, state: 'upcoming', stale: false };
+
+  var last = progs[progs.length - 1];
+  return { p: last, s: last.s, e: last.e, state: 'stale', stale: true };
 }
 function getNextProgram(progs, current, now) {
   if (!progs || !progs.length) return null;
@@ -634,28 +647,51 @@ function getChannelNumber(ch) {
   return null;
 }
 function progProgress(st) {
-  if (!st || !st.strict) return null;
+  if (!st || st.state !== 'live') return null;
+  if (!(st.p.s <= Date.now() && st.p.e > Date.now())) return null;
   var total = st.e - st.s;
   if (total <= 0) return null;
   return Math.max(0, Math.min(100, ((Date.now() - st.s) / total) * 100));
 }
 
+/* ════════ Card EPG — respects the three states ════════ */
 function buildEpgBlockHtml(ch) {
   if (!epgLoaded) return '<div class="card-epg"><div class="epg-empty">Loading guide…</div></div>';
   var progs = epgByChannelId[String(ch.id)];
   var st = getProgramState(progs);
   if (!st) return '<div class="card-epg"><div class="epg-empty">No guide data</div></div>';
-  var p = st.p, prog = progProgress(st);
-  var html = '<div class="card-epg">';
-  html += '<div class="epg-now-row"><span class="epg-now-label">● LIVE</span><span class="epg-now-time">' + formatRange(p.s, p.e) + '</span></div>';
-  html += '<div class="epg-now-title">' + escapeHtml(p.t || 'No Title') + '</div>';
-  if (p.ep || p.g) html += '<div class="epg-now-meta">' + (p.ep ? escapeHtml(p.ep) : '') + (p.ep && p.g ? ' · ' : '') + (p.g ? escapeHtml(p.g) : '') + '</div>';
-  if (p.d) html += '<div class="epg-now-desc">' + escapeHtml(truncate(p.d, 120)) + '</div>';
-  if (prog !== null) html += '<div class="epg-progress"><div class="epg-progress-fill" style="width:' + prog.toFixed(1) + '%"></div></div>';
-  if (st.exhausted) html += '<div class="epg-warn">⚠ Guide ends ' + formatTimeOnly(st.actualEnd) + ' — refresh pending</div>';
+
+  var p = st.p;
+
+  if (st.state === 'stale') {
+    var html = '<div class="card-epg stale">';
+    html += '<div class="epg-now-row"><span class="epg-now-label stale">⚠ STALE</span></div>';
+    html += '<div class="epg-now-title">' + escapeHtml(p.t || 'No Title') + '</div>';
+    html += '<div class="epg-now-desc">Last known: <b>' + formatDayLabel(p.s) + '</b> · ' + formatRange(p.s, p.e) + '</div>';
+    html += '<div class="epg-stale-hint">Source hasn\'t updated this channel — tap ⟳ EPG to retry</div>';
+    return html + '</div>';
+  }
+
+  if (st.state === 'upcoming') {
+    var html2 = '<div class="card-epg upcoming">';
+    html2 += '<div class="epg-now-row"><span class="epg-now-label next">○ NEXT</span><span class="epg-now-time">' + formatRange(p.s, p.e) + '</span></div>';
+    html2 += '<div class="epg-now-title">' + escapeHtml(p.t || 'No Title') + '</div>';
+    if (p.ep || p.g) html2 += '<div class="epg-now-meta">' + (p.ep ? escapeHtml(p.ep) : '') + (p.ep && p.g ? ' · ' : '') + (p.g ? escapeHtml(p.g) : '') + '</div>';
+    if (p.d) html2 += '<div class="epg-now-desc">' + escapeHtml(truncate(p.d, 120)) + '</div>';
+    return html2 + '</div>';
+  }
+
+  /* live */
+  var prog = progProgress(st);
+  var html3 = '<div class="card-epg">';
+  html3 += '<div class="epg-now-row"><span class="epg-now-label">● LIVE</span><span class="epg-now-time">' + formatRange(p.s, p.e) + '</span></div>';
+  html3 += '<div class="epg-now-title">' + escapeHtml(p.t || 'No Title') + '</div>';
+  if (p.ep || p.g) html3 += '<div class="epg-now-meta">' + (p.ep ? escapeHtml(p.ep) : '') + (p.ep && p.g ? ' · ' : '') + (p.g ? escapeHtml(p.g) : '') + '</div>';
+  if (p.d) html3 += '<div class="epg-now-desc">' + escapeHtml(truncate(p.d, 120)) + '</div>';
+  if (prog !== null) html3 += '<div class="epg-progress"><div class="epg-progress-fill" style="width:' + prog.toFixed(1) + '%"></div></div>';
   var next = getNextProgram(progs, p, Date.now());
-  if (next) html += '<div class="epg-next-mini">Next: <b>' + escapeHtml(truncate(next.t, 40)) + '</b> at ' + formatTimeOnly(next.s) + '</div>';
-  return html + '</div>';
+  if (next) html3 += '<div class="epg-next-mini">Next: <b>' + escapeHtml(truncate(next.t, 40)) + '</b> at ' + formatTimeOnly(next.s) + '</div>';
+  return html3 + '</div>';
 }
 function updateCardEpg(id) {
   var entry = cardMap[id]; if (!entry) return;
@@ -683,7 +719,6 @@ function fetchChannelsFrom(idx) {
     .catch(function(){ return fetchChannelsFrom(idx + 1); });
 }
 
-/* ════════ Card render with HD / CU / Language ════════ */
 function buildCardHtml(ch, idx) {
   var cat = ch.category || 'Other';
   var num = getChannelNumber(ch);
@@ -730,7 +765,6 @@ function buildCardMap() {
   }
 }
 
-/* ════════ Sort / filter ════════ */
 function sortChannels(arr) {
   var copy = arr.slice();
   if (sortMode === 'number') copy.sort(function(a,b){ var na = getChannelNumber(a), nb = getChannelNumber(b); if (na === null && nb === null) return (a.name || '').localeCompare(b.name || ''); if (na === null) return 1; if (nb === null) return -1; return na - nb; });
@@ -743,7 +777,7 @@ function channelMatches(ch, q, cat) {
   var chCat = ch.category || 'Other';
   if (cat === 'favorites') { if (!favorites[String(ch.id)]) return false; }
   else if (cat === 'recents') { if (recents.indexOf(String(ch.id)) === -1) return false; }
-  else if (cat === 'live') { if (!epgByChannelId[String(ch.id)]) return false; }
+  else if (cat === 'live') { var st = getProgramState(epgByChannelId[String(ch.id)]); if (!st || st.state !== 'live') return false; }
   else if (cat === 'catchup') { if (!ch.isCatchup) return false; }
   else if (cat !== 'all' && chCat !== cat) return false;
   if (q) {
@@ -783,7 +817,6 @@ function renderCategories() {
   for (var c = 0; c < chips.length; c++) (function(chip){ chip.addEventListener('click', function(){ selectedCategory = chip.getAttribute('data-cat'); renderCategories(); applyFilter(); wrapEl.scrollTop = 0; }); })(chips[c]);
 }
 
-/* ════════ Detail modal ════════ */
 function openDetails(ch) {
   currentDetailChannel = ch; currentDetailTab = 'info';
   dTabInfo.classList.add('active'); dTabGuide.classList.remove('active');
@@ -804,16 +837,23 @@ function renderInfoTab(ch) {
   var st = getProgramState(progs);
   var body = '';
   if (st) {
-    var p = st.p, prog = progProgress(st);
-    body += '<div class="detail-show now"><div class="show-label">● LIVE · ' + formatRange(p.s, p.e) + '</div><div class="show-title">' + escapeHtml(p.t || 'No Title') + '</div>';
+    var p = st.p;
+    var cls, lbl;
+    if (st.state === 'live') { cls = 'now'; lbl = '● LIVE'; }
+    else if (st.state === 'upcoming') { cls = 'next'; lbl = '○ NEXT'; }
+    else { cls = 'stale'; lbl = '⚠ STALE — LAST KNOWN'; }
+    body += '<div class="detail-show ' + cls + '"><div class="show-label">' + lbl + ' · ' + formatRange(p.s, p.e) + '</div><div class="show-title">' + escapeHtml(p.t || 'No Title') + '</div>';
     if (p.ep || p.g) body += '<div class="show-meta-row">' + (p.ep ? escapeHtml(p.ep) : '') + (p.g ? ' · ' + escapeHtml(p.g) : '') + '</div>';
     if (p.ic) body += '<div class="show-image"><img src="' + escapeHtml(p.ic) + '" onerror="this.parentNode.style.display=\'none\'"></div>';
     if (p.d) body += '<div class="show-desc">' + escapeHtml(p.d) + '</div>';
-    if (prog !== null) body += '<div class="epg-progress"><div class="epg-progress-fill" style="width:' + prog.toFixed(1) + '%"></div></div>';
-    if (st.exhausted) body += '<div class="epg-warn">⚠ Guide data ends ' + formatTimeOnly(st.actualEnd) + ' — refreshing soon</div>';
+    if (st.state === 'live') {
+      var prog = progProgress(st);
+      if (prog !== null) body += '<div class="epg-progress"><div class="epg-progress-fill" style="width:' + prog.toFixed(1) + '%"></div></div>';
+    }
+    if (st.state === 'stale') body += '<div class="show-stale-hint">⚠ Source has no fresh data — showing ' + formatDayLabel(p.s).toLowerCase() + '\'s last program. Tap ⟳ EPG to retry.</div>';
     body += '</div>';
     var next = getNextProgram(progs, p, Date.now());
-    if (next) {
+    if (next && st.state === 'live') {
       body += '<div class="detail-show next"><div class="show-label">○ NEXT · ' + formatRange(next.s, next.e) + '</div><div class="show-title">' + escapeHtml(next.t || 'No Title') + '</div>';
       if (next.d) body += '<div class="show-desc">' + escapeHtml(next.d) + '</div>';
       body += '</div>';
@@ -822,18 +862,37 @@ function renderInfoTab(ch) {
   else body += '<div class="detail-show none"><div class="show-label">● LIVE</div><div class="show-title">Loading guide…</div></div>';
   dBody.innerHTML = body;
 }
+
+/* ════════ FULL GUIDE — starts from today, falls back to all data only when today is empty ════════ */
 function renderGuideTab(ch) {
   var progs = epgByChannelId[String(ch.id)] || [];
   if (!progs.length) { dBody.innerHTML = '<div class="msg" style="padding:30px">No guide data for this channel.</div>'; return; }
   var now = Date.now();
   var st = getProgramState(progs);
-  var actualLive = st && st.strict ? st.p : null;
-  var rangeStart = new Date(); rangeStart.setHours(0,0,0,0);
-  var rangeStartMs = rangeStart.getTime();
-  var rangeEndMs = rangeStartMs + 3 * 86400000;
+  var actualLive = st && st.state === 'live' ? st.p : null;
+
+  var todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  var todayStartMs = todayStart.getTime();
+
+  /* does this channel have ANY data today? */
+  var hasToday = false;
+  for (var h = 0; h < progs.length; h++) {
+    if (progs[h].e > todayStartMs && progs[h].s < todayStartMs + 86400000) { hasToday = true; break; }
+  }
+
+  var rangeStartMs = hasToday ? todayStartMs : progs[0].s;
+  var rangeEndMs = Math.max(todayStartMs + 3 * 86400000, progs[progs.length - 1].e + 86400000);
+
   var filtered = progs.filter(function(p){ return p.e > rangeStartMs && p.s < rangeEndMs; });
   if (!filtered.length) filtered = progs.slice(0, 60);
-  var body = '', lastDayKey = '';
+
+  var body = '';
+  if (!hasToday) {
+    var lastDate = formatDayLabel(progs[progs.length - 1].s);
+    body += '<div class="stale-banner">⚠ No guide data for today — showing last known programs from ' + lastDate + '. Source is stale for this channel.</div>';
+  }
+
+  var lastDayKey = '';
   for (var i = 0; i < filtered.length; i++) {
     var p = filtered[i];
     var dayKey = new Date(p.s).toDateString();
@@ -848,7 +907,6 @@ function renderGuideTab(ch) {
 }
 function closeDetails(){ detailModal.classList.add('hidden'); currentDetailChannel = null; }
 
-/* ════════ Player handoff — merged object preserved ════════ */
 function openPlayer(ch) {
   addRecent(ch.id);
   try {
@@ -865,7 +923,6 @@ function openPlayer(ch) {
   try { var w = window.open(url, '_blank'); if (!w) window.location.href = url; } catch (e) { window.location.href = url; }
 }
 
-/* ════════ Number pad overlay ════════ */
 function showChNumOverlay(){ chNumValue.textContent = chNumBuffer || '—'; chNumOverlay.classList.add('visible'); }
 function hideChNumOverlay(){ chNumOverlay.classList.remove('visible'); }
 function handleChNumDigit(digit) { if (chNumBuffer.length >= 4) chNumBuffer = ''; chNumBuffer += digit; showChNumOverlay(); clearTimeout(chNumTimer); chNumTimer = setTimeout(commitChNum, 1200); }
@@ -878,7 +935,6 @@ function commitChNum() {
 }
 function cancelChNum(){ chNumBuffer = ''; clearTimeout(chNumTimer); hideChNumOverlay(); }
 
-/* ════════ EPG helpers ════════ */
 function computeEpgRange() {
   var oldest = Infinity, newest = 0;
   for (var id in epgByChannelId) {
@@ -888,9 +944,17 @@ function computeEpgRange() {
   }
   return { oldest: oldest, newest: newest };
 }
-function countLive() {
+function countWithData() {
   var c = 0;
   for (var i = 0; i < allChannels.length; i++) if (epgByChannelId[String(allChannels[i].id)]) c++;
+  return c;
+}
+function countLive() {
+  var c = 0, now = Date.now();
+  for (var i = 0; i < allChannels.length; i++) {
+    var st = getProgramState(epgByChannelId[String(allChannels[i].id)], now);
+    if (st && st.state === 'live') c++;
+  }
   return c;
 }
 function scheduleMidnightRefresh() {
@@ -898,17 +962,14 @@ function scheduleMidnightRefresh() {
   var now = new Date();
   var next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 2, 0);
   var delay = Math.max(60000, next.getTime() - now.getTime());
-  safeLog('[epg] midnight refresh scheduled in ' + Math.round(delay/60000) + ' min');
   midnightTimer = setTimeout(function() {
     safeLog('[epg] midnight rollover — refreshing');
     clearCacheAndRefresh();
     if (exhaustRetryTimer) clearTimeout(exhaustRetryTimer);
     exhaustRetryTimer = setTimeout(function checkStale() {
       var r = computeEpgRange();
-      if (r.newest < Date.now() + 60 * 60 * 1000) {
-        safeLog('[epg] source still stale — retrying'); clearCacheAndRefresh();
-        exhaustRetryTimer = setTimeout(checkStale, 30 * 60 * 1000);
-      } else { scheduleMidnightRefresh(); }
+      if (r.newest < Date.now() + 6 * 3600000) { clearCacheAndRefresh(); exhaustRetryTimer = setTimeout(checkStale, 30 * 60 * 1000); }
+      else { scheduleMidnightRefresh(); }
     }, 30 * 60 * 1000);
   }, delay);
 }
@@ -922,18 +983,18 @@ function loadEPG() {
       var hoursTotal = ((range.newest - range.oldest) / 3600000).toFixed(1);
       var hoursAhead = ((range.newest - now) / 3600000).toFixed(1);
       safeLog('[epg] range: ' + new Date(range.oldest).toLocaleString() + ' → ' + new Date(range.newest).toLocaleString());
-      safeLog('[epg] ' + hoursTotal + 'h total, ' + hoursAhead + 'h ahead of now');
+      safeLog('[epg] ' + hoursTotal + 'h span · ' + hoursAhead + 'h ahead');
       var elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-      var live = countLive(), total = allChannels.length;
-      var pct = Math.round((live / total) * 100);
+      var withData = countWithData(), live = countLive(), total = allChannels.length;
+      var pct = Math.round((withData / total) * 100);
       var kind = pct >= 60 ? 'ok' : (pct >= 30 ? 'warn' : 'error');
-      setEpgStatus('Guide: ' + live + '/' + total + ' ch (' + pct + '%) · ends in ' + hoursAhead + 'h · ' + elapsed + 's', kind);
+      var endStr = new Date(range.newest).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
+      setEpgStatus('Guide: ' + withData + '/' + total + ' ch (' + pct + '%) · ' + live + ' live · ends ' + endStr, kind);
       setTimeout(function(){ setEpgStatus(''); }, 12000);
       refreshAllCardsEpg();
-      if (range.newest < now + 60 * 60 * 1000) {
-        safeLog('[epg] source exhausted — retry in 15 min');
+      if (range.newest < now + 6 * 3600000) {
         if (exhaustRetryTimer) clearTimeout(exhaustRetryTimer);
-        exhaustRetryTimer = setTimeout(function(){ safeLog('[epg] retrying stale source'); clearCacheAndRefresh(); }, 15 * 60 * 1000);
+        exhaustRetryTimer = setTimeout(function(){ clearCacheAndRefresh(); }, 15 * 60 * 1000);
       }
       scheduleMidnightRefresh();
     } else {
@@ -943,13 +1004,11 @@ function loadEPG() {
   });
 }
 
-/* ════════ Load channels + catalog in parallel ════════ */
 function loadChannels() {
   gridEl.innerHTML = '<div class="msg"><div class="spinner"></div><div>Loading channels & catalog…</div></div>';
   Promise.all([fetchStreamChannels(), fetchCatalogMeta()])
     .then(function(results) {
-      var streams = results[0];
-      var catalog = results[1] || [];
+      var streams = results[0], catalog = results[1] || [];
       if (!streams || !streams.length) throw new Error('No channels');
       allChannels = mergeChannelMetadata(streams, catalog);
       displayedChannels = allChannels.slice();
@@ -958,10 +1017,10 @@ function loadChannels() {
       renderAllCards(function() {
         if (cacheFresh) {
           refreshAllCardsEpg();
-          var live = countLive(), range = computeEpgRange();
+          var withData = countWithData(), live = countLive(), range = computeEpgRange();
           var hoursAhead = ((range.newest - Date.now()) / 3600000).toFixed(1);
-          setEpgStatus('Cache: ' + live + '/' + allChannels.length + ' ch · ends in ' + hoursAhead + 'h');
-          setTimeout(function(){ setEpgStatus(''); }, 5000);
+          setEpgStatus('Cache: ' + withData + '/' + allChannels.length + ' ch · ' + live + ' live · ' + hoursAhead + 'h ahead');
+          setTimeout(function(){ setEpgStatus(''); }, 6000);
           scheduleMidnightRefresh();
         } else loadEPG();
       });
@@ -973,7 +1032,6 @@ function loadChannels() {
     });
 }
 
-/* ════════ Wiring ════════ */
 var searchTimer = null;
 searchEl.addEventListener('input', function() { clearTimeout(searchTimer); searchTimer = setTimeout(function() { searchQuery = searchEl.value.trim().toLowerCase(); applyFilter(); wrapEl.scrollTop = 0; }, 150); });
 sortSelect.addEventListener('change', function() { sortMode = sortSelect.value; savePrefs(); applyFilter(); });
