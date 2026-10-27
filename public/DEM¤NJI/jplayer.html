@@ -63,14 +63,16 @@ html,body { background:#000; width:100%; height:100%; overflow:hidden; font-fami
 .tap-play-text { font-size:18px; font-weight:bold; color:#fff; }
 #unmuteBtn { position:absolute; bottom:24px; left:50%; transform:translateX(-50%); z-index:30; display:flex; align-items:center; gap:10px; padding:12px 22px; background:rgba(220,53,69,0.95); border:2px solid rgba(255,255,255,0.4); color:#fff; border-radius:30px; font-size:15px; font-weight:bold; font-family:inherit; cursor:pointer; }
 #unmuteBtn.hidden { display:none; }
-#chNumOverlay { position:fixed; top:22%; left:50%; transform:translateX(-50%); min-width:200px; padding:20px 40px; background:rgba(10,20,28,0.96); border:3px solid #4fc3f7; border-radius:18px; text-align:center; z-index:2000; pointer-events:none; display:none; }
+
+/* ════════ OVERLAYS — inside #videoContainer, position: absolute ════════ */
+#chNumOverlay { position:absolute; top:22%; left:50%; transform:translateX(-50%); min-width:200px; padding:20px 40px; background:rgba(10,20,28,0.96); border:3px solid #4fc3f7; border-radius:18px; text-align:center; z-index:2000; pointer-events:none; display:none; box-shadow:0 8px 32px rgba(0,0,0,0.7); }
 #chNumOverlay.visible { display:block; }
 #chNumOverlay .num-label { font-size:12px; color:#7ab8d6; font-weight:bold; margin-bottom:6px; }
 #chNumOverlay .num-value { font-size:72px; color:#fff; font-weight:bold; line-height:1; }
-#toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:rgba(30,30,30,0.95); color:#fff; padding:12px 22px; border-radius:8px; border:1px solid #4fc3f7; font-size:14px; z-index:2500; opacity:0; transition:opacity .25s; pointer-events:none; max-width:90vw; }
+#toast { position:absolute; bottom:30px; left:50%; transform:translateX(-50%); background:rgba(30,30,30,0.95); color:#fff; padding:12px 22px; border-radius:8px; border:1px solid #4fc3f7; font-size:14px; z-index:2500; opacity:0; transition:opacity .25s; pointer-events:none; max-width:90vw; }
 #toast.visible { opacity:1; }
 #toast.error { border-color:#ef5350; color:#ffc7c7; }
-.overlay { position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.92); z-index:1800; display:flex; align-items:center; justify-content:center; padding:16px; }
+.overlay { position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.92); z-index:1800; display:flex; align-items:center; justify-content:center; padding:16px; }
 .overlay.hidden { display:none; }
 .overlay-panel { background:#121a24; border-radius:14px; max-width:700px; width:100%; max-height:90vh; display:flex; flex-direction:column; border:1px solid #2a3a4a; overflow:hidden; }
 .overlay-panel h2 { padding:16px 20px; border-bottom:1px solid #2a3a4a; font-size:17px; color:#4fc3f7; background:#0e1620; }
@@ -127,29 +129,31 @@ html,body { background:#000; width:100%; height:100%; overflow:hidden; font-fami
     </div>
     <div id="tapToPlay" class="hidden"><div class="tap-play-inner"><div class="tap-play-icon">▶</div><div class="tap-play-text">Tap to play</div></div></div>
     <button id="unmuteBtn" class="hidden" type="button">🔇 Tap for sound</button>
-  </div>
-  <div id="placeholder">
-    <div class="spinner" id="phSpinner"></div>
-    <div id="phMsg">Loading…</div>
-    <div class="ph-actions" id="phActions" style="display:none"><button id="phBackBtn" type="button">◄ Back</button><button id="phRetryBtn" type="button">⟳ Retry</button></div>
+
+    <div id="placeholder">
+      <div class="spinner" id="phSpinner"></div>
+      <div id="phMsg">Loading…</div>
+      <div class="ph-actions" id="phActions" style="display:none"><button id="phBackBtn" type="button">◄ Back</button><button id="phRetryBtn" type="button">⟳ Retry</button></div>
+    </div>
+
+    <div id="chNumOverlay"><div class="num-label">Channel</div><div class="num-value" id="chNumValue"></div></div>
+    <div id="toast"></div>
+    <div id="guideModal" class="overlay hidden"><div class="overlay-panel"><h2 id="guideTitle">📅 Full Guide</h2><div class="overlay-body" id="guideBody"></div><div class="overlay-footer"><button id="guideClose" type="button">Close</button></div></div></div>
+    <div id="miniModal" class="overlay hidden"><div class="overlay-panel"><h2>📺 Channel List</h2><div class="overlay-body"><div id="miniStrip" class="mini-channel-strip">Loading…</div></div><div class="overlay-footer"><button id="miniClose" type="button">Close</button></div></div></div>
+    <div id="helpModal" class="overlay hidden"><div class="overlay-panel"><h2>⌨️ Shortcuts</h2><div class="overlay-body">
+      <div class="help-row"><span>Channel number</span><span class="help-key">0-9</span></div>
+      <div class="help-row"><span>Channel up / down</span><span class="help-key">PgUp / PgDn</span></div>
+      <div class="help-row"><span>Volume up / down</span><span class="help-key">+ / −</span></div>
+      <div class="help-row"><span>Mute</span><span class="help-key">M</span></div>
+      <div class="help-row"><span>Full guide</span><span class="help-key">G</span></div>
+      <div class="help-row"><span>Mini channel list</span><span class="help-key">L</span></div>
+      <div class="help-row"><span>Stream stats</span><span class="help-key">I</span></div>
+      <div class="help-row"><span>Fit mode cycle</span><span class="help-key">F</span></div>
+      <div class="help-row"><span>Back to last channel</span><span class="help-key">Backspace</span></div>
+    </div><div class="overlay-footer"><button id="helpClose" type="button">Close</button></div></div></div>
+    <div id="statsModal" class="overlay hidden"><div class="overlay-panel"><h2>📊 Stats</h2><div class="overlay-body" id="statsBody"></div><div class="overlay-footer"><button id="statsClose" type="button">Close</button></div></div></div>
   </div>
 </div>
-<div id="chNumOverlay"><div class="num-label">Channel</div><div class="num-value" id="chNumValue"></div></div>
-<div id="toast"></div>
-<div id="guideModal" class="overlay hidden"><div class="overlay-panel"><h2 id="guideTitle">📅 Full Guide</h2><div class="overlay-body" id="guideBody"></div><div class="overlay-footer"><button id="guideClose" type="button">Close</button></div></div></div>
-<div id="miniModal" class="overlay hidden"><div class="overlay-panel"><h2>📺 Channel List</h2><div class="overlay-body"><div id="miniStrip" class="mini-channel-strip">Loading…</div></div><div class="overlay-footer"><button id="miniClose" type="button">Close</button></div></div></div>
-<div id="helpModal" class="overlay hidden"><div class="overlay-panel"><h2>⌨️ Shortcuts</h2><div class="overlay-body">
-<div class="help-row"><span>Channel number</span><span class="help-key">0-9</span></div>
-<div class="help-row"><span>Channel up / down</span><span class="help-key">PgUp / PgDn</span></div>
-<div class="help-row"><span>Volume up / down</span><span class="help-key">+ / −</span></div>
-<div class="help-row"><span>Mute</span><span class="help-key">M</span></div>
-<div class="help-row"><span>Full guide</span><span class="help-key">G</span></div>
-<div class="help-row"><span>Mini channel list</span><span class="help-key">L</span></div>
-<div class="help-row"><span>Stream stats</span><span class="help-key">I</span></div>
-<div class="help-row"><span>Fit mode cycle</span><span class="help-key">F</span></div>
-<div class="help-row"><span>Back to last channel</span><span class="help-key">Backspace</span></div>
-</div><div class="overlay-footer"><button id="helpClose" type="button">Close</button></div></div></div>
-<div id="statsModal" class="overlay hidden"><div class="overlay-panel"><h2>📊 Stats</h2><div class="overlay-body" id="statsBody"></div><div class="overlay-footer"><button id="statsClose" type="button">Close</button></div></div></div>
 
 <script>
 if (!Array.prototype.includes) Array.prototype.includes = function(x){ return this.indexOf(x) !== -1; };
@@ -173,6 +177,7 @@ var COOKIE_STAR_SPORTS = "https://allinonereborn2.online/jtv-fetch/jstarcookie/c
 var RECENT_KEY = 'jtv_recents_v1';
 var EPG_CACHE_KEY = 'jtv_epg_cache_v20';
 var OVERRUN_GRACE_MS = 45 * 60 * 1000;
+var BANNER_PEEK_MS = 3000;
 
 var videoEl = document.getElementById('video'), videoContainer = document.getElementById('videoContainer'), topBar = document.getElementById('topBar');
 var chNumEl = document.getElementById('chNum'), titleEl = document.getElementById('title');
@@ -197,6 +202,8 @@ var programUpdateTimer = null, bannerHideTimer = null, progressTimer = null;
 var autoplayAttempted = false, reconnectAttempts = 0, reconnectTimer = null;
 var lastChannelId = null, lastProgramKey = '';
 var chNumBuffer = '', chNumTimer = null, toastTimer = null;
+var lastMouseMoveTs = 0;
+var lastCtrlHidden = null;
 
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function truncate(s,n){ if(!s) return ''; return s.length > n ? s.substring(0, n-1) + '…' : s; }
@@ -224,7 +231,7 @@ function tryMutedPlayback() { videoEl.muted = true; var p = videoEl.play(); if (
 tapToPlay.addEventListener('click', function(e){ e.stopPropagation(); tapToPlay.classList.add('hidden'); videoEl.muted = false; videoEl.play().then(function(){ unmuteBtn.classList.add('hidden'); }).catch(function(){ videoEl.muted = true; videoEl.play(); }); });
 unmuteBtn.addEventListener('click', function(e){ e.stopPropagation(); videoEl.muted = false; if (videoEl.paused) videoEl.play(); unmuteBtn.classList.add('hidden'); });
 
-/* ════════ Load programs from localStorage ════════ */
+/* ════════ Load programs ════════ */
 function loadChannelPrograms() {
   try {
     var raw = localStorage.getItem('channelPrograms');
@@ -249,10 +256,7 @@ function getProgramsFromCache(cache, ch) {
   return null;
 }
 
-/* ════════ ⭐ THREE-STATE PROGRAM LOOKUP ════════
-   live      — strict window OR ≤45 min overrun grace
-   upcoming  — next program is in the future
-   stale     — nothing live, nothing upcoming; last known shown with warning */
+/* ════════ Three-state program lookup ════════ */
 function getProgramState(progs, now) {
   if (!progs || !progs.length) return null;
   now = now || Date.now();
@@ -312,7 +316,7 @@ function findCurrentAndNext() {
   return { current: current, next: next };
 }
 
-/* ════════ Progress ticker (drives banner re-render on state change) ════════ */
+/* ════════ Banner update ════════ */
 function updateProgress() {
   if (!channelPrograms || !channelPrograms.length) return;
   var cur = findCurrentAndNext();
@@ -323,8 +327,6 @@ function updateProgress() {
 }
 function startProgressUpdates(){ stopProgressUpdates(); updateProgress(); progressTimer = setInterval(updateProgress, 1000); }
 function stopProgressUpdates(){ if (progressTimer) { clearInterval(progressTimer); progressTimer = null; } }
-
-/* ════════ Banner titles — three-state aware ════════ */
 function updateDthBannerTitles(curOverride) {
   if (!currentChannel) return;
   var num = getChannelNumber(currentChannel);
@@ -351,10 +353,7 @@ function updateDthBannerTitles(curOverride) {
     var meta = [];
     if (cur.current.p.episode) meta.push(cur.current.p.episode);
     if (cur.current.p.genre) meta.push(cur.current.p.genre);
-    if (cur.current.state === 'stale') {
-      var dayLbl = formatDayLabel(cur.current.s).toLowerCase();
-      meta.push('source stale · ' + dayLbl);
-    }
+    if (cur.current.state === 'stale') meta.push('source stale · ' + formatDayLabel(cur.current.s).toLowerCase());
     dthNowMeta.textContent = meta.join(' · ');
   } else {
     dthNowLabel.textContent = '● LIVE';
@@ -379,13 +378,13 @@ function showDthBanner(ms) {
 }
 function hideDthBanner(){ dthBanner.classList.remove('visible'); stopProgressUpdates(); if (bannerHideTimer) { clearTimeout(bannerHideTimer); bannerHideTimer = null; } }
 function peekBanner(ms){
-  ms = ms || 5000;
+  ms = ms || BANNER_PEEK_MS;
   if (!dthBanner.classList.contains('visible')) showDthBanner(ms);
   else { if (bannerHideTimer) clearTimeout(bannerHideTimer); bannerHideTimer = setTimeout(hideDthBanner, ms); }
 }
 function startBannerRefreshTimer(){ if (programUpdateTimer) clearInterval(programUpdateTimer); programUpdateTimer = setInterval(function() { if (dthBanner.classList.contains('visible')) updateDthBanner(); }, 15000); }
 
-/* ════════ Full Guide overlay — 3-day with day headers, stale banner if no today data ════════ */
+/* ════════ Guide overlay ════════ */
 function openGuide() {
   if (!currentChannel) return;
   var num = getChannelNumber(currentChannel);
@@ -397,17 +396,14 @@ function openGuide() {
     var now = Date.now();
     var st = getProgramState(progs, now);
     var actualLive = st && st.state === 'live' ? st.p : null;
-
     var todayStart = new Date(); todayStart.setHours(0,0,0,0);
     var todayStartMs = todayStart.getTime();
-
     var hasToday = false;
     for (var h = 0; h < progs.length; h++) {
       var hs = progs[h].start instanceof Date ? progs[h].start.getTime() : progs[h].start;
       var he = progs[h].end instanceof Date ? progs[h].end.getTime() : progs[h].end;
       if (he > todayStartMs && hs < todayStartMs + 86400000) { hasToday = true; break; }
     }
-
     var rangeStartMs = hasToday ? todayStartMs : (progs[0].start instanceof Date ? progs[0].start.getTime() : progs[0].start);
     var lastProg = progs[progs.length - 1];
     var lastEnd = lastProg.end instanceof Date ? lastProg.end.getTime() : lastProg.end;
@@ -418,7 +414,6 @@ function openGuide() {
       var lastDate = formatDayLabel(progs[progs.length - 1].start instanceof Date ? progs[progs.length - 1].start.getTime() : progs[progs.length - 1].start);
       body += '<div class="guide-stale-banner">⚠ No guide data for today — showing last known programs from ' + lastDate + '. Source is stale for this channel.</div>';
     }
-
     var filtered = [], lastDayKey = '';
     for (var i = 0; i < progs.length; i++) {
       var p = progs[i];
@@ -428,7 +423,6 @@ function openGuide() {
       filtered.push(p);
     }
     if (!filtered.length) filtered = progs.slice(0, 60);
-
     for (var j = 0; j < filtered.length; j++) {
       var q = filtered[j];
       var qs = q.start instanceof Date ? q.start.getTime() : q.start;
@@ -445,7 +439,6 @@ function openGuide() {
   }
   guideModal.classList.remove('hidden');
 }
-
 function openMiniGuide() {
   var all = []; try { all = JSON.parse(localStorage.getItem('allChannels') || '[]'); } catch(e){}
   var recents = []; try { recents = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch(e){}
@@ -572,9 +565,9 @@ function initPlayer() {
   syncTopBar();
   return true;
 }
-/* Top bar auto-hide — mirrors Shaka's own controls state */
+/* Top bar mirrors Shaka controls. When controls go hidden→visible, banner also peeks. */
 function syncTopBar() {
-  var last = null, attempts = 0;
+  var attempts = 0;
   function check() {
     attempts++;
     var ctrl = videoContainer.querySelector('.shaka-controls-container');
@@ -588,10 +581,12 @@ function syncTopBar() {
                    cs.visibility === 'hidden' ||
                    parseFloat(cs.opacity) === 0;
       } catch (e) { isHidden = ctrl.classList.contains('shaka-hidden'); }
-      if (isHidden !== last) {
-        last = isHidden;
+
+      if (lastCtrlHidden === null) lastCtrlHidden = isHidden;
+      else if (lastCtrlHidden !== isHidden) {
+        lastCtrlHidden = isHidden;
         if (isHidden) topBar.classList.add('hidden');
-        else topBar.classList.remove('hidden');
+        else { topBar.classList.remove('hidden'); peekBanner(BANNER_PEEK_MS); }
       }
     }, 150);
   }
@@ -632,7 +627,7 @@ function playChannel(channelData, isReconnect) {
       function tryNextCookie() {
         if (loaded || cIdx >= cookieRounds.length) { tryNextUrl(); return; }
         activeCookie = cookieRounds[cIdx++];
-        shakaPlayer.load(streamUrl).then(function() { loaded = true; isLoading = false; reconnectAttempts = 0; hidePlaceholder(); attemptPlayback(); setTimeout(function() { peekBanner(5000); }, 400); }).catch(function(){ tryNextCookie(); });
+        shakaPlayer.load(streamUrl).then(function() { loaded = true; isLoading = false; reconnectAttempts = 0; hidePlaceholder(); attemptPlayback(); setTimeout(function() { peekBanner(BANNER_PEEK_MS); }, 400); }).catch(function(){ tryNextCookie(); });
       }
       tryNextCookie();
     }
@@ -651,57 +646,54 @@ phRetryBtn.addEventListener('click', function(e){ e.preventDefault(); if (curren
 guideBtn.addEventListener('click', function(e){ e.preventDefault(); openGuide(); });
 helpBtn.addEventListener('click', function(e){ e.preventDefault(); helpModal.classList.remove('hidden'); });
 dthBanner.addEventListener('click', function(){ openGuide(); });
-guideClose.addEventListener('click', function(){ guideModal.classList.add('hidden'); });
-guideModal.addEventListener('click', function(e){ if (e.target === guideModal) guideModal.classList.add('hidden'); });
-miniClose.addEventListener('click', function(){ miniModal.classList.add('hidden'); });
-miniModal.addEventListener('click', function(e){ if (e.target === miniModal) miniModal.classList.add('hidden'); });
-helpClose.addEventListener('click', function(){ helpModal.classList.add('hidden'); });
-helpModal.addEventListener('click', function(e){ if (e.target === helpModal) helpModal.classList.add('hidden'); });
-statsClose.addEventListener('click', function(){ statsModal.classList.add('hidden'); });
-statsModal.addEventListener('click', function(e){ if (e.target === statsModal) statsModal.classList.add('hidden'); });
-videoContainer.addEventListener('click', function(e) { if (e.target.closest && (e.target.closest('.shaka-overlays-container') || e.target.closest('#unmuteBtn') || e.target.closest('#tapToPlay'))) return; peekBanner(5000); });
-videoContainer.addEventListener('touchstart', function(e) { if (e.target.closest && (e.target.closest('.shaka-overlays-container') || e.target.closest('#unmuteBtn') || e.target.closest('#tapToPlay'))) return; peekBanner(5000); }, { passive: true });
+guideClose.addEventListener('click', function(e){ e.stopPropagation(); guideModal.classList.add('hidden'); });
+guideModal.addEventListener('click', function(e){ e.stopPropagation(); if (e.target === guideModal) guideModal.classList.add('hidden'); });
+miniClose.addEventListener('click', function(e){ e.stopPropagation(); miniModal.classList.add('hidden'); });
+miniModal.addEventListener('click', function(e){ e.stopPropagation(); if (e.target === miniModal) miniModal.classList.add('hidden'); });
+helpClose.addEventListener('click', function(e){ e.stopPropagation(); helpModal.classList.add('hidden'); });
+helpModal.addEventListener('click', function(e){ e.stopPropagation(); if (e.target === helpModal) helpModal.classList.add('hidden'); });
+statsClose.addEventListener('click', function(e){ e.stopPropagation(); statsModal.classList.add('hidden'); });
+statsModal.addEventListener('click', function(e){ e.stopPropagation(); if (e.target === statsModal) statsModal.classList.add('hidden'); });
 
-/* ════════ Keyboard — arrows wake banner (no preventDefault), no custom top-bar focus nav ════════ */
+/* ════════ Interaction → banner (mouse / touch / tap) ════════ */
+videoContainer.addEventListener('click', function(e) {
+  if (e.target.closest && (e.target.closest('.shaka-overlays-container') || e.target.closest('#unmuteBtn') || e.target.closest('#tapToPlay') || e.target.closest('.overlay'))) return;
+  peekBanner(BANNER_PEEK_MS);
+});
+videoContainer.addEventListener('touchstart', function(e) {
+  if (e.target.closest && (e.target.closest('.shaka-overlays-container') || e.target.closest('#unmuteBtn') || e.target.closest('#tapToPlay') || e.target.closest('.overlay'))) return;
+  peekBanner(BANNER_PEEK_MS);
+}, { passive: true });
+videoContainer.addEventListener('mousemove', function() {
+  var now = Date.now();
+  if (now - lastMouseMoveTs < 400) return;
+  lastMouseMoveTs = now;
+  peekBanner(BANNER_PEEK_MS);
+});
+
+/* ════════ Keyboard ════════ */
 document.addEventListener('keydown', function(e) {
   var k = e.keyCode;
-
   var inOverlay = !guideModal.classList.contains('hidden') || !miniModal.classList.contains('hidden') || !helpModal.classList.contains('hidden') || !statsModal.classList.contains('hidden');
   if (inOverlay) {
     if (k === 27 || k === 8 || k === 10009) { e.preventDefault(); guideModal.classList.add('hidden'); miniModal.classList.add('hidden'); helpModal.classList.add('hidden'); statsModal.classList.add('hidden'); }
     return;
   }
-
-  if (k === 37 || k === 38 || k === 39 || k === 40) { peekBanner(5000); return; }
-
+  if (k === 37 || k === 38 || k === 39 || k === 40) { peekBanner(BANNER_PEEK_MS); return; }
   var isNumKey = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
   if (isNumKey) { e.preventDefault(); handleChNumDigit(String.fromCharCode(k >= 96 ? k - 48 : k)); return; }
   if (k === 13 && chNumBuffer) { e.preventDefault(); clearTimeout(chNumTimer); commitChNum(); return; }
   if ((k === 27 || k === 8) && chNumBuffer) { e.preventDefault(); cancelChNum(); return; }
-
   if (k === 71) { e.preventDefault(); openGuide(); return; }
   if (k === 76) { e.preventDefault(); openMiniGuide(); return; }
   if (k === 73) { e.preventDefault(); openStats(); return; }
   if (k === 72) { e.preventDefault(); helpModal.classList.remove('hidden'); return; }
-
   if (k === 33) { e.preventDefault(); switchChannelByOffset(1); return; }
   if (k === 34) { e.preventDefault(); switchChannelByOffset(-1); return; }
   if (k === 8) { e.preventDefault(); switchToPreviousChannel(); return; }
-
-  if ((k === 187 || k === 107) && !e.ctrlKey && !e.metaKey) {
-    e.preventDefault();
-    if (videoEl.volume < 1) videoEl.volume = Math.min(1, videoEl.volume + 0.1);
-    showToast('Volume ' + Math.round(videoEl.volume * 100) + '%');
-    return;
-  }
-  if ((k === 189 || k === 109) && !e.ctrlKey && !e.metaKey) {
-    e.preventDefault();
-    if (videoEl.volume > 0) videoEl.volume = Math.max(0, videoEl.volume - 0.1);
-    showToast('Volume ' + Math.round(videoEl.volume * 100) + '%');
-    return;
-  }
+  if ((k === 187 || k === 107) && !e.ctrlKey && !e.metaKey) { e.preventDefault(); if (videoEl.volume < 1) videoEl.volume = Math.min(1, videoEl.volume + 0.1); showToast('Volume ' + Math.round(videoEl.volume * 100) + '%'); return; }
+  if ((k === 189 || k === 109) && !e.ctrlKey && !e.metaKey) { e.preventDefault(); if (videoEl.volume > 0) videoEl.volume = Math.max(0, videoEl.volume - 0.1); showToast('Volume ' + Math.round(videoEl.volume * 100) + '%'); return; }
   if (k === 77) { e.preventDefault(); videoEl.muted = !videoEl.muted; showToast(videoEl.muted ? 'Muted' : 'Unmuted'); return; }
-
   if (k === 70) { e.preventDefault(); applyFitMode(fitModeIndex + 1); return; }
   if (k === 27 || k === 461) { e.preventDefault(); goBack(); return; }
 });
