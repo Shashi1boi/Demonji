@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>flexji · watch free</title>
 
   <!-- Font Awesome 6 -->
@@ -21,7 +21,12 @@
       display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:12px;
       transition:background 0.3s;
     }
-    .navbar.scrolled { background:rgba(20,20,20,0.95); backdrop-filter:blur(8px); }
+    .navbar.scrolled { background:rgba(20,20,20,0.95); }
+    /* Fallback for old Tizen: no backdrop-filter */
+    @supports (backdrop-filter: blur(8px)) {
+      .navbar.scrolled { backdrop-filter:blur(8px); }
+    }
+
     .brand {
       font-size:2rem; font-weight:700; letter-spacing:-1px; color:#e50914;
       display:flex; align-items:center; gap:8px;
@@ -82,7 +87,10 @@
     .row-header i { color:#e50914; font-size:1.2rem; }
     .row-scroll {
       display:flex; gap:12px; overflow-x:auto; padding-bottom:8px;
-      scroll-snap-type:x mandatory; -webkit-overflow-scrolling:touch;
+      /* -webkit-overflow-scrolling for older iOS/Tizen */
+      -webkit-overflow-scrolling:touch;
+      /* Remove scroll-snap because Tizen 2014-15 does not support it */
+      /* scroll-snap-type:x mandatory; */
     }
     .row-scroll::-webkit-scrollbar { height:6px; }
     .row-scroll::-webkit-scrollbar-track { background:#1a1a1a; border-radius:10px; }
@@ -90,7 +98,7 @@
 
     /* ── cards ── */
     .card {
-      flex:0 0 180px; scroll-snap-align:start; cursor:pointer;
+      flex:0 0 180px; cursor:pointer;
       border-radius:6px; overflow:hidden; background:#151515;
       transition:transform 0.25s ease, box-shadow 0.25s ease;
       position:relative;
@@ -278,87 +286,104 @@
   </div>
 </div>
 
+<!-- ═══ POLYFILLS FOR OLD TIZEN ═══ -->
+<!-- Fetch polyfill (whatwg-fetch) -->
+<script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3.6.2/dist/fetch.umd.min.js"></script>
+
 <script>
 (function() {
   'use strict';
 
   // ─── CONFIG ────────────────────────────────────────────────
-  const PROXY = 'https://demonji.onrender.com/cors-proxy.php?url=';
-  const API_BASE = 'https://api.2embed.cc';
-  const IMG_BASE = 'https://image.tmdb.org/t/p';
-  // Player: nxsha.space – using IMDb ID directly
-  const NXSHA_BASE = 'https://nxsha.space/embed';
+  var PROXY = 'https://demonji.onrender.com/cors-proxy.php?url=';
+  var API_BASE = 'https://api.2embed.cc';
+  var IMG_BASE = 'https://image.tmdb.org/t/p';
+  var NXSHA_BASE = 'https://nxsha.space/embed';
 
   // ─── DOM REFS ──────────────────────────────────────────────
-  const navbar = document.getElementById('navbar');
-  const heroSection = document.getElementById('heroSection');
-  const heroTitle = document.getElementById('heroTitle');
-  const heroMeta = document.getElementById('heroMeta');
-  const heroPlot = document.getElementById('heroPlot');
-  const heroPlayBtn = document.getElementById('heroPlayBtn');
+  var navbar = document.getElementById('navbar');
+  var heroSection = document.getElementById('heroSection');
+  var heroTitle = document.getElementById('heroTitle');
+  var heroMeta = document.getElementById('heroMeta');
+  var heroPlot = document.getElementById('heroPlot');
+  var heroPlayBtn = document.getElementById('heroPlayBtn');
 
-  const rowsContainer = document.getElementById('rowsContainer');
-  const detailView = document.getElementById('detailView');
-  const detailPoster = document.getElementById('detailPoster');
-  const detailTitle = document.getElementById('detailTitle');
-  const detailMeta = document.getElementById('detailMeta');
-  const detailPlot = document.getElementById('detailPlot');
-  const detailPlayBtn = document.getElementById('detailPlayBtn');
-  const episodeSection = document.getElementById('episodeSection');
-  const seasonSelector = document.getElementById('seasonSelector');
-  const episodeGrid = document.getElementById('episodeGrid');
+  var rowsContainer = document.getElementById('rowsContainer');
+  var detailView = document.getElementById('detailView');
+  var detailPoster = document.getElementById('detailPoster');
+  var detailTitle = document.getElementById('detailTitle');
+  var detailMeta = document.getElementById('detailMeta');
+  var detailPlot = document.getElementById('detailPlot');
+  var detailPlayBtn = document.getElementById('detailPlayBtn');
+  var episodeSection = document.getElementById('episodeSection');
+  var seasonSelector = document.getElementById('seasonSelector');
+  var episodeGrid = document.getElementById('episodeGrid');
 
-  const playerOverlay = document.getElementById('playerOverlay');
-  const playerIframe = document.getElementById('playerIframe');
-  const closePlayer = document.getElementById('closePlayer');
+  var playerOverlay = document.getElementById('playerOverlay');
+  var playerIframe = document.getElementById('playerIframe');
+  var closePlayer = document.getElementById('closePlayer');
 
-  const searchInput = document.getElementById('searchInput');
-  const searchBtn = document.getElementById('searchBtn');
-  const navHome = document.getElementById('navHome');
-  const navTrending = document.getElementById('navTrending');
-  const navTv = document.getElementById('navTv');
+  var searchInput = document.getElementById('searchInput');
+  var searchBtn = document.getElementById('searchBtn');
+  var navHome = document.getElementById('navHome');
+  var navTrending = document.getElementById('navTrending');
+  var navTv = document.getElementById('navTv');
 
   // ─── STATE ──────────────────────────────────────────────────
-  let currentItem = null;
-  let currentType = 'movie';
-  let currentImdb = null;
-  let currentSeason = 1;
-  let episodesCache = {};
-  let seasonsList = {};
-  let heroItem = null;
+  var currentItem = null;
+  var currentType = 'movie';
+  var currentImdb = null;
+  var currentSeason = 1;
+  var episodesCache = {};
+  var seasonsList = {};
+  var heroItem = null;
 
-  // ─── HELPERS ────────────────────────────────────────────────
+  // ─── HELPERS (ES5 ONLY) ────────────────────────────────────
+  // Use var, function, and string concatenation.
+  // No arrow functions, no template literals, no const/let.
+
   function apiFetch(endpoint, params) {
-    const qs = new URLSearchParams(params).toString();
-    const fullUrl = API_BASE + endpoint + (qs ? '?' + qs : '');
-    const proxied = PROXY + encodeURIComponent(fullUrl);
-    return fetch(proxied).then(r => {
+    // Build query string manually (ES5 friendly)
+    var qs = '';
+    if (params) {
+      var parts = [];
+      for (var key in params) {
+        if (params.hasOwnProperty(key)) {
+          parts.push(encodeURIComponent(key) + '=' + encodeURIComponent(params[key]));
+        }
+      }
+      qs = parts.join('&');
+    }
+    var fullUrl = API_BASE + endpoint + (qs ? '?' + qs : '');
+    var proxied = PROXY + encodeURIComponent(fullUrl);
+    return fetch(proxied).then(function(r) {
       if (!r.ok) throw new Error('API error: ' + r.status);
       return r.json();
     });
   }
 
-  function proxyImage(path, size = 'w300') {
+  function proxyImage(path, size) {
+    size = size || 'w300';
     if (!path) return 'https://via.placeholder.com/300x450/222/666?text=no+poster';
-    if (path.startsWith('http://') || path.startsWith('https://')) {
+    if (path.indexOf('http://') === 0 || path.indexOf('https://') === 0) {
       return PROXY + encodeURIComponent(path);
     }
     return PROXY + encodeURIComponent(IMG_BASE + '/' + size + path);
   }
 
-  // ─── BUILD NXSHA PLAYER URL (using IMDb ID) ────────────────
+  // ─── BUILD NXSHA PLAYER URL ────────────────────────────────
   function getNxshaUrl(imdbId, type, season, episode) {
     if (!imdbId) return null;
     if (type === 'tv') {
-      const s = season || 1;
-      const e = episode || 1;
-      return `${NXSHA_BASE}/tv/${imdbId}/${s}/${e}`;
+      var s = season || 1;
+      var e = episode || 1;
+      return NXSHA_BASE + '/tv/' + imdbId + '/' + s + '/' + e;
     }
-    return `${NXSHA_BASE}/movie/${imdbId}`;
+    return NXSHA_BASE + '/movie/' + imdbId;
   }
 
   // ─── NAVBAR SCROLL EFFECT ──────────────────────────────────
-  window.addEventListener('scroll', () => {
+  window.addEventListener('scroll', function() {
     if (window.scrollY > 50) navbar.classList.add('scrolled');
     else navbar.classList.remove('scrolled');
   });
@@ -367,36 +392,34 @@
   function renderHero(item, type) {
     if (!item) { heroSection.style.display = 'none'; return; }
     heroItem = item;
-    const imdb = item.imdb_id;
+    var imdb = item.imdb_id;
     currentImdb = imdb;
     currentType = type;
 
-    let posterUrl = item.poster || item.poster_path;
-    if (posterUrl && !posterUrl.startsWith('http://') && !posterUrl.startsWith('https://')) {
+    var posterUrl = item.poster || item.poster_path;
+    if (posterUrl && posterUrl.indexOf('http://') !== 0 && posterUrl.indexOf('https://') !== 0) {
       posterUrl = 'https://image.tmdb.org/t/p/w1280' + posterUrl;
     }
     if (posterUrl) {
-      heroSection.style.backgroundImage = `url(${PROXY}${encodeURIComponent(posterUrl)})`;
+      heroSection.style.backgroundImage = 'url(' + PROXY + encodeURIComponent(posterUrl) + ')';
     } else {
       heroSection.style.backgroundImage = 'none';
     }
     heroSection.style.display = 'flex';
 
-    const title = item.title || item.name || 'Untitled';
+    var title = item.title || item.name || 'Untitled';
     heroTitle.textContent = title;
 
-    const year = item.release_date ? item.release_date.split('-')[0] : (item.first_air_date ? item.first_air_date.split('-')[0] : '');
-    const rating = item.vote_average ? item.vote_average.toFixed(1) : 'N/A';
-    heroMeta.innerHTML = `
-      <span>${year}</span>
-      <span><i class="fas fa-star" style="color:#f5c518;"></i> ${rating}</span>
-      <span>${type.toUpperCase()}</span>
-    `;
+    var year = item.release_date ? item.release_date.split('-')[0] : (item.first_air_date ? item.first_air_date.split('-')[0] : '');
+    var rating = item.vote_average ? item.vote_average.toFixed(1) : 'N/A';
+    heroMeta.innerHTML = '<span>' + year + '</span>' +
+      '<span><i class="fas fa-star" style="color:#f5c518;"></i> ' + rating + '</span>' +
+      '<span>' + type.toUpperCase() + '</span>';
     heroPlot.textContent = item.overview || 'No description available.';
 
     heroPlayBtn.onclick = function() {
       if (type === 'tv') {
-        const eps = getFirstEpisode(imdb, 1);
+        var eps = getFirstEpisode(imdb, 1);
         if (eps) {
           openPlayer(imdb, 'tv', 1, eps.episode_number || 1);
         } else {
@@ -412,30 +435,28 @@
   function renderDetail(item, type) {
     currentItem = item;
     currentType = type;
-    const newImdb = item.imdb_id || null;
+    var newImdb = item.imdb_id || null;
     if (newImdb !== currentImdb) {
       currentImdb = newImdb;
       currentSeason = 1;
     }
 
-    let posterUrl = item.poster || item.poster_path;
-    if (posterUrl && !posterUrl.startsWith('http://') && !posterUrl.startsWith('https://')) {
+    var posterUrl = item.poster || item.poster_path;
+    if (posterUrl && posterUrl.indexOf('http://') !== 0 && posterUrl.indexOf('https://') !== 0) {
       posterUrl = 'https://image.tmdb.org/t/p/w300' + posterUrl;
     }
     detailPoster.src = proxyImage(posterUrl);
 
-    const title = item.title || item.name || 'Untitled';
+    var title = item.title || item.name || 'Untitled';
     detailTitle.textContent = title;
 
-    const year = item.release_date ? item.release_date.split('-')[0] : (item.first_air_date ? item.first_air_date.split('-')[0] : '');
-    const rating = item.vote_average ? item.vote_average.toFixed(1) : 'N/A';
-    const genres = item.genres ? item.genres.join(' · ') : '';
-    detailMeta.innerHTML = `
-      <span><i class="far fa-calendar-alt"></i> ${year}</span>
-      <span><i class="fas fa-star" style="color:#f5c518;"></i> ${rating}</span>
-      <span><i class="fas fa-tag"></i> ${type.toUpperCase()}</span>
-      ${genres ? `<span><i class="fas fa-theater-masks"></i> ${genres}</span>` : ''}
-    `;
+    var year = item.release_date ? item.release_date.split('-')[0] : (item.first_air_date ? item.first_air_date.split('-')[0] : '');
+    var rating = item.vote_average ? item.vote_average.toFixed(1) : 'N/A';
+    var genres = item.genres ? item.genres.join(' · ') : '';
+    detailMeta.innerHTML = '<span><i class="far fa-calendar-alt"></i> ' + year + '</span>' +
+      '<span><i class="fas fa-star" style="color:#f5c518;"></i> ' + rating + '</span>' +
+      '<span><i class="fas fa-tag"></i> ' + type.toUpperCase() + '</span>' +
+      (genres ? '<span><i class="fas fa-theater-masks"></i> ' + genres + '</span>' : '');
     detailPlot.textContent = item.overview || 'No description available.';
 
     detailView.classList.add('active');
@@ -452,7 +473,7 @@
     detailPlayBtn.onclick = function() {
       if (!currentImdb) { alert('No IMDb ID.'); return; }
       if (type === 'tv') {
-        const firstEp = getFirstEpisode(currentImdb, currentSeason);
+        var firstEp = getFirstEpisode(currentImdb, currentSeason);
         if (firstEp) {
           openPlayer(currentImdb, 'tv', currentSeason, firstEp.episode_number || 1);
         } else {
@@ -463,7 +484,7 @@
       }
     };
 
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo(0, 0);
   }
 
   // ─── FETCH SEASONS ──────────────────────────────────────────
@@ -477,10 +498,18 @@
     }
 
     apiFetch('/tv', { imdb_id: imdbId })
-      .then(data => {
+      .then(function(data) {
         if (data && data.seasons && data.seasons.length) {
-          const seasons = data.seasons.filter(s => s.season_number > 0 && s.episode_count > 0);
-          const nums = seasons.map(s => s.season_number);
+          var seasons = [];
+          for (var i = 0; i < data.seasons.length; i++) {
+            if (data.seasons[i].season_number > 0 && data.seasons[i].episode_count > 0) {
+              seasons.push(data.seasons[i]);
+            }
+          }
+          var nums = [];
+          for (var j = 0; j < seasons.length; j++) {
+            nums.push(seasons[j].season_number);
+          }
           seasonsList[imdbId] = nums;
           if (nums.length) {
             populateSeasonButtons(imdbId, nums);
@@ -491,24 +520,27 @@
           fallbackSeasons(imdbId);
         }
       })
-      .catch(() => fallbackSeasons(imdbId));
+      .catch(function() { fallbackSeasons(imdbId); });
   }
 
   function populateSeasonButtons(imdbId, nums) {
     seasonSelector.innerHTML = '';
-    nums.forEach(s => {
-      const btn = document.createElement('button');
-      btn.textContent = `S${s}`;
+    nums.forEach(function(s) {
+      var btn = document.createElement('button');
+      btn.textContent = 'S' + s;
       btn.dataset.season = s;
       btn.onclick = function() {
-        document.querySelectorAll('.season-selector button').forEach(b => b.classList.remove('active'));
+        var allBtns = document.querySelectorAll('.season-selector button');
+        for (var i = 0; i < allBtns.length; i++) {
+          allBtns[i].classList.remove('active');
+        }
         this.classList.add('active');
         currentSeason = parseInt(this.dataset.season);
         loadEpisodes(imdbId, currentSeason);
       };
       seasonSelector.appendChild(btn);
     });
-    const first = seasonSelector.querySelector('button');
+    var first = seasonSelector.querySelector('button');
     if (first) {
       first.classList.add('active');
       currentSeason = parseInt(first.dataset.season);
@@ -518,21 +550,24 @@
 
   function fallbackSeasons(imdbId) {
     seasonSelector.innerHTML = '';
-    const fallback = [1, 2, 3, 4, 5, 6, 7, 8];
+    var fallback = [1, 2, 3, 4, 5, 6, 7, 8];
     seasonsList[imdbId] = fallback;
-    fallback.forEach(s => {
-      const btn = document.createElement('button');
-      btn.textContent = `S${s}`;
+    fallback.forEach(function(s) {
+      var btn = document.createElement('button');
+      btn.textContent = 'S' + s;
       btn.dataset.season = s;
       btn.onclick = function() {
-        document.querySelectorAll('.season-selector button').forEach(b => b.classList.remove('active'));
+        var allBtns = document.querySelectorAll('.season-selector button');
+        for (var i = 0; i < allBtns.length; i++) {
+          allBtns[i].classList.remove('active');
+        }
         this.classList.add('active');
         currentSeason = parseInt(this.dataset.season);
         loadEpisodes(imdbId, currentSeason);
       };
       seasonSelector.appendChild(btn);
     });
-    const first = seasonSelector.querySelector('button');
+    var first = seasonSelector.querySelector('button');
     if (first) {
       first.classList.add('active');
       currentSeason = 1;
@@ -550,25 +585,25 @@
     }
 
     apiFetch('/season', { imdb_id: imdbId, season: seasonNum })
-      .then(data => {
+      .then(function(data) {
         if (data && data.episodes && data.episodes.length) {
           if (!episodesCache[imdbId]) episodesCache[imdbId] = {};
           episodesCache[imdbId][seasonNum] = data.episodes;
           renderEpisodes(imdbId, data.episodes);
         } else {
-          const fallback = [];
-          for (let i = 1; i <= 10; i++) {
-            fallback.push({ episode_number: i, title: `Episode ${i}`, overview: '' });
+          var fallback = [];
+          for (var i = 1; i <= 10; i++) {
+            fallback.push({ episode_number: i, title: 'Episode ' + i, overview: '' });
           }
           if (!episodesCache[imdbId]) episodesCache[imdbId] = {};
           episodesCache[imdbId][seasonNum] = fallback;
           renderEpisodes(imdbId, fallback);
         }
       })
-      .catch(() => {
-        const fallback = [];
-        for (let i = 1; i <= 10; i++) {
-          fallback.push({ episode_number: i, title: `Episode ${i}`, overview: '' });
+      .catch(function() {
+        var fallback = [];
+        for (var i = 1; i <= 10; i++) {
+          fallback.push({ episode_number: i, title: 'Episode ' + i, overview: '' });
         }
         if (!episodesCache[imdbId]) episodesCache[imdbId] = {};
         episodesCache[imdbId][seasonNum] = fallback;
@@ -582,17 +617,15 @@
       episodeGrid.innerHTML = '<div style="color:#888;padding:20px;"><i class="fas fa-exclamation-circle"></i> No episodes</div>';
       return;
     }
-    episodes.forEach(ep => {
-      const card = document.createElement('div');
+    episodes.forEach(function(ep) {
+      var card = document.createElement('div');
       card.className = 'episode-card';
-      const epNum = ep.episode_number || '?';
-      const title = ep.title || `Episode ${epNum}`;
-      const desc = ep.overview || '';
-      card.innerHTML = `
-        <div class="ep-num">E${epNum}</div>
-        <div class="ep-title">${title}</div>
-        ${desc ? `<div class="ep-desc">${desc}</div>` : ''}
-      `;
+      var epNum = ep.episode_number || '?';
+      var title = ep.title || 'Episode ' + epNum;
+      var desc = ep.overview || '';
+      card.innerHTML = '<div class="ep-num">E' + epNum + '</div>' +
+        '<div class="ep-title">' + title + '</div>' +
+        (desc ? '<div class="ep-desc">' + desc + '</div>' : '');
       card.onclick = function() {
         openPlayer(imdbId, 'tv', currentSeason, epNum);
       };
@@ -602,7 +635,7 @@
 
   function getFirstEpisode(imdbId, seasonNum) {
     if (episodesCache[imdbId] && episodesCache[imdbId][seasonNum]) {
-      const eps = episodesCache[imdbId][seasonNum];
+      var eps = episodesCache[imdbId][seasonNum];
       if (eps && eps.length) return eps[0];
     }
     return null;
@@ -614,7 +647,7 @@
       alert('No IMDb ID.');
       return;
     }
-    const url = getNxshaUrl(imdbId, type, season, episode);
+    var url = getNxshaUrl(imdbId, type, season, episode);
     if (!url) {
       alert('Could not build player URL.');
       return;
@@ -635,7 +668,7 @@
     if (e.target === playerOverlay) closePlayerHandler();
   });
   document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') closePlayerHandler();
+    if (e.key === 'Escape' || e.keyCode === 27) closePlayerHandler();
   });
 
   // ─── FETCH DETAILS ──────────────────────────────────────────
@@ -644,16 +677,16 @@
       alert('No IMDb ID.');
       return;
     }
-    const endpoint = type === 'tv' ? '/tv' : '/movie';
+    var endpoint = type === 'tv' ? '/tv' : '/movie';
     apiFetch(endpoint, { imdb_id: imdbId })
-      .then(data => {
+      .then(function(data) {
         if (data && (data.title || data.name)) {
           renderDetail(data, type);
         } else {
           throw new Error('No data');
         }
       })
-      .catch(err => {
+      .catch(function(err) {
         console.error(err);
         alert('Failed to load details.');
       });
@@ -661,41 +694,39 @@
 
   // ─── CREATE CARD ────────────────────────────────────────────
   function createCard(item, type) {
-    let posterPath = item.poster || item.poster_path;
-    if (posterPath && !posterPath.startsWith('http://') && !posterPath.startsWith('https://')) {
+    var posterPath = item.poster || item.poster_path;
+    if (posterPath && posterPath.indexOf('http://') !== 0 && posterPath.indexOf('https://') !== 0) {
       posterPath = 'https://image.tmdb.org/t/p/w200' + posterPath;
     }
-    const poster = proxyImage(posterPath);
-    const title = item.title || item.name || 'Untitled';
-    const year = item.release_date ? item.release_date.split('-')[0] : (item.first_air_date ? item.first_air_date.split('-')[0] : '');
-    const card = document.createElement('div');
+    var poster = proxyImage(posterPath);
+    var title = item.title || item.name || 'Untitled';
+    var year = item.release_date ? item.release_date.split('-')[0] : (item.first_air_date ? item.first_air_date.split('-')[0] : '');
+    var card = document.createElement('div');
     card.className = 'card';
-    card.innerHTML = `
-      <img src="${poster}" alt="${title}" loading="lazy" />
-      <div class="title">${title}</div>
-      <div class="year">${year}</div>
-    `;
-    const imdbId = item.imdb_id || null;
-    card.addEventListener('click', () => fetchDetails(imdbId, type));
+    card.innerHTML = '<img src="' + poster + '" alt="' + title + '" loading="lazy" />' +
+      '<div class="title">' + title + '</div>' +
+      '<div class="year">' + year + '</div>';
+    var imdbId = item.imdb_id || null;
+    card.addEventListener('click', function() { fetchDetails(imdbId, type); });
     return card;
   }
 
   // ─── RENDER ROW ─────────────────────────────────────────────
   function renderRow(title, icon, items, type) {
-    const wrapper = document.createElement('div');
+    var wrapper = document.createElement('div');
     wrapper.className = 'row';
-    wrapper.innerHTML = `
-      <div class="row-header">
-        <i class="${icon}"></i>
-        <h2>${title}</h2>
-      </div>
-      <div class="row-scroll" id="scroll_${Date.now()}"></div>
-    `;
-    const scroll = wrapper.querySelector('.row-scroll');
+    wrapper.innerHTML = '<div class="row-header">' +
+      '<i class="' + icon + '"></i>' +
+      '<h2>' + title + '</h2>' +
+      '</div>' +
+      '<div class="row-scroll" id="scroll_' + Date.now() + '"></div>';
+    var scroll = wrapper.querySelector('.row-scroll');
     if (!items || !items.length) {
       scroll.innerHTML = '<div class="error-msg"><i class="fas fa-exclamation-triangle"></i> No results</div>';
     } else {
-      items.forEach(item => scroll.appendChild(createCard(item, type)));
+      items.forEach(function(item) {
+        scroll.appendChild(createCard(item, type));
+      });
     }
     rowsContainer.appendChild(wrapper);
   }
@@ -703,24 +734,24 @@
   // ─── LOAD TRENDING ──────────────────────────────────────────
   function loadTrendingMovies() {
     apiFetch('/trending', { time_window: 'day', page: 1 })
-      .then(data => {
+      .then(function(data) {
         if (data.results) {
-          const movies = data.results.slice(0, 12);
+          var movies = data.results.slice(0, 12);
           renderRow('Trending Movies', 'fas fa-fire', movies, 'movie');
           if (movies.length) renderHero(movies[0], 'movie');
         }
       })
-      .catch(() => {});
+      .catch(function() {});
   }
 
   function loadTrendingTV() {
     apiFetch('/trendingtv', { time_window: 'day', page: 1 })
-      .then(data => {
+      .then(function(data) {
         if (data.results) {
           renderRow('Trending TV', 'fas fa-tv', data.results.slice(0, 12), 'tv');
         }
       })
-      .catch(() => {});
+      .catch(function() {});
   }
 
   // ─── SEARCH ──────────────────────────────────────────────────
@@ -731,16 +762,16 @@
     heroSection.style.display = 'none';
 
     apiFetch('/search', { q: query, page: 1 })
-      .then(data => {
+      .then(function(data) {
         if (data.results) renderRow('Movies', 'fas fa-film', data.results.slice(0, 12), 'movie');
       })
-      .catch(() => {});
+      .catch(function() {});
 
     apiFetch('/searchtv', { q: query, page: 1 })
-      .then(data => {
+      .then(function(data) {
         if (data.results) renderRow('TV Shows', 'fas fa-list-ul', data.results.slice(0, 12), 'tv');
       })
-      .catch(() => {});
+      .catch(function() {});
   }
 
   // ─── RESET HOME ─────────────────────────────────────────────
@@ -754,68 +785,102 @@
     searchInput.value = '';
   }
 
-  // ─── INBUILT ADBLOCK ────────────────────────────────────────
+  // ─── INBUILT ADBLOCK (ES5 SAFE) ────────────────────────────
   function initAdBlock() {
-    const adDomains = [
+    var adDomains = [
       'googleads', 'doubleclick', 'googlesyndication', 'adservice', 'adserver',
       'amazon-adsystem', 'imrworldwide', 'scorecardresearch', 'moatads',
       'adsrvr', 'adnxs', 'adzerk', 'criteo', 'taboola', 'outbrain'
     ];
-    const origCreateElement = document.createElement;
+    var origCreateElement = document.createElement;
     document.createElement = function(tagName) {
-      const el = origCreateElement.call(document, tagName);
-      if (tagName.toLowerCase() === 'script') {
-        const origSetSrc = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src')?.set;
-        if (origSetSrc) {
+      var el = origCreateElement.call(document, tagName);
+      var lower = tagName.toLowerCase();
+      if (lower === 'script') {
+        var origSetSrc = Object.getOwnPropertyDescriptor(HTMLScriptElement.prototype, 'src');
+        if (origSetSrc && origSetSrc.set) {
           Object.defineProperty(el, 'src', {
             set: function(url) {
-              if (adDomains.some(d => url.includes(d))) {
-                console.warn('Ad blocked:', url);
-                return;
+              for (var i = 0; i < adDomains.length; i++) {
+                if (url.indexOf(adDomains[i]) !== -1) {
+                  console.warn('Ad blocked:', url);
+                  return;
+                }
               }
-              origSetSrc.call(this, url);
+              origSetSrc.set.call(this, url);
             }
           });
         }
       }
-      if (tagName.toLowerCase() === 'iframe') {
-        const origSetSrc = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'src')?.set;
-        if (origSetSrc) {
+      if (lower === 'iframe') {
+        var origSetSrcFrame = Object.getOwnPropertyDescriptor(HTMLIFrameElement.prototype, 'src');
+        if (origSetSrcFrame && origSetSrcFrame.set) {
           Object.defineProperty(el, 'src', {
             set: function(url) {
-              if (adDomains.some(d => url.includes(d))) {
-                console.warn('Ad iframe blocked:', url);
-                return;
+              for (var i = 0; i < adDomains.length; i++) {
+                if (url.indexOf(adDomains[i]) !== -1) {
+                  console.warn('Ad iframe blocked:', url);
+                  return;
+                }
               }
-              origSetSrc.call(this, url);
+              origSetSrcFrame.set.call(this, url);
             }
           });
         }
       }
       return el;
     };
-    setInterval(() => {
-      document.querySelectorAll('iframe, script').forEach(el => {
-        const src = el.src || '';
-        if (adDomains.some(d => src.includes(d))) {
-          el.remove();
+    setInterval(function() {
+      var iframes = document.querySelectorAll('iframe, script');
+      for (var i = 0; i < iframes.length; i++) {
+        var src = iframes[i].src || '';
+        for (var j = 0; j < adDomains.length; j++) {
+          if (src.indexOf(adDomains[j]) !== -1) {
+            iframes[i].remove();
+            break;
+          }
         }
-      });
+      }
     }, 2000);
+  }
+
+  // ─── D-PAD / REMOTE NAVIGATION (OPTIONAL) ──────────────────
+  // Adds basic arrow key support for TV remote controls.
+  function initRemoteNavigation() {
+    document.addEventListener('keydown', function(e) {
+      var key = e.keyCode;
+      // 37 left, 38 up, 39 right, 40 down, 13 enter
+      if (key >= 37 && key <= 40) {
+        var focusable = document.querySelectorAll('a, button, input, .card, .episode-card, .season-selector button');
+        var current = document.activeElement;
+        var index = Array.prototype.indexOf.call(focusable, current);
+        if (key === 39 || key === 40) { // right / down
+          if (index < focusable.length - 1) {
+            focusable[index + 1].focus();
+          }
+        } else if (key === 37 || key === 38) { // left / up
+          if (index > 0) {
+            focusable[index - 1].focus();
+          }
+        }
+        e.preventDefault();
+      }
+    });
   }
 
   // ─── INIT ────────────────────────────────────────────────────
   function init() {
     initAdBlock();
+    initRemoteNavigation();
     resetHome();
 
-    searchBtn.addEventListener('click', () => performSearch(searchInput.value));
-    searchInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') performSearch(searchInput.value);
+    searchBtn.addEventListener('click', function() { performSearch(searchInput.value); });
+    searchInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter' || e.keyCode === 13) performSearch(searchInput.value);
     });
 
-    navHome.addEventListener('click', (e) => { e.preventDefault(); resetHome(); });
-    navTrending.addEventListener('click', (e) => {
+    navHome.addEventListener('click', function(e) { e.preventDefault(); resetHome(); });
+    navTrending.addEventListener('click', function(e) {
       e.preventDefault();
       rowsContainer.innerHTML = '';
       detailView.classList.remove('active');
@@ -823,7 +888,7 @@
       loadTrendingMovies();
       loadTrendingTV();
     });
-    navTv.addEventListener('click', (e) => {
+    navTv.addEventListener('click', function(e) {
       e.preventDefault();
       rowsContainer.innerHTML = '';
       detailView.classList.remove('active');
