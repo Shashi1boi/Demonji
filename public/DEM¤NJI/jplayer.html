@@ -98,6 +98,63 @@ html,body { background:#000; width:100%; height:100%; overflow:hidden; font-fami
 .stats-value { color:#7cd0f5; font-family:monospace; font-weight:bold; }
 .shaka-controls-container { font-size:14px; }
 
+/* ═══════════════════════════════════════════════════════
+   CROSS-CHANNEL GRID GUIDE
+   ═══════════════════════════════════════════════════════ */
+#gridGuideModal { position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.96); z-index:1850; display:flex; flex-direction:column; padding:10px; padding-top:calc(10px + env(safe-area-inset-top)); padding-bottom:calc(10px + env(safe-area-inset-bottom)); }
+#gridGuideModal.hidden { display:none; }
+.gg-header { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:#0e1620; border-bottom:1px solid #2a3a4a; border-radius:8px 8px 0 0; flex-shrink:0; gap:12px; }
+.gg-header h2 { font-size:15px; color:#4fc3f7; font-weight:bold; margin:0; white-space:nowrap; }
+.gg-header .gg-time-label { font-size:11px; color:#7a8a95; font-weight:normal; margin-left:8px; }
+.gg-close { padding:8px 14px; background:#2a2a2a; border:1px solid #444; color:#eee; border-radius:6px; cursor:pointer; font-family:inherit; font-weight:bold; font-size:12px; }
+.gg-close:hover { background:#3a3a3a; border-color:#4fc3f7; }
+.gg-body { flex:1; overflow:auto; position:relative; background:#0a121a; border:1px solid #2a3a4a; border-top:none; border-radius:0 0 8px 8px; -webkit-overflow-scrolling:touch; }
+.gg-time-header { position:sticky; top:0; z-index:20; display:flex; height:34px; background:#0e1620; border-bottom:1px solid #2a3a4a; }
+.gg-time-header-offset { width:130px; flex-shrink:0; position:sticky; left:0; background:#0e1620; border-right:1px solid #2a3a4a; z-index:21; }
+.gg-time-slot { flex-shrink:0; border-right:1px solid #1a2530; font-size:11px; color:#7cd0f5; display:flex; align-items:center; justify-content:center; font-weight:bold; }
+.gg-row { display:flex; border-bottom:1px solid #1a2530; height:68px; }
+.gg-row.active .gg-row-name { background:#1e3a4a; border-right-color:#66bb6a; }
+.gg-row.selected .gg-row-name { background:#3a2a10; border-right-color:#ffc94a; }
+.gg-row.selected.active .gg-row-name { background:#1e4a2a; border-right-color:#66bb6a; }
+.gg-row-name { width:130px; flex-shrink:0; position:sticky; left:0; background:#101820; z-index:10; padding:6px 8px; display:flex; align-items:center; gap:6px; border-right:2px solid #2a3a4a; cursor:pointer; overflow:hidden; transition:background .15s; }
+.gg-row-name:hover { background:#1a2530; }
+.gg-row-logo { width:28px; height:28px; object-fit:contain; flex-shrink:0; background:#0a0a0a; border-radius:4px; }
+.gg-row-name-body { flex:1; min-width:0; }
+.gg-row-num { color:#7cd0f5; font-size:9px; font-weight:bold; line-height:1; }
+.gg-row-nametxt { font-size:11px; font-weight:bold; color:#ddd; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.3; }
+.gg-row-timeline { position:relative; flex:1; height:100%; min-width:0; }
+.gg-program { position:absolute; top:4px; bottom:4px; background:#1a2530; border:1px solid #2a3a4a; border-radius:4px; padding:4px 6px; overflow:hidden; cursor:pointer; display:flex; flex-direction:column; justify-content:center; transition:background .15s, border-color .15s, box-shadow .15s; }
+.gg-program:hover { background:#1e3a4a; border-color:#4fc3f7; }
+.gg-program.live { background:#16321c; border-color:#66bb6a; }
+.gg-program.live:hover { background:#224a2a; border-color:#7cd698; }
+.gg-program.past { opacity:0.45; }
+.gg-program-title { font-size:11px; font-weight:bold; color:#ddd; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
+.gg-program.live .gg-program-title { color:#fff; }
+.gg-program-meta { font-size:9px; color:#7a8a95; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.2; }
+.gg-program-live-badge { display:inline-block; background:#66bb6a; color:#fff; font-size:8px; font-weight:bold; padding:1px 4px; border-radius:2px; margin-right:4px; letter-spacing:0.5px; }
+.gg-now-line { position:absolute; top:0; bottom:0; width:2px; background:#66bb6a; z-index:15; pointer-events:none; box-shadow:0 0 8px rgba(102,187,106,0.8); }
+.gg-now-line::before { content:''; position:absolute; top:0; left:-3px; width:8px; height:8px; background:#66bb6a; border-radius:50%; }
+.gg-empty { padding:40px; text-align:center; color:#888; font-size:14px; }
+.gg-row-empty { padding:6px 8px; font-size:10px; color:#555; font-style:italic; }
+
+@media (max-width: 600px) {
+  .gg-header { padding:6px 10px; gap:8px; }
+  .gg-header h2 { font-size:13px; }
+  .gg-header .gg-time-label { font-size:10px; margin-left:4px; }
+  .gg-close { padding:6px 10px; font-size:11px; }
+  .gg-time-header { height:28px; }
+  .gg-time-header-offset { width:96px; }
+  .gg-time-slot { font-size:10px; }
+  .gg-row { height:54px; }
+  .gg-row-name { width:96px; padding:4px 6px; gap:4px; }
+  .gg-row-logo { width:22px; height:22px; }
+  .gg-row-num { font-size:8px; }
+  .gg-row-nametxt { font-size:10px; }
+  .gg-program { padding:3px 5px; }
+  .gg-program-title { font-size:10px; }
+  .gg-program-meta { font-size:8px; }
+}
+
 @media (max-width: 480px) {
   .top-btn { padding:10px 12px; min-height:42px; font-size:13px; }
   #dthBanner { bottom:60px; left:8px; right:8px; padding:6px 9px; max-width:none; }
@@ -132,6 +189,7 @@ html,body { background:#000; width:100%; height:100%; overflow:hidden; font-fami
       <button id="backBtn" class="top-btn" type="button">◄</button>
       <div id="titleWrap"><span id="chNum"></span><span id="title">…</span></div>
       <button id="guideBtn" class="top-btn" type="button">📅</button>
+      <button id="gridBtn" class="top-btn" type="button">📺</button>
       <button id="fitBtn" class="top-btn" type="button">FIT</button>
       <button id="helpBtn" class="top-btn" type="button">?</button>
     </div>
@@ -168,13 +226,23 @@ html,body { background:#000; width:100%; height:100%; overflow:hidden; font-fami
       <div class="help-row"><span>Channel up / down</span><span class="help-key">PgUp / PgDn</span></div>
       <div class="help-row"><span>Volume up / down</span><span class="help-key">+ / −</span></div>
       <div class="help-row"><span>Mute</span><span class="help-key">M</span></div>
-      <div class="help-row"><span>Full guide</span><span class="help-key">G</span></div>
+      <div class="help-row"><span>Channel guide</span><span class="help-key">G</span></div>
+      <div class="help-row"><span>Cross-channel grid</span><span class="help-key">E</span></div>
       <div class="help-row"><span>Mini channel list</span><span class="help-key">L</span></div>
       <div class="help-row"><span>Stream stats</span><span class="help-key">I</span></div>
       <div class="help-row"><span>Fit mode cycle</span><span class="help-key">F</span></div>
       <div class="help-row"><span>Back to last channel</span><span class="help-key">Backspace</span></div>
     </div><div class="overlay-footer"><button id="helpClose" type="button">Close</button></div></div></div>
     <div id="statsModal" class="overlay hidden"><div class="overlay-panel"><h2>📊 Stats</h2><div class="overlay-body" id="statsBody"></div><div class="overlay-footer"><button id="statsClose" type="button">Close</button></div></div></div>
+
+    <!-- ════════ CROSS-CHANNEL GRID GUIDE ════════ -->
+    <div id="gridGuideModal" class="hidden">
+      <div class="gg-header">
+        <h2>📺 Channel Guide <span class="gg-time-label" id="ggTimeLabel"></span></h2>
+        <button class="gg-close" id="ggClose" type="button">✕ Close</button>
+      </div>
+      <div class="gg-body" id="ggBody"></div>
+    </div>
   </div>
 </div>
 
@@ -204,7 +272,7 @@ var BANNER_PEEK_MS = 1500;
 
 var videoEl = document.getElementById('video'), videoContainer = document.getElementById('videoContainer'), topBar = document.getElementById('topBar');
 var chNumEl = document.getElementById('chNum'), titleEl = document.getElementById('title');
-var backBtn = document.getElementById('backBtn'), fitBtn = document.getElementById('fitBtn'), guideBtn = document.getElementById('guideBtn'), helpBtn = document.getElementById('helpBtn');
+var backBtn = document.getElementById('backBtn'), fitBtn = document.getElementById('fitBtn'), guideBtn = document.getElementById('guideBtn'), gridBtn = document.getElementById('gridBtn'), helpBtn = document.getElementById('helpBtn');
 var placeholder = document.getElementById('placeholder'), phMsg = document.getElementById('phMsg'), phSpinner = document.getElementById('phSpinner'), phActions = document.getElementById('phActions');
 var phBackBtn = document.getElementById('phBackBtn'), phRetryBtn = document.getElementById('phRetryBtn');
 var dthBanner = document.getElementById('dthBanner'), dthLogoBox = document.getElementById('dthLogoBox'), dthLogo = document.getElementById('dthLogo');
@@ -218,6 +286,7 @@ var guideModal = document.getElementById('guideModal'), guideBody = document.get
 var miniModal = document.getElementById('miniModal'), miniStrip = document.getElementById('miniStrip'), miniClose = document.getElementById('miniClose');
 var helpModal = document.getElementById('helpModal'), helpClose = document.getElementById('helpClose');
 var statsModal = document.getElementById('statsModal'), statsBody = document.getElementById('statsBody'), statsClose = document.getElementById('statsClose');
+var gridGuideModal = document.getElementById('gridGuideModal'), ggBody = document.getElementById('ggBody'), ggClose = document.getElementById('ggClose'), ggTimeLabel = document.getElementById('ggTimeLabel');
 
 var shakaPlayer = null, shakaUI = null, activeCookie = '', currentChannel = null;
 var isLoading = false, channelPrograms = null;
@@ -227,6 +296,11 @@ var lastChannelId = null, lastProgramKey = '';
 var chNumBuffer = '', chNumTimer = null, toastTimer = null;
 var lastMouseMoveTs = 0;
 var lastCtrlHidden = null;
+
+/* Grid guide state */
+var ggChannels = [], ggActiveIdx = 0, ggSelectedRow = 0, ggStartMs = 0, ggEndMs = 0, ggRefreshTimer = null;
+var ggPxPerHour = 240, ggRowH = 68;
+var GG_HOURS_BACK = 1, GG_HOURS_FORWARD = 5;
 
 function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
 function truncate(s,n){ if(!s) return ''; return s.length > n ? s.substring(0, n-1) + '…' : s; }
@@ -403,6 +477,223 @@ function peekBanner(ms){
   else { if (bannerHideTimer) clearTimeout(bannerHideTimer); bannerHideTimer = setTimeout(hideDthBanner, ms); }
 }
 function startBannerRefreshTimer(){ if (programUpdateTimer) clearInterval(programUpdateTimer); programUpdateTimer = setInterval(function() { if (dthBanner.classList.contains('visible')) updateDthBanner(); }, 15000); }
+
+/* ════════ CROSS-CHANNEL GRID GUIDE ════════ */
+function computeGridPxPerHour() {
+  return window.innerWidth < 600 ? 140 : 240;
+}
+function computeGridRowHeight() {
+  return window.innerWidth < 600 ? 54 : 68;
+}
+function openGridGuide() {
+  var all = [];
+  try { all = JSON.parse(localStorage.getItem('allChannels') || '[]'); } catch(e){}
+  if (!all.length) { showToast('Channel list not loaded — open channels page first', true); return; }
+
+  var cache = {};
+  try { cache = JSON.parse(localStorage.getItem(EPG_CACHE_KEY) || '{}'); } catch(e){}
+  var epgData = (cache && cache.data) || {};
+
+  ggChannels = [];
+  for (var i = 0; i < all.length; i++) {
+    var c = all[i];
+    if (!c) continue;
+    var idStr = String(c.id);
+    var epg = epgData[idStr] || [];
+    for (var j = 0; j < epg.length; j++) {
+      if (typeof epg[j].s === 'string') epg[j].s = new Date(epg[j].s).getTime();
+      if (typeof epg[j].e === 'string') epg[j].e = new Date(epg[j].e).getTime();
+    }
+    ggChannels.push({
+      id: c.id,
+      name: c.name || 'Unknown',
+      logo: c.logo || '',
+      num: getChannelNumber(c),
+      epg: epg,
+      raw: c
+    });
+  }
+  ggChannels.sort(function(a,b){
+    if (a.num === null && b.num === null) return 0;
+    if (a.num === null) return 1;
+    if (b.num === null) return -1;
+    return a.num - b.num;
+  });
+
+  var now = Date.now();
+  var hourMs = 3600000;
+  var currentHourStart = Math.floor(now / hourMs) * hourMs;
+  ggStartMs = currentHourStart - GG_HOURS_BACK * hourMs;
+  ggEndMs = currentHourStart + GG_HOURS_FORWARD * hourMs;
+  ggPxPerHour = computeGridPxPerHour();
+  ggRowH = computeGridRowHeight();
+
+  ggActiveIdx = 0;
+  if (currentChannel) {
+    for (var k = 0; k < ggChannels.length; k++) {
+      if (String(ggChannels[k].id) === String(currentChannel.id)) { ggActiveIdx = k; break; }
+    }
+  }
+  ggSelectedRow = ggActiveIdx;
+
+  renderGridGuide();
+  gridGuideModal.classList.remove('hidden');
+  hideDthBanner();
+
+  if (ggRefreshTimer) clearInterval(ggRefreshTimer);
+  ggRefreshTimer = setInterval(function() {
+    if (!gridGuideModal.classList.contains('hidden')) updateGridNowLine();
+  }, 30000);
+
+  setTimeout(function() {
+    var activeRow = ggBody.querySelector('.gg-row.active');
+    if (activeRow) {
+      var targetTop = activeRow.offsetTop - (ggBody.clientHeight / 2);
+      ggBody.scrollTop = Math.max(0, targetTop);
+    }
+    var nowLine = ggBody.querySelector('.gg-now-line');
+    if (nowLine) {
+      var nlLeft = parseFloat(nowLine.style.left) || 0;
+      var targetLeft = nlLeft - (ggBody.clientWidth / 2) + 130;
+      ggBody.scrollLeft = Math.max(0, targetLeft);
+    }
+  }, 50);
+}
+function updateGridNowLine() {
+  var now = Date.now();
+  if (now < ggStartMs || now > ggEndMs) { renderGridGuide(); return; }
+  var nowLeft = (now - ggStartMs) / 3600000 * ggPxPerHour;
+  var lines = ggBody.querySelectorAll('.gg-now-line');
+  for (var i = 0; i < lines.length; i++) lines[i].style.left = nowLeft.toFixed(1) + 'px';
+}
+function renderGridGuide() {
+  var now = Date.now();
+  var totalMs = ggEndMs - ggStartMs;
+  var totalWidth = totalMs / 3600000 * ggPxPerHour;
+  var hours = Math.round(totalMs / 3600000);
+
+  ggTimeLabel.textContent = formatTimeOnly(ggStartMs) + ' – ' + formatTimeOnly(ggEndMs);
+
+  var html = '';
+
+  /* Time header */
+  html += '<div class="gg-time-header">';
+  html += '<div class="gg-time-header-offset"></div>';
+  for (var h = 0; h < hours; h++) {
+    var slotStart = ggStartMs + h * 3600000;
+    html += '<div class="gg-time-slot" style="width:' + ggPxPerHour + 'px">' + formatTimeOnly(slotStart) + '</div>';
+  }
+  html += '</div>';
+
+  /* Channel rows */
+  if (!ggChannels.length) {
+    html += '<div class="gg-empty">No channels available</div>';
+  } else {
+    for (var i = 0; i < ggChannels.length; i++) {
+      var ch = ggChannels[i];
+      var isActive = (i === ggActiveIdx);
+      var isSelected = (i === ggSelectedRow);
+      var rowCls = 'gg-row' + (isActive ? ' active' : '') + (isSelected ? ' selected' : '');
+      html += '<div class="' + rowCls + '" data-chidx="' + i + '" style="height:' + ggRowH + 'px">';
+
+      /* Row name */
+      html += '<div class="gg-row-name">';
+      if (ch.logo) html += '<img class="gg-row-logo" src="' + escapeHtml(ch.logo) + '" onerror="this.style.visibility=\'hidden\'">';
+      html += '<div class="gg-row-name-body">';
+      if (ch.num !== null) html += '<div class="gg-row-num">CH ' + ch.num + '</div>';
+      html += '<div class="gg-row-nametxt">' + escapeHtml(ch.name) + '</div>';
+      html += '</div></div>';
+
+      /* Timeline */
+      html += '<div class="gg-row-timeline">';
+
+      var progs = ch.epg || [];
+      var rendered = 0;
+      for (var p = 0; p < progs.length; p++) {
+        var prog = progs[p];
+        if (!prog || typeof prog.s !== 'number' || typeof prog.e !== 'number') continue;
+        if (prog.e <= ggStartMs || prog.s >= ggEndMs) continue;
+        var visStart = Math.max(prog.s, ggStartMs);
+        var visEnd = Math.min(prog.e, ggEndMs);
+        var leftPx = (visStart - ggStartMs) / 3600000 * ggPxPerHour;
+        var widthPx = (visEnd - visStart) / 3600000 * ggPxPerHour;
+        if (widthPx < 8) continue;
+        var isLive = prog.s <= now && prog.e > now;
+        var isPast = prog.e <= now;
+        var pCls = 'gg-program' + (isLive ? ' live' : '') + (isPast && !isLive ? ' past' : '');
+        var badge = isLive ? '<span class="gg-program-live-badge">LIVE</span>' : '';
+        html += '<div class="' + pCls + '" style="left:' + leftPx.toFixed(1) + 'px;width:' + Math.max(16, widthPx - 4).toFixed(1) + 'px" data-chidx="' + i + '" title="' + escapeHtml((prog.t || 'No Title') + ' · ' + formatRange(prog.s, prog.e)) + '">';
+        html += '<div class="gg-program-title">' + badge + escapeHtml(prog.t || 'No Title') + '</div>';
+        html += '<div class="gg-program-meta">' + formatRange(prog.s, prog.e) + '</div>';
+        html += '</div>';
+        rendered++;
+      }
+      if (!rendered) html += '<div class="gg-row-empty" style="position:absolute;left:8px;top:50%;transform:translateY(-50%)">No guide data</div>';
+
+      if (now >= ggStartMs && now < ggEndMs) {
+        var nowLeft = (now - ggStartMs) / 3600000 * ggPxPerHour;
+        html += '<div class="gg-now-line" style="left:' + nowLeft.toFixed(1) + 'px"></div>';
+      }
+
+      html += '</div></div>';
+    }
+  }
+
+  ggBody.innerHTML = html;
+  ggBody.style.setProperty('--gg-w', totalWidth + 'px');
+
+  /* Wire up clicks */
+  var rowNames = ggBody.querySelectorAll('.gg-row-name');
+  for (var rn = 0; rn < rowNames.length; rn++) {
+    (function(el) {
+      el.addEventListener('click', function() {
+        var row = el.closest('.gg-row');
+        var idx = parseInt(row.getAttribute('data-chidx'), 10);
+        ggJumpToChannel(idx);
+      });
+    })(rowNames[rn]);
+  }
+  var progEls = ggBody.querySelectorAll('.gg-program');
+  for (var pe = 0; pe < progEls.length; pe++) {
+    (function(el) {
+      el.addEventListener('click', function() {
+        var idx = parseInt(el.getAttribute('data-chidx'), 10);
+        ggJumpToChannel(idx);
+      });
+    })(progEls[pe]);
+  }
+}
+function ggJumpToChannel(idx) {
+  var ch = ggChannels[idx];
+  if (!ch) return;
+  closeGridGuide();
+  showToast('Switching to CH ' + (ch.num || '?') + ' · ' + ch.name);
+  switchToChannel(ch.raw, ch.num);
+}
+function moveGridSelection(delta) {
+  if (!ggChannels.length) return;
+  var newIdx = ggSelectedRow + delta;
+  if (newIdx < 0) newIdx = 0;
+  if (newIdx >= ggChannels.length) newIdx = ggChannels.length - 1;
+  if (newIdx === ggSelectedRow) return;
+  var prevRow = ggBody.querySelector('.gg-row[data-chidx="' + ggSelectedRow + '"]');
+  if (prevRow) prevRow.classList.remove('selected');
+  ggSelectedRow = newIdx;
+  var newRow = ggBody.querySelector('.gg-row[data-chidx="' + newIdx + '"]');
+  if (newRow) {
+    newRow.classList.add('selected');
+    var targetTop = newRow.offsetTop - (ggBody.clientHeight / 2) + (ggRowH / 2);
+    ggBody.scrollTop = Math.max(0, targetTop);
+  }
+}
+function panGridGuide(deltaMs) {
+  var pxDelta = deltaMs / 3600000 * ggPxPerHour;
+  ggBody.scrollLeft = Math.max(0, ggBody.scrollLeft + pxDelta);
+}
+function closeGridGuide() {
+  gridGuideModal.classList.add('hidden');
+  if (ggRefreshTimer) { clearInterval(ggRefreshTimer); ggRefreshTimer = null; }
+}
 
 function openGuide() {
   if (!currentChannel) return;
@@ -591,6 +882,7 @@ function syncTopBar() {
     var ctrl = videoContainer.querySelector('.shaka-controls-container');
     if (!ctrl) { if (attempts < 30) setTimeout(check, 200); return; }
     setInterval(function() {
+      if (!gridGuideModal.classList.contains('hidden')) return;
       var isHidden = false;
       try {
         var cs = window.getComputedStyle(ctrl);
@@ -662,8 +954,10 @@ backBtn.addEventListener('click', function(e){ e.preventDefault(); goBack(); });
 phBackBtn.addEventListener('click', function(e){ e.preventDefault(); goBack(); });
 phRetryBtn.addEventListener('click', function(e){ e.preventDefault(); if (currentChannel) { reconnectAttempts = 0; playChannel(currentChannel); } });
 guideBtn.addEventListener('click', function(e){ e.preventDefault(); openGuide(); });
+gridBtn.addEventListener('click', function(e){ e.preventDefault(); openGridGuide(); });
 helpBtn.addEventListener('click', function(e){ e.preventDefault(); helpModal.classList.remove('hidden'); });
 dthBanner.addEventListener('click', function(){ openGuide(); });
+ggClose.addEventListener('click', function(e){ e.stopPropagation(); closeGridGuide(); });
 guideClose.addEventListener('click', function(e){ e.stopPropagation(); guideModal.classList.add('hidden'); });
 guideModal.addEventListener('click', function(e){ e.stopPropagation(); if (e.target === guideModal) guideModal.classList.add('hidden'); });
 miniClose.addEventListener('click', function(e){ e.stopPropagation(); miniModal.classList.add('hidden'); });
@@ -674,6 +968,7 @@ statsClose.addEventListener('click', function(e){ e.stopPropagation(); statsModa
 statsModal.addEventListener('click', function(e){ e.stopPropagation(); if (e.target === statsModal) statsModal.classList.add('hidden'); });
 
 videoContainer.addEventListener('mousemove', function() {
+  if (!gridGuideModal.classList.contains('hidden')) return;
   var now = Date.now();
   if (now - lastMouseMoveTs < 400) return;
   lastMouseMoveTs = now;
@@ -682,17 +977,33 @@ videoContainer.addEventListener('mousemove', function() {
 
 document.addEventListener('keydown', function(e) {
   var k = e.keyCode;
+
+  /* Grid guide has its own navigation */
+  if (!gridGuideModal.classList.contains('hidden')) {
+    if (k === 27 || k === 8 || k === 10009) { e.preventDefault(); closeGridGuide(); return; }
+    if (k === 38) { e.preventDefault(); moveGridSelection(-1); return; }
+    if (k === 40) { e.preventDefault(); moveGridSelection(1); return; }
+    if (k === 37) { e.preventDefault(); panGridGuide(-1800000); return; }
+    if (k === 39) { e.preventDefault(); panGridGuide(1800000); return; }
+    if (k === 13) { e.preventDefault(); ggJumpToChannel(ggSelectedRow); return; }
+    if (k === 33) { e.preventDefault(); ggBody.scrollTop = Math.max(0, ggBody.scrollTop - ggBody.clientHeight * 0.8); return; }
+    if (k === 34) { e.preventDefault(); ggBody.scrollTop = ggBody.scrollTop + ggBody.clientHeight * 0.8; return; }
+    return;
+  }
+
   var inOverlay = !guideModal.classList.contains('hidden') || !miniModal.classList.contains('hidden') || !helpModal.classList.contains('hidden') || !statsModal.classList.contains('hidden');
   if (inOverlay) {
     if (k === 27 || k === 8 || k === 10009) { e.preventDefault(); guideModal.classList.add('hidden'); miniModal.classList.add('hidden'); helpModal.classList.add('hidden'); statsModal.classList.add('hidden'); }
     return;
   }
+
   if (k === 37 || k === 38 || k === 39 || k === 40) { peekBanner(BANNER_PEEK_MS); return; }
   var isNumKey = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
   if (isNumKey) { e.preventDefault(); handleChNumDigit(String.fromCharCode(k >= 96 ? k - 48 : k)); return; }
   if (k === 13 && chNumBuffer) { e.preventDefault(); clearTimeout(chNumTimer); commitChNum(); return; }
   if ((k === 27 || k === 8) && chNumBuffer) { e.preventDefault(); cancelChNum(); return; }
   if (k === 71) { e.preventDefault(); openGuide(); return; }
+  if (k === 69) { e.preventDefault(); openGridGuide(); return; }
   if (k === 76) { e.preventDefault(); openMiniGuide(); return; }
   if (k === 73) { e.preventDefault(); openStats(); return; }
   if (k === 72) { e.preventDefault(); helpModal.classList.remove('hidden'); return; }
