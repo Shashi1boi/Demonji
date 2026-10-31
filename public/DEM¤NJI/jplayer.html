@@ -98,9 +98,7 @@ html,body { background:#000; width:100%; height:100%; overflow:hidden; font-fami
 .stats-value { color:#7cd0f5; font-family:monospace; font-weight:bold; }
 .shaka-controls-container { font-size:14px; }
 
-/* ═══════════════════════════════════════════════════════
-   CROSS-CHANNEL GRID GUIDE
-   ═══════════════════════════════════════════════════════ */
+/* ════════ CROSS-CHANNEL GRID GUIDE ════════ */
 #gridGuideModal { position:absolute; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.96); z-index:1850; display:flex; flex-direction:column; padding:10px; padding-top:calc(10px + env(safe-area-inset-top)); padding-bottom:calc(10px + env(safe-area-inset-bottom)); }
 #gridGuideModal.hidden { display:none; }
 .gg-header { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:#0e1620; border-bottom:1px solid #2a3a4a; border-radius:8px 8px 0 0; flex-shrink:0; gap:12px; }
@@ -189,7 +187,6 @@ html,body { background:#000; width:100%; height:100%; overflow:hidden; font-fami
       <button id="backBtn" class="top-btn" type="button">◄</button>
       <div id="titleWrap"><span id="chNum"></span><span id="title">…</span></div>
       <button id="guideBtn" class="top-btn" type="button">📅</button>
-      <button id="gridBtn" class="top-btn" type="button">📺</button>
       <button id="fitBtn" class="top-btn" type="button">FIT</button>
       <button id="helpBtn" class="top-btn" type="button">?</button>
     </div>
@@ -226,7 +223,7 @@ html,body { background:#000; width:100%; height:100%; overflow:hidden; font-fami
       <div class="help-row"><span>Channel up / down</span><span class="help-key">PgUp / PgDn</span></div>
       <div class="help-row"><span>Volume up / down</span><span class="help-key">+ / −</span></div>
       <div class="help-row"><span>Mute</span><span class="help-key">M</span></div>
-      <div class="help-row"><span>Channel guide</span><span class="help-key">G</span></div>
+      <div class="help-row"><span>Single-channel guide</span><span class="help-key">G</span></div>
       <div class="help-row"><span>Cross-channel grid</span><span class="help-key">E</span></div>
       <div class="help-row"><span>Mini channel list</span><span class="help-key">L</span></div>
       <div class="help-row"><span>Stream stats</span><span class="help-key">I</span></div>
@@ -272,7 +269,7 @@ var BANNER_PEEK_MS = 1500;
 
 var videoEl = document.getElementById('video'), videoContainer = document.getElementById('videoContainer'), topBar = document.getElementById('topBar');
 var chNumEl = document.getElementById('chNum'), titleEl = document.getElementById('title');
-var backBtn = document.getElementById('backBtn'), fitBtn = document.getElementById('fitBtn'), guideBtn = document.getElementById('guideBtn'), gridBtn = document.getElementById('gridBtn'), helpBtn = document.getElementById('helpBtn');
+var backBtn = document.getElementById('backBtn'), fitBtn = document.getElementById('fitBtn'), guideBtn = document.getElementById('guideBtn'), helpBtn = document.getElementById('helpBtn');
 var placeholder = document.getElementById('placeholder'), phMsg = document.getElementById('phMsg'), phSpinner = document.getElementById('phSpinner'), phActions = document.getElementById('phActions');
 var phBackBtn = document.getElementById('phBackBtn'), phRetryBtn = document.getElementById('phRetryBtn');
 var dthBanner = document.getElementById('dthBanner'), dthLogoBox = document.getElementById('dthLogoBox'), dthLogo = document.getElementById('dthLogo');
@@ -479,12 +476,8 @@ function peekBanner(ms){
 function startBannerRefreshTimer(){ if (programUpdateTimer) clearInterval(programUpdateTimer); programUpdateTimer = setInterval(function() { if (dthBanner.classList.contains('visible')) updateDthBanner(); }, 15000); }
 
 /* ════════ CROSS-CHANNEL GRID GUIDE ════════ */
-function computeGridPxPerHour() {
-  return window.innerWidth < 600 ? 140 : 240;
-}
-function computeGridRowHeight() {
-  return window.innerWidth < 600 ? 54 : 68;
-}
+function computeGridPxPerHour() { return window.innerWidth < 600 ? 140 : 240; }
+function computeGridRowHeight() { return window.innerWidth < 600 ? 54 : 68; }
 function openGridGuide() {
   var all = [];
   try { all = JSON.parse(localStorage.getItem('allChannels') || '[]'); } catch(e){}
@@ -504,14 +497,7 @@ function openGridGuide() {
       if (typeof epg[j].s === 'string') epg[j].s = new Date(epg[j].s).getTime();
       if (typeof epg[j].e === 'string') epg[j].e = new Date(epg[j].e).getTime();
     }
-    ggChannels.push({
-      id: c.id,
-      name: c.name || 'Unknown',
-      logo: c.logo || '',
-      num: getChannelNumber(c),
-      epg: epg,
-      raw: c
-    });
+    ggChannels.push({ id: c.id, name: c.name || 'Unknown', logo: c.logo || '', num: getChannelNumber(c), epg: epg, raw: c });
   }
   ggChannels.sort(function(a,b){
     if (a.num === null && b.num === null) return 0;
@@ -575,8 +561,6 @@ function renderGridGuide() {
   ggTimeLabel.textContent = formatTimeOnly(ggStartMs) + ' – ' + formatTimeOnly(ggEndMs);
 
   var html = '';
-
-  /* Time header */
   html += '<div class="gg-time-header">';
   html += '<div class="gg-time-header-offset"></div>';
   for (var h = 0; h < hours; h++) {
@@ -585,7 +569,6 @@ function renderGridGuide() {
   }
   html += '</div>';
 
-  /* Channel rows */
   if (!ggChannels.length) {
     html += '<div class="gg-empty">No channels available</div>';
   } else {
@@ -595,16 +578,12 @@ function renderGridGuide() {
       var isSelected = (i === ggSelectedRow);
       var rowCls = 'gg-row' + (isActive ? ' active' : '') + (isSelected ? ' selected' : '');
       html += '<div class="' + rowCls + '" data-chidx="' + i + '" style="height:' + ggRowH + 'px">';
-
-      /* Row name */
       html += '<div class="gg-row-name">';
       if (ch.logo) html += '<img class="gg-row-logo" src="' + escapeHtml(ch.logo) + '" onerror="this.style.visibility=\'hidden\'">';
       html += '<div class="gg-row-name-body">';
       if (ch.num !== null) html += '<div class="gg-row-num">CH ' + ch.num + '</div>';
       html += '<div class="gg-row-nametxt">' + escapeHtml(ch.name) + '</div>';
       html += '</div></div>';
-
-      /* Timeline */
       html += '<div class="gg-row-timeline">';
 
       var progs = ch.epg || [];
@@ -634,15 +613,11 @@ function renderGridGuide() {
         var nowLeft = (now - ggStartMs) / 3600000 * ggPxPerHour;
         html += '<div class="gg-now-line" style="left:' + nowLeft.toFixed(1) + 'px"></div>';
       }
-
       html += '</div></div>';
     }
   }
-
   ggBody.innerHTML = html;
-  ggBody.style.setProperty('--gg-w', totalWidth + 'px');
 
-  /* Wire up clicks */
   var rowNames = ggBody.querySelectorAll('.gg-row-name');
   for (var rn = 0; rn < rowNames.length; rn++) {
     (function(el) {
@@ -954,9 +929,14 @@ backBtn.addEventListener('click', function(e){ e.preventDefault(); goBack(); });
 phBackBtn.addEventListener('click', function(e){ e.preventDefault(); goBack(); });
 phRetryBtn.addEventListener('click', function(e){ e.preventDefault(); if (currentChannel) { reconnectAttempts = 0; playChannel(currentChannel); } });
 guideBtn.addEventListener('click', function(e){ e.preventDefault(); openGuide(); });
-gridBtn.addEventListener('click', function(e){ e.preventDefault(); openGridGuide(); });
 helpBtn.addEventListener('click', function(e){ e.preventDefault(); helpModal.classList.remove('hidden'); });
-dthBanner.addEventListener('click', function(){ openGuide(); });
+
+/* ⭐ BANNER CLICK → grid guide */
+dthBanner.addEventListener('click', function(e){
+  if (e && e.stopPropagation) e.stopPropagation();
+  openGridGuide();
+});
+
 ggClose.addEventListener('click', function(e){ e.stopPropagation(); closeGridGuide(); });
 guideClose.addEventListener('click', function(e){ e.stopPropagation(); guideModal.classList.add('hidden'); });
 guideModal.addEventListener('click', function(e){ e.stopPropagation(); if (e.target === guideModal) guideModal.classList.add('hidden'); });
@@ -978,7 +958,6 @@ videoContainer.addEventListener('mousemove', function() {
 document.addEventListener('keydown', function(e) {
   var k = e.keyCode;
 
-  /* Grid guide has its own navigation */
   if (!gridGuideModal.classList.contains('hidden')) {
     if (k === 27 || k === 8 || k === 10009) { e.preventDefault(); closeGridGuide(); return; }
     if (k === 38) { e.preventDefault(); moveGridSelection(-1); return; }
