@@ -4,6 +4,10 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>flexji · watch free</title>
+  <link rel="preconnect" href="https://image.tmdb.org" crossorigin />
+  <link rel="dns-prefetch" href="https://image.tmdb.org" />
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin />
+  <link rel="preconnect" href="https://demonji.onrender.com" crossorigin />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
   <style>
     * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', 'Segoe UI', Roboto, system-ui, sans-serif; }
@@ -280,12 +284,16 @@
     });
   }
 
+  /* ============================================================
+     FIX: TMDB images are public and CORS-friendly for <img> tags.
+     Routing them through a PHP proxy was a huge latency hit.
+     Return direct image.tmdb.org URLs.
+     ============================================================ */
   function proxyImage(path, size) {
     size = size || 'w300';
     if (!path) return 'https://via.placeholder.com/300x450/1a1a1a/555?text=No+Poster';
-    if (path.indexOf('http://') === 0 || path.indexOf('https://') === 0)
-      return PROXY + encodeURIComponent(path);
-    return PROXY + encodeURIComponent(IMG_BASE + '/' + size + path);
+    if (path.indexOf('http://') === 0 || path.indexOf('https://') === 0) return path;
+    return IMG_BASE + '/' + size + path;
   }
 
   function getTmdbId(item) {
@@ -323,13 +331,19 @@
       } catch(e) { return null; }
   }
 
-  function openPlayerInTab(tmdbId, type, season, episode, title, year, resumeTime) {
+  /* openPlayerInTab now also forwards the poster URL so the paused
+     screen in fplayer.html has artwork */
+  function openPlayerInTab(tmdbId, type, season, episode, title, year, resumeTime, posterPath) {
     if (!tmdbId) { alert('No playable source for this title.'); return; }
     var url = 'fplayer.html?type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(tmdbId);
     if (type === 'tv') url += '&season=' + (season || 1) + '&episode=' + (episode || 1);
     if (title) url += '&title=' + encodeURIComponent(title);
     if (year)  url += '&year=' + encodeURIComponent(year);
     if (resumeTime) url += '&t=' + Math.floor(resumeTime);
+    if (posterPath) {
+      var pp = posterPath.indexOf('http') === 0 ? posterPath : IMG_BASE + '/w500' + posterPath;
+      url += '&poster=' + encodeURIComponent(pp);
+    }
     var w = window.open(url, '_blank');
     if (!w) location.href = url;
   }
@@ -346,7 +360,8 @@
 
     var poster = item.backdrop_path || item.poster || item.poster_path;
     if (poster && poster.indexOf('http') !== 0) poster = 'https://image.tmdb.org/t/p/w1280' + poster;
-    heroSection.style.backgroundImage = poster ? 'url(' + PROXY + encodeURIComponent(poster) + ')' : 'none';
+    // direct URL (no proxy) for the backdrop
+    heroSection.style.backgroundImage = poster ? 'url("' + poster + '")' : 'none';
     heroSection.style.display = 'flex';
 
     heroTitle.textContent = item.title || item.name || 'Untitled';
@@ -358,6 +373,8 @@
       '<span>' + (type === 'tv' ? 'SERIES' : 'MOVIE') + '</span>';
     heroPlot.textContent = item.overview || 'No description available.';
 
+    var pPath = item.poster_path || item.poster || '';
+
     heroPlayBtn.onclick = function() {
       var t = item.title || item.name || '';
       var y = year || '';
@@ -368,9 +385,9 @@
       if (type === 'tv') {
         var s = (prog && prog.season) ? prog.season : 1;
         var e = (prog && prog.episode) ? prog.episode : 1;
-        openPlayerInTab(tmdb, 'tv', s, e, t + ' · S' + pad2(s) + 'E' + pad2(e), y, rTime);
+        openPlayerInTab(tmdb, 'tv', s, e, t + ' · S' + pad2(s) + 'E' + pad2(e), y, rTime, pPath);
       } else {
-        openPlayerInTab(tmdb, 'movie', 0, 0, t, y, rTime);
+        openPlayerInTab(tmdb, 'movie', 0, 0, t, y, rTime, pPath);
       }
     };
   }
@@ -382,7 +399,7 @@
     if (newTmdb !== currentTmdb) { currentTmdb = newTmdb; currentSeason = 1; }
 
     var poster = item.poster || item.poster_path;
-    if (poster && poster.indexOf('http') !== 0) poster = 'https://image.tmdb.org/t/p/w500' + poster;
+    if (poster && poster.indexOf('http') !== 0) poster = IMG_BASE + '/w500' + poster;
     detailPoster.src = proxyImage(poster, 'w500');
 
     detailTitle.textContent = item.title || item.name || 'Untitled';
@@ -407,6 +424,7 @@
       fetchSeasons(currentTmdb);
     }
 
+    var pPath = item.poster_path || item.poster || '';
     var prog = getSavedProgress(currentTmdb, type);
     if (prog && prog.currentTime > 5 && (prog.duration - prog.currentTime > 30)) {
        detailResumeBtn.style.display = 'inline-flex';
@@ -418,9 +436,9 @@
        detailResumeBtn.onclick = function() {
           var t = item.title || item.name || '';
           if (type === 'tv') {
-             openPlayerInTab(currentTmdb, 'tv', prog.season, prog.episode, t + ' · S' + pad2(prog.season) + 'E' + pad2(prog.episode), year || '', prog.currentTime);
+             openPlayerInTab(currentTmdb, 'tv', prog.season, prog.episode, t + ' · S' + pad2(prog.season) + 'E' + pad2(prog.episode), year || '', prog.currentTime, pPath);
           } else {
-             openPlayerInTab(currentTmdb, 'movie', 0, 0, t, year || '', prog.currentTime);
+             openPlayerInTab(currentTmdb, 'movie', 0, 0, t, year || '', prog.currentTime, pPath);
           }
        };
     } else {
@@ -433,9 +451,9 @@
       if (type === 'tv') {
         var ep = getFirstEpisode(currentTmdb, currentSeason);
         var n = (ep && ep.episode_number) ? ep.episode_number : 1;
-        openPlayerInTab(currentTmdb, 'tv', currentSeason, n, t + ' · S' + pad2(currentSeason) + 'E' + pad2(n), y);
+        openPlayerInTab(currentTmdb, 'tv', currentSeason, n, t + ' · S' + pad2(currentSeason) + 'E' + pad2(n), y, null, pPath);
       } else {
-        openPlayerInTab(currentTmdb, 'movie', 0, 0, t, y);
+        openPlayerInTab(currentTmdb, 'movie', 0, 0, t, y, null, pPath);
       }
     };
 
@@ -544,7 +562,8 @@
           var y = ((currentItem && (currentItem.release_date || currentItem.first_air_date)) || '').split('-')[0];
           var epLabel = 'S' + pad2(currentSeason) + 'E' + pad2(n);
           var resumeFrom = (savedProg && savedProg.duration - savedProg.currentTime > 30) ? savedProg.currentTime : null;
-          openPlayerInTab(tmdbId, 'tv', currentSeason, n, showTitle + ' · ' + epLabel, y, resumeFrom);
+          var pPath = currentItem ? (currentItem.poster_path || currentItem.poster || '') : '';
+          openPlayerInTab(tmdbId, 'tv', currentSeason, n, showTitle + ' · ' + epLabel, y, resumeFrom, pPath);
         };
         episodeGrid.appendChild(card);
       })(eps[i]);
@@ -567,7 +586,7 @@
 
   function createCard(item, type) {
     var path = item.poster || item.poster_path;
-    if (path && path.indexOf('http') !== 0) path = 'https://image.tmdb.org/t/p/w300' + path;
+    if (path && path.indexOf('http') !== 0) path = IMG_BASE + '/w300' + path;
     var title = item.title || item.name || 'Untitled';
     var year = item.release_date ? item.release_date.split('-')[0]
              : (item.first_air_date ? item.first_air_date.split('-')[0] : '');
@@ -575,7 +594,7 @@
     var card = document.createElement('div');
     card.className = 'card';
     card.innerHTML = '<div class="card-img-wrap">' + 
-                       '<img src="' + proxyImage(path) + '" alt="" loading="lazy" />' +
+                       '<img src="' + proxyImage(path) + '" alt="" loading="lazy" decoding="async" />' +
                        '<div class="card-play-overlay"><i class="fas fa-play-circle"></i></div>' +
                      '</div>' +
                      '<div class="title">' + title + '</div>' +
