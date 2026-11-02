@@ -243,7 +243,7 @@
   /* ═══ OPEN PLAYER IN NEW TAB ═══ */
   function openPlayerInTab(tmdbId, type, season, episode, title, year) {
     if (!tmdbId) { alert('No playable source for this title.'); return; }
-    var url = 'player.html?type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(tmdbId);
+    var url = 'fplayer.html?type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(tmdbId);
     if (type === 'tv') url += '&season=' + (season || 1) + '&episode=' + (episode || 1);
     if (title) url += '&title=' + encodeURIComponent(title);
     if (year)  url += '&year=' + encodeURIComponent(year);
