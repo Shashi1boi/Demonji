@@ -6,15 +6,11 @@
   <title>flexji · watch free</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
   <style>
-    /* Global Resets & Typography */
     * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', 'Segoe UI', Roboto, system-ui, sans-serif; }
     body { background:#0a0a0a; color:#f0f0f0; min-height:100vh; overflow-x:hidden; -webkit-font-smoothing: antialiased; }
     
-    /* Animations */
     @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes pulseGlow { 0% { box-shadow: 0 0 0 0 rgba(229,9,20,0.4); } 70% { box-shadow: 0 0 0 10px rgba(229,9,20,0); } 100% { box-shadow: 0 0 0 0 rgba(229,9,20,0); } }
 
-    /* Navbar - Enhanced Glassmorphism */
     .navbar {
       position:fixed; top:0; left:0; right:0; z-index:100;
       background:linear-gradient(180deg, rgba(0,0,0,0.9) 0%, transparent 100%);
@@ -41,7 +37,6 @@
     .search-box button { background:transparent; border:none; color:#bbb; cursor:pointer; font-size:1rem; padding:0 0 0 8px; transition: color 0.2s; }
     .search-box button:hover { color: #fff; }
 
-    /* Hero Section - Cinematic Fade */
     .hero { position:relative; margin: 0 0 40px; padding:0 4%; min-height:80vh;
       display:flex; align-items:center; background-size:cover; background-position:top center; }
     .hero::before { content:''; position:absolute; top:0; right:0; bottom:0; left:0;
@@ -61,8 +56,10 @@
       transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); box-shadow: 0 4px 15px rgba(229,9,20,0.4); }
     .btn:hover { transform: scale(1.05) translateY(-2px); background: #f6121d; box-shadow: 0 8px 25px rgba(229,9,20,0.6); }
     .btn i { margin-right:10px; font-size: 1.2rem; }
+    
+    .btn-secondary { background:rgba(255,255,255,0.15); border:1px solid rgba(255,255,255,0.2); box-shadow:none; backdrop-filter: blur(4px); color: #fff; margin-left: 10px; }
+    .btn-secondary:hover { background:rgba(255,255,255,0.25); transform: scale(1.05) translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.4); }
 
-    /* Content Rows & Cards */
     .container { padding:0 4% 60px; max-width:1800px; margin:0 auto; position: relative; z-index: 5; }
     .row { margin-bottom:48px; }
     .row-header { display:flex; align-items:center; margin-bottom:16px; }
@@ -82,7 +79,6 @@
     .card:hover .card-img-wrap { box-shadow: 0 15px 30px rgba(0,0,0,0.8); }
     .card:hover img { transform: scale(1.08); filter: brightness(0.8); }
     
-    /* Play Icon Overlay on Card Hover */
     .card-play-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.3s ease; }
     .card-play-overlay i { font-size: 3rem; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.5); transform: scale(0.5); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
     .card:hover .card-play-overlay { opacity: 1; }
@@ -91,7 +87,6 @@
     .card .title { padding:12px 4px 2px; font-weight:600; font-size:0.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
     .card .year { padding:0 4px; font-size:0.8rem; color:#888; font-weight: 500; }
 
-    /* Detail View Overlay */
     .detail-view { display:none; margin-bottom:50px; background:linear-gradient(145deg, rgba(30,30,30,0.8), rgba(15,15,15,0.95));
       border-radius:16px; padding:40px; border:1px solid rgba(255,255,255,0.08); box-shadow: 0 20px 50px rgba(0,0,0,0.5);
       animation: fadeIn 0.4s ease-out; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
@@ -107,8 +102,8 @@
     .detail-info .meta span i { margin-right:8px; color: #e50914; }
     .detail-info .meta span i.fa-star { color: #f5c518; }
     .detail-info .plot { color:#ccc; line-height:1.7; font-size: 1.05rem; max-width:800px; margin-bottom:24px; }
+    .detail-info-buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
 
-    /* Episode Section */
     .episode-section { display:none; width:100%; margin-top:30px; border-top:1px solid rgba(255,255,255,0.1); padding-top:30px; }
     .episode-section.active { display:block; animation: fadeIn 0.5s ease-out; }
     .episode-section h3 { font-size:1.4rem; margin-bottom:16px; display:flex; align-items:center; font-weight: 700; }
@@ -130,20 +125,20 @@
     .episode-card .ep-num { color:#e50914; font-size:0.8rem; font-weight:700; letter-spacing: 1px; margin-bottom: 6px; }
     .episode-card .ep-title { font-weight:600; font-size: 1rem; margin-bottom:8px; color: #fff; }
     .episode-card .ep-desc { color:#999; font-size:0.8rem; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    
+    .ep-progress-bar { width: 100%; height: 3px; background: rgba(255,255,255,0.1); margin-top: auto; border-radius: 2px; overflow: hidden; display: none; margin-top: 10px; }
+    .ep-progress-fill { height: 100%; background: #e50914; width: 0%; }
 
-    /* States */
     .loading { text-align:center; padding:60px 20px; color:#888; font-size:1.1rem; font-weight: 500; }
     .loading i { font-size:2.5rem; display:block; margin-bottom:16px; color:#e50914; animation: spin 1s linear infinite; }
     .error-msg { text-align:center; padding:50px 20px; color:#e50914; font-weight: 600; }
     .error-msg i { font-size:2.5rem; display:block; margin-bottom:16px; }
 
-    /* Footer */
     .footer { background:#050505; border-top:1px solid #1a1a1a; padding:40px 4% 30px;
       text-align:center; color:#777; font-size:0.9rem; line-height:1.7; margin-top:40px; }
     .footer .disclaimer { max-width:800px; margin:0 auto; }
     .footer .disclaimer i { color:#e50914; margin-right:6px; }
 
-    /* Responsive */
     @media (max-width:900px) {
       .hero-content h1 { font-size:3.2rem; }
       .detail-poster { flex:0 0 180px; margin-right:30px; }
@@ -165,7 +160,7 @@
       .detail-info h1 { font-size:2rem; text-align: center; }
       .detail-info .meta { justify-content: center; }
       .detail-info .plot { text-align: center; }
-      .detail-info .btn { width: 100%; justify-content: center; }
+      .detail-info-buttons { justify-content: center; }
     }
     @media (max-width:480px) {
       .card { flex:0 0 120px; margin-right: 12px; }
@@ -206,7 +201,12 @@
       <h1 id="detailTitle">Title</h1>
       <div class="meta" id="detailMeta"></div>
       <p class="plot" id="detailPlot">Description…</p>
-      <button class="btn" id="detailPlayBtn"><i class="fas fa-play"></i> Play</button>
+      
+      <div class="detail-info-buttons">
+        <button class="btn" id="detailPlayBtn"><i class="fas fa-play"></i> Play</button>
+        <button class="btn btn-secondary" id="detailResumeBtn" style="display:none;"><i class="fas fa-history"></i> Resume</button>
+      </div>
+
       <div class="episode-section" id="episodeSection">
         <h3><i class="fas fa-layer-group"></i> Episodes</h3>
         <div class="season-selector" id="seasonSelector"></div>
@@ -238,27 +238,28 @@
   var API_BASE = 'https://api.2embed.cc';
   var IMG_BASE = 'https://image.tmdb.org/t/p';
 
-  var navbar         = document.getElementById('navbar');
-  var heroSection    = document.getElementById('heroSection');
-  var heroTitle      = document.getElementById('heroTitle');
-  var heroMeta       = document.getElementById('heroMeta');
-  var heroPlot       = document.getElementById('heroPlot');
-  var heroPlayBtn    = document.getElementById('heroPlayBtn');
-  var rowsContainer  = document.getElementById('rowsContainer');
-  var detailView     = document.getElementById('detailView');
-  var detailPoster   = document.getElementById('detailPoster');
-  var detailTitle    = document.getElementById('detailTitle');
-  var detailMeta     = document.getElementById('detailMeta');
-  var detailPlot     = document.getElementById('detailPlot');
-  var detailPlayBtn  = document.getElementById('detailPlayBtn');
-  var episodeSection = document.getElementById('episodeSection');
-  var seasonSelector = document.getElementById('seasonSelector');
-  var episodeGrid    = document.getElementById('episodeGrid');
-  var searchInput    = document.getElementById('searchInput');
-  var searchBtn      = document.getElementById('searchBtn');
-  var navHome        = document.getElementById('navHome');
-  var navTrending    = document.getElementById('navTrending');
-  var navTv          = document.getElementById('navTv');
+  var navbar           = document.getElementById('navbar');
+  var heroSection      = document.getElementById('heroSection');
+  var heroTitle        = document.getElementById('heroTitle');
+  var heroMeta         = document.getElementById('heroMeta');
+  var heroPlot         = document.getElementById('heroPlot');
+  var heroPlayBtn      = document.getElementById('heroPlayBtn');
+  var rowsContainer    = document.getElementById('rowsContainer');
+  var detailView       = document.getElementById('detailView');
+  var detailPoster     = document.getElementById('detailPoster');
+  var detailTitle      = document.getElementById('detailTitle');
+  var detailMeta       = document.getElementById('detailMeta');
+  var detailPlot       = document.getElementById('detailPlot');
+  var detailPlayBtn    = document.getElementById('detailPlayBtn');
+  var detailResumeBtn  = document.getElementById('detailResumeBtn');
+  var episodeSection   = document.getElementById('episodeSection');
+  var seasonSelector   = document.getElementById('seasonSelector');
+  var episodeGrid      = document.getElementById('episodeGrid');
+  var searchInput      = document.getElementById('searchInput');
+  var searchBtn        = document.getElementById('searchBtn');
+  var navHome          = document.getElementById('navHome');
+  var navTrending      = document.getElementById('navTrending');
+  var navTv            = document.getElementById('navTv');
 
   var currentItem = null, currentType = 'movie', currentTmdb = null, currentSeason = 1;
   var episodesCache = {}, seasonsList = {}, heroItem = null;
@@ -296,12 +297,39 @@
 
   function pad2(n) { return n < 10 ? '0' + n : String(n); }
 
-  function openPlayerInTab(tmdbId, type, season, episode, title, year) {
+  function getSavedProgress(tmdbId, type) {
+    try {
+      var progress = JSON.parse(localStorage.getItem('flexji_progress') || '{}');
+      if (type === 'movie') return progress[tmdbId];
+      
+      var latest = null;
+      for (var key in progress) {
+        if (progress.hasOwnProperty(key)) {
+          var item = progress[key];
+          if (item.tmdbId === tmdbId && item.type === 'tv') {
+            if (!latest || item.timestamp > latest.timestamp) latest = item;
+          }
+        }
+      }
+      return latest;
+    } catch(e) { return null; }
+  }
+
+  function getEpProgress(tmdbId, seasonNum, epNum) {
+      try {
+        var progress = JSON.parse(localStorage.getItem('flexji_progress') || '{}');
+        var key = tmdbId + '_' + seasonNum + '_' + epNum;
+        return progress[key];
+      } catch(e) { return null; }
+  }
+
+  function openPlayerInTab(tmdbId, type, season, episode, title, year, resumeTime) {
     if (!tmdbId) { alert('No playable source for this title.'); return; }
     var url = 'fplayer.html?type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(tmdbId);
     if (type === 'tv') url += '&season=' + (season || 1) + '&episode=' + (episode || 1);
     if (title) url += '&title=' + encodeURIComponent(title);
     if (year)  url += '&year=' + encodeURIComponent(year);
+    if (resumeTime) url += '&t=' + Math.floor(resumeTime);
     var w = window.open(url, '_blank');
     if (!w) location.href = url;
   }
@@ -314,8 +342,7 @@
   function renderHero(item, type) {
     if (!item) { heroSection.style.display = 'none'; return; }
     heroItem = item;
-    currentTmdb = getTmdbId(item);
-    currentType = type;
+    var tmdb = getTmdbId(item);
 
     var poster = item.backdrop_path || item.poster || item.poster_path;
     if (poster && poster.indexOf('http') !== 0) poster = 'https://image.tmdb.org/t/p/w1280' + poster;
@@ -334,12 +361,16 @@
     heroPlayBtn.onclick = function() {
       var t = item.title || item.name || '';
       var y = year || '';
+      
+      var prog = getSavedProgress(tmdb, type);
+      var rTime = (prog && prog.duration - prog.currentTime > 30 && prog.currentTime > 5) ? prog.currentTime : null;
+
       if (type === 'tv') {
-        var eps = getFirstEpisode(currentTmdb, 1);
-        var n = (eps && eps.episode_number) ? eps.episode_number : 1;
-        openPlayerInTab(currentTmdb, 'tv', 1, n, t + ' · S01E' + pad2(n), y);
+        var s = (prog && prog.season) ? prog.season : 1;
+        var e = (prog && prog.episode) ? prog.episode : 1;
+        openPlayerInTab(tmdb, 'tv', s, e, t + ' · S' + pad2(s) + 'E' + pad2(e), y, rTime);
       } else {
-        openPlayerInTab(currentTmdb, 'movie', 0, 0, t, y);
+        openPlayerInTab(tmdb, 'movie', 0, 0, t, y, rTime);
       }
     };
   }
@@ -374,6 +405,26 @@
     if (type === 'tv' && currentTmdb) {
       episodeSection.classList.add('active');
       fetchSeasons(currentTmdb);
+    }
+
+    var prog = getSavedProgress(currentTmdb, type);
+    if (prog && prog.currentTime > 5 && (prog.duration - prog.currentTime > 30)) {
+       detailResumeBtn.style.display = 'inline-flex';
+       if (type === 'tv') {
+         detailResumeBtn.innerHTML = '<i class="fas fa-history"></i> Resume S' + pad2(prog.season) + 'E' + pad2(prog.episode);
+       } else {
+         detailResumeBtn.innerHTML = '<i class="fas fa-history"></i> Resume';
+       }
+       detailResumeBtn.onclick = function() {
+          var t = item.title || item.name || '';
+          if (type === 'tv') {
+             openPlayerInTab(currentTmdb, 'tv', prog.season, prog.episode, t + ' · S' + pad2(prog.season) + 'E' + pad2(prog.episode), year || '', prog.currentTime);
+          } else {
+             openPlayerInTab(currentTmdb, 'movie', 0, 0, t, year || '', prog.currentTime);
+          }
+       };
+    } else {
+       detailResumeBtn.style.display = 'none';
     }
 
     detailPlayBtn.onclick = function() {
@@ -475,14 +526,25 @@
         var n = ep.episode_number || '?';
         var t = ep.title || 'Episode ' + n;
         var d = ep.overview || '';
+        
+        var progressUI = '';
+        var savedProg = getEpProgress(tmdbId, currentSeason, n);
+        if (savedProg && savedProg.duration && savedProg.currentTime > 5) {
+           var pct = Math.min(100, (savedProg.currentTime / savedProg.duration) * 100);
+           progressUI = '<div class="ep-progress-bar" style="display:block;"><div class="ep-progress-fill" style="width:' + pct + '%"></div></div>';
+        }
+        
         card.innerHTML = '<div class="ep-num">E' + n + '</div>' +
                          '<div class="ep-title">' + t + '</div>' +
-                         (d ? '<div class="ep-desc">' + d + '</div>' : '');
+                         (d ? '<div class="ep-desc">' + d + '</div>' : '') +
+                         progressUI;
+                         
         card.onclick = function() {
           var showTitle = (currentItem && (currentItem.title || currentItem.name)) || '';
           var y = ((currentItem && (currentItem.release_date || currentItem.first_air_date)) || '').split('-')[0];
           var epLabel = 'S' + pad2(currentSeason) + 'E' + pad2(n);
-          openPlayerInTab(tmdbId, 'tv', currentSeason, n, showTitle + ' · ' + epLabel, y);
+          var resumeFrom = (savedProg && savedProg.duration - savedProg.currentTime > 30) ? savedProg.currentTime : null;
+          openPlayerInTab(tmdbId, 'tv', currentSeason, n, showTitle + ' · ' + epLabel, y, resumeFrom);
         };
         episodeGrid.appendChild(card);
       })(eps[i]);
