@@ -1,1184 +1,539 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="referrer" content="no-referrer">
-<title>Channels</title>
-<link rel="preconnect" href="https://epgshare01.online" crossorigin>
-<link rel="preconnect" href="https://raw.githubusercontent.com" crossorigin>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
-<style>
-* { margin:0; padding:0; box-sizing:border-box; -webkit-box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
-html,body { background:#0a0a0a; color:#eee; font-family:Arial,Helvetica,sans-serif; width:100%; height:100%; overflow:hidden; -webkit-user-select:none; user-select:none; }
-#header { background:#111; border-bottom:1px solid #222; padding:12px 20px; padding-top:calc(12px + env(safe-area-inset-top)); display:flex; align-items:center; gap:12px; flex-wrap:wrap; flex-shrink:0; }
-#header h1 { font-size:20px; font-weight:bold; color:#4fc3f7; white-space:nowrap; margin:0; }
-#searchWrap { flex:1; min-width:200px; }
-#search { width:100%; padding:12px 16px; font-size:16px; background:#1a1a1a; border:1px solid #333; color:#eee; border-radius:6px; outline:none; font-family:inherit; }
-#search:focus { border-color:#4fc3f7; }
-#epgStatus { font-size:11px; color:#888; width:100%; margin-top:4px; display:none; }
-#epgStatus.visible { display:block; } #epgStatus.error { color:#ef5350; } #epgStatus.warn { color:#f7a23f; } #epgStatus.ok { color:#66bb6a; }
-.hdr-btn { padding:9px 12px; background:#1a1a1a; border:1px solid #333; color:#ddd; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer; outline:none; font-family:inherit; white-space:nowrap; }
-.hdr-btn:hover { background:#242424; border-color:#4fc3f7; }
-#sortSelect { padding:9px 10px; background:#1a1a1a; border:1px solid #333; color:#ddd; border-radius:6px; font-size:12px; font-weight:bold; font-family:inherit; cursor:pointer; outline:none; }
-#categories { background:#0e0e0e; border-bottom:1px solid #222; padding:10px 16px; overflow-x:auto; overflow-y:hidden; white-space:nowrap; flex-shrink:0; scrollbar-width:none; }
-#categories::-webkit-scrollbar { display:none; }
-.cat-chip { display:inline-block; padding:8px 16px; margin-right:8px; background:#1a1a1a; border:1px solid #2a2a2a; color:#ccc; border-radius:20px; font-size:13px; font-weight:bold; cursor:pointer; outline:none; font-family:inherit; white-space:nowrap; }
-.cat-chip:hover { background:#242424; color:#fff; }
-.cat-chip.active { background:#1a3a4a; border-color:#4fc3f7; color:#fff; }
-.cat-chip.fav-chip { border-color:#b8850f; color:#ffc94a; } .cat-chip.fav-chip.active { background:#3a2a10; border-color:#ffc94a; color:#fff; }
-.cat-chip.recent-chip { border-color:#6a3a8a; color:#c090e0; } .cat-chip.recent-chip.active { background:#2a1a3a; border-color:#c090e0; color:#fff; }
-.cat-chip.live-chip { border-color:#2a7a3a; color:#66d684; } .cat-chip.live-chip.active { background:#1a3a20; border-color:#66d684; color:#fff; }
-.cat-chip.cu-chip { border-color:#1565c0; color:#64b5f6; } .cat-chip.cu-chip.active { background:#0a2a4a; border-color:#64b5f6; color:#fff; }
-#wrap { height:calc(100vh - 130px); height:calc(100dvh - 130px); overflow-y:auto; overflow-x:hidden; padding:14px; padding-bottom:calc(20px + env(safe-area-inset-bottom)); -webkit-overflow-scrolling:touch; }
-#grid { display:flex; flex-wrap:wrap; margin:-6px; }
-.card { box-sizing:border-box; padding:12px; margin:6px; width:calc(100% - 12px); background:#161616; border:2px solid transparent; border-radius:10px; cursor:pointer; outline:none; display:flex; flex-direction:column; gap:10px; position:relative; }
-.card:hover { background:#1a1e24; border-color:#2f4a5f; }
-.card:focus { background:#1a2a35; border-color:#4fc3f7; box-shadow:0 0 0 2px rgba(79,195,247,0.3); }
-.card.compact { padding:10px; gap:6px; } .card.compact .card-epg, .card.compact .card-actions { display:none; } .card.compact .card-logo { width:40px; height:40px; } .card.compact .card-name { font-size:13px; }
-.card-star { position:absolute; top:8px; right:8px; background:transparent; border:none; color:#444; font-size:20px; line-height:1; cursor:pointer; padding:4px 6px; outline:none; z-index:2; }
-.card-star:hover { color:#ffc94a; } .card-star.active { color:#ffc94a; }
-.card-top { display:flex; align-items:center; gap:12px; min-width:0; padding-right:24px; }
-.card-logo { width:48px; height:48px; border-radius:8px; object-fit:contain; background:#222; flex-shrink:0; }
-.card-meta { flex:1; min-width:0; }
-.card-name { font-size:15px; font-weight:bold; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.card-num { display:inline-block; padding:1px 7px; margin-right:6px; background:#1e3a4a; border:1px solid #2f5a70; color:#7cd0f5; border-radius:4px; font-size:11px; font-weight:bold; vertical-align:middle; }
-.card-hd { display:inline-block; padding:1px 5px; margin-left:5px; background:#c62828; color:#fff; border-radius:3px; font-size:9px; font-weight:bold; vertical-align:middle; letter-spacing:.5px; }
-.card-cu { display:inline-block; padding:1px 5px; margin-left:4px; background:#1565c0; color:#fff; border-radius:3px; font-size:9px; font-weight:bold; vertical-align:middle; letter-spacing:.5px; }
-.card-cat { font-size:11px; color:#7ab8d6; margin-top:2px; text-transform:uppercase; font-weight:bold; }
-.card-lang { font-size:11px; color:#a0b8c8; text-transform:capitalize; font-weight:normal; }
-.card-epg { padding:10px 12px; background:rgba(255,255,255,0.03); border-radius:8px; border-left:3px solid #66bb6a; min-height:56px; }
-.card-epg.upcoming { border-left-color:#4fc3f7; }
-.card-epg.stale { border-left-color:#f7a23f; opacity:0.75; }
-.epg-now-row { display:flex; align-items:center; gap:8px; font-size:11px; color:#888; margin-bottom:4px; }
-.epg-now-label { display:inline-block; padding:2px 6px; background:#66bb6a; color:#fff; border-radius:3px; font-size:10px; font-weight:bold; letter-spacing:.5px; }
-.epg-now-label.next { background:#4fc3f7; color:#001018; }
-.epg-now-label.stale { background:#f7a23f; color:#001018; }
-.epg-now-time { color:#aaa; font-size:11px; }
-.epg-now-title { font-size:13px; color:#ddd; font-weight:bold; line-height:1.35; margin-bottom:4px; }
-.card-epg.stale .epg-now-title { color:#b0b0b0; }
-.epg-now-desc { font-size:11px; color:#777; line-height:1.4; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-.epg-now-meta { font-size:11px; color:#7cd0f5; margin-bottom:4px; }
-.epg-stale-hint { font-size:10px; color:#f7a23f; margin-top:4px; }
-.epg-progress { height:3px; background:rgba(255,255,255,0.08); border-radius:2px; overflow:hidden; margin-top:6px; }
-.epg-progress-fill { height:100%; background:linear-gradient(90deg, #66bb6a 0%, #4fc3f7 100%); border-radius:2px; width:0%; }
-.epg-next-mini { font-size:11px; color:#6a8ba0; margin-top:4px; padding-top:4px; border-top:1px solid #222; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.epg-next-mini b { color:#8ab8d0; }
-.epg-empty { font-size:12px; color:#555; font-style:italic; }
-.card-actions { display:flex; gap:8px; justify-content:flex-end; }
-.card-btn { padding:8px 14px; background:#1e5a78; border:1px solid #4fc3f7; color:#fff; border-radius:6px; font-size:12px; font-weight:bold; cursor:pointer; outline:none; font-family:inherit; }
-.msg { width:100%; padding:60px 20px; text-align:center; font-size:15px; color:#888; }
-.spinner { display:inline-block; width:28px; height:28px; border:3px solid #333; border-top-color:#4fc3f7; border-radius:50%; animation:spin 0.8s linear infinite; margin-bottom:14px; }
-@keyframes spin { to { transform:rotate(360deg); } }
-#chNumOverlay { position:fixed; top:22%; left:50%; transform:translateX(-50%); min-width:200px; padding:20px 40px; background:rgba(10,20,28,0.96); border:3px solid #4fc3f7; border-radius:18px; text-align:center; z-index:2000; pointer-events:none; display:none; }
-#chNumOverlay.visible { display:block; }
-#chNumOverlay .num-label { font-size:12px; color:#7ab8d6; letter-spacing:2px; font-weight:bold; margin-bottom:6px; }
-#chNumOverlay .num-value { font-size:72px; color:#fff; font-weight:bold; line-height:1; letter-spacing:4px; }
-#detailModal { position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.88); z-index:1500; display:flex; align-items:center; justify-content:center; padding:16px; }
-#detailModal.hidden { display:none; }
-.detail-panel { background:#161616; border-radius:14px; max-width:720px; width:100%; max-height:92vh; display:flex; flex-direction:column; border:1px solid #2a2a2a; overflow:hidden; }
-.detail-header { display:flex; align-items:center; gap:14px; padding:16px; border-bottom:1px solid #2a2a2a; background:#121212; }
-.detail-logo { width:56px; height:56px; border-radius:10px; object-fit:contain; background:#222; flex-shrink:0; }
-.detail-meta { flex:1; min-width:0; }
-.detail-num { font-size:12px; color:#4fc3f7; font-weight:bold; margin-bottom:2px; }
-.detail-name { font-size:20px; font-weight:bold; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.detail-tags { margin-top:3px; font-size:11px; color:#7ab8d6; }
-.detail-tags .tag-hd { display:inline-block; padding:1px 6px; margin-right:5px; background:#c62828; color:#fff; border-radius:3px; font-size:9px; font-weight:bold; letter-spacing:.5px; }
-.detail-tags .tag-cu { display:inline-block; padding:1px 6px; margin-right:5px; background:#1565c0; color:#fff; border-radius:3px; font-size:9px; font-weight:bold; letter-spacing:.5px; }
-.detail-cat { font-size:11px; color:#7ab8d6; text-transform:uppercase; margin-top:2px; }
-.detail-close { background:transparent; border:1px solid #333; color:#eee; width:44px; height:44px; border-radius:8px; font-size:24px; cursor:pointer; flex-shrink:0; }
-.detail-tabs { display:flex; border-bottom:1px solid #2a2a2a; background:#101010; }
-.detail-tab { flex:1; padding:12px; background:transparent; border:none; color:#888; font-size:13px; font-weight:bold; font-family:inherit; cursor:pointer; border-bottom:2px solid transparent; }
-.detail-tab.active { color:#4fc3f7; border-bottom-color:#4fc3f7; }
-.detail-body { overflow-y:auto; padding:16px; flex:1; }
-.detail-show { padding:14px; background:#1c1c1c; border-radius:10px; margin-bottom:12px; border:1px solid #262626; }
-.detail-show.now { border-left:4px solid #66bb6a; }
-.detail-show.next { border-left:4px solid #4fc3f7; }
-.detail-show.stale { border-left:4px solid #f7a23f; }
-.detail-show.none { border-left:4px solid #444; opacity:0.7; }
-.show-label { font-size:11px; font-weight:bold; text-transform:uppercase; margin-bottom:6px; }
-.detail-show.now .show-label { color:#66bb6a; }
-.detail-show.next .show-label { color:#4fc3f7; }
-.detail-show.stale .show-label { color:#f7a23f; }
-.detail-show.none .show-label { color:#666; }
-.show-title { font-size:16px; font-weight:bold; color:#fff; line-height:1.3; margin-bottom:6px; }
-.show-meta-row { font-size:11px; color:#8aa; margin-bottom:6px; }
-.show-image { width:100%; max-height:180px; border-radius:8px; overflow:hidden; margin-bottom:10px; background:#0a0a0a; }
-.show-image img { width:100%; max-height:180px; object-fit:cover; display:block; }
-.show-desc { font-size:13px; color:#a0a0a0; line-height:1.5; }
-.show-stale-hint { font-size:11px; color:#f7a23f; margin-top:6px; }
-.timeline-row { display:flex; gap:12px; padding:10px 0; border-bottom:1px solid #222; }
-.timeline-row:last-child { border-bottom:none; }
-.timeline-time { font-size:12px; color:#7cd0f5; font-weight:bold; min-width:90px; flex-shrink:0; }
-.timeline-title { font-size:13px; color:#ddd; flex:1; }
-.timeline-row.live .timeline-time { color:#66bb6a; } .timeline-row.live .timeline-title { color:#fff; font-weight:bold; }
-.timeline-row.past { opacity:0.5; }
-.timeline-day-header { padding:12px 0 6px; font-size:11px; color:#4fc3f7; font-weight:bold; text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid #2a4a5a; margin-bottom:4px; }
-.stale-banner { padding:12px; background:rgba(247,162,63,0.1); border-left:3px solid #f7a23f; border-radius:6px; margin-bottom:12px; font-size:12px; color:#f7a23f; }
-.airing-tag { background:#66bb6a; color:#fff; font-size:9px; font-weight:bold; padding:1px 5px; border-radius:3px; }
-.detail-actions { display:flex; gap:10px; padding:14px 16px; border-top:1px solid #2a2a2a; background:#121212; }
-.detail-actions button { flex:1; padding:14px; border-radius:8px; font-size:15px; font-weight:bold; cursor:pointer; font-family:inherit; border:none; }
-.btn-watch { background:#1e5a78; color:#fff; border:1px solid #4fc3f7 !important; }
-.btn-cancel { background:#2a2a2a; color:#ddd; border:1px solid #333 !important; }
-#helpModal { position:fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.9); z-index:1600; display:flex; align-items:center; justify-content:center; padding:16px; }
-#helpModal.hidden { display:none; }
-.help-panel { background:#161616; border-radius:14px; max-width:560px; width:100%; max-height:90vh; display:flex; flex-direction:column; border:1px solid #2a2a2a; overflow:hidden; }
-.help-panel h2 { padding:16px; border-bottom:1px solid #2a2a2a; font-size:18px; color:#4fc3f7; background:#121212; }
-.help-body { padding:16px; overflow-y:auto; }
-.help-row { display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #222; font-size:13px; }
-.help-key { background:#2a2a2a; border:1px solid #444; border-radius:4px; padding:2px 8px; color:#7cd0f5; font-family:monospace; font-size:12px; }
-#toast { position:fixed; bottom:30px; left:50%; transform:translateX(-50%); background:rgba(30,30,30,0.95); color:#fff; padding:12px 22px; border-radius:8px; border:1px solid #4fc3f7; font-size:14px; z-index:2500; opacity:0; transition:opacity .25s; pointer-events:none; max-width:90vw; }
-#toast.visible { opacity:1; }
-#toast.error { border-color:#ef5350; color:#ffc7c7; }
-@media (min-width: 600px) { .card { width:calc(50% - 12px); } }
-@media (min-width: 900px) { .card { width:calc(33.333% - 12px); } }
-@media (min-width: 1700px) { .card { width:calc(25% - 12px); } }
-@media (max-width: 480px) { #header h1 { font-size:16px; width:100%; } #searchWrap { min-width:100%; } .card-logo { width:42px; height:42px; } .hdr-btn, #sortSelect { padding:8px 10px; font-size:11px; } }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>flexji · watch free</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Roboto,system-ui,sans-serif; }
+    body { background:#141414; color:#fff; min-height:100vh; overflow-x:hidden; }
+
+    .navbar {
+      position:relative; top:0; z-index:100;
+      background:linear-gradient(180deg,#141414 0%,transparent 100%);
+      padding:20px 4% 12px;
+      display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
+      transition:background 0.3s;
+    }
+    .navbar.scrolled { background:rgba(20,20,20,0.95); }
+    @supports (backdrop-filter: blur(8px)) { .navbar.scrolled { backdrop-filter:blur(8px); } }
+
+    .brand { font-size:2rem; font-weight:700; letter-spacing:-1px; color:#e50914; display:flex; align-items:center; }
+    .brand i { font-size:1.8rem; margin-right:8px; }
+    .nav-links { display:flex; font-weight:500; }
+    .nav-links a { color:#e5e5e5; text-decoration:none; font-size:0.95rem; display:flex; align-items:center; margin:0 14px; }
+    .nav-links a i { margin-right:6px; }
+    .search-box { display:flex; align-items:center; background:#2a2a2a; border-radius:4px; padding:6px 12px; border:1px solid #3a3a3a; }
+    .search-box:focus-within { border-color:#e50914; }
+    .search-box input { background:transparent; border:none; color:#fff; outline:none; font-size:0.9rem; width:180px; padding:4px 0; }
+    .search-box input::placeholder { color:#888; }
+    .search-box button { background:transparent; border:none; color:#bbb; cursor:pointer; font-size:0.95rem; padding:0 0 0 8px; }
+
+    .hero { position:relative; margin:-10px 0 30px; padding:0 4%; min-height:70vh;
+      display:flex; align-items:center; background-size:cover; background-position:center;
+      border-radius:0 0 12px 12px; }
+    .hero::after { content:''; position:absolute; top:0; right:0; bottom:0; left:0;
+      background:linear-gradient(90deg,rgba(20,20,20,0.8) 0%,transparent 60%); border-radius:0 0 12px 12px; }
+    .hero-content { position:relative; z-index:2; max-width:600px; }
+    .hero-content h1 { font-size:3.5rem; font-weight:700; margin-bottom:8px; text-shadow:0 2px 10px rgba(0,0,0,0.5); }
+    .hero-content .meta { display:flex; color:#ddd; font-size:0.95rem; margin-bottom:12px; }
+    .hero-content .meta span { background:rgba(255,255,255,0.1); padding:2px 12px; border-radius:20px; margin-right:10px; }
+    .hero-content .plot { color:#ccc; line-height:1.6; max-width:500px; margin-bottom:20px; }
+    .hero-content .btn { background:#e50914; border:none; color:#fff; padding:12px 36px;
+      border-radius:4px; font-weight:600; font-size:1.1rem; cursor:pointer; display:inline-flex; align-items:center; }
+    .hero-content .btn i { margin-right:10px; }
+
+    .container { padding:0 4% 40px; max-width:1600px; margin:0 auto; }
+    .row { margin-bottom:44px; }
+    .row-header { display:flex; align-items:center; margin-bottom:12px; }
+    .row-header h2 { font-size:1.4rem; font-weight:600; margin-left:12px; }
+    .row-header i { color:#e50914; font-size:1.2rem; }
+    .row-scroll { display:flex; overflow-x:auto; padding-bottom:8px; -webkit-overflow-scrolling:touch; }
+    .row-scroll::-webkit-scrollbar { height:6px; }
+    .row-scroll::-webkit-scrollbar-track { background:#1a1a1a; border-radius:10px; }
+    .row-scroll::-webkit-scrollbar-thumb { background:#e50914; border-radius:10px; }
+
+    .card { flex:0 0 180px; margin-right:12px; cursor:pointer; border-radius:6px; overflow:hidden; background:#151515; position:relative; }
+    .card img { width:100%; height:270px; object-fit:cover; display:block; background:#222; }
+    .card .title { padding:8px 10px 2px; font-weight:500; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .card .year { padding:0 10px 10px; font-size:0.7rem; color:#888; }
+
+    .detail-view { display:none; margin-bottom:40px; background:linear-gradient(145deg,#181818,#0f0f0f);
+      border-radius:10px; padding:30px; border:1px solid #282828; }
+    .detail-view.active { display:flex; flex-wrap:wrap; }
+    .detail-poster { flex:0 0 200px; margin-right:30px; }
+    .detail-poster img { width:100%; border-radius:8px; box-shadow:0 12px 40px rgba(0,0,0,0.7); }
+    .detail-info { flex:1; min-width:260px; }
+    .detail-info h1 { font-size:2.6rem; font-weight:700; margin-bottom:6px; line-height:1.2; }
+    .detail-info .meta { color:#aaa; font-size:0.9rem; margin-bottom:12px; display:flex; flex-wrap:wrap; }
+    .detail-info .meta span { background:#222; padding:2px 14px; border-radius:30px; display:inline-flex; align-items:center; margin:0 8px 8px 0; }
+    .detail-info .meta span i { margin-right:6px; }
+    .detail-info .plot { color:#ccc; line-height:1.6; max-width:700px; margin-bottom:18px; }
+    .detail-info .btn { background:#e50914; border:none; color:#fff; padding:12px 32px; border-radius:4px;
+      font-weight:600; font-size:1rem; cursor:pointer; display:inline-flex; align-items:center; }
+    .detail-info .btn i { margin-right:10px; }
+
+    .episode-section { display:none; width:100%; margin-top:20px; border-top:1px solid #2a2a2a; padding-top:20px; }
+    .episode-section.active { display:block; }
+    .episode-section h3 { font-size:1.2rem; margin-bottom:12px; display:flex; align-items:center; }
+    .episode-section h3 i { margin-right:10px; }
+    .season-selector { display:flex; flex-wrap:wrap; margin-bottom:14px; }
+    .season-selector button { background:#222; border:1px solid #3a3a3a; color:#ccc; padding:5px 16px;
+      border-radius:30px; cursor:pointer; font-weight:500; margin:0 8px 8px 0; }
+    .season-selector button.active { background:#e50914; border-color:#e50914; color:#fff; }
+    .episode-grid { display:flex; flex-wrap:wrap; max-height:400px; overflow-y:auto; padding-right:4px; }
+    .episode-grid::-webkit-scrollbar { width:6px; }
+    .episode-grid::-webkit-scrollbar-thumb { background:#e50914; border-radius:10px; }
+    .episode-card { background:#1a1a1a; border-radius:6px; padding:12px; cursor:pointer;
+      border:1px solid transparent; width:190px; margin:0 10px 10px 0; }
+    .episode-card .ep-num { color:#888; font-size:0.7rem; font-weight:600; }
+    .episode-card .ep-title { font-weight:500; margin:4px 0; }
+    .episode-card .ep-desc { color:#999; font-size:0.75rem; }
+
+    .loading { text-align:center; padding:50px 20px; color:#888; font-size:1.1rem; }
+    .loading i { font-size:2rem; display:block; margin-bottom:16px; color:#e50914; }
+    .error-msg { text-align:center; padding:40px 20px; color:#e50914; }
+    .error-msg i { font-size:2rem; display:block; margin-bottom:12px; }
+
+    .footer { background:#0a0a0a; border-top:1px solid #222; padding:30px 4% 20px;
+      text-align:center; color:#888; font-size:0.85rem; line-height:1.6; margin-top:20px; }
+    .footer .disclaimer { max-width:800px; margin:0 auto; }
+    .footer .disclaimer i { color:#e50914; margin-right:6px; }
+
+    @media (max-width:768px) {
+      .navbar { flex-direction:column; align-items:stretch; padding:12px 5%; }
+      .nav-links { justify-content:center; flex-wrap:wrap; }
+      .nav-links a { margin:4px 8px; }
+      .search-box input { width:120px; }
+      .brand { font-size:1.6rem; justify-content:center; }
+      .hero { min-height:50vh; }
+      .hero-content h1 { font-size:2.2rem; }
+      .detail-poster { flex:0 0 140px; margin-right:20px; }
+      .detail-info h1 { font-size:1.8rem; }
+      .card { flex:0 0 140px; }
+      .card img { height:200px; }
+      .episode-card { width:150px; }
+    }
+    @media (max-width:480px) {
+      .detail-poster { flex:0 0 100px; }
+      .detail-info h1 { font-size:1.4rem; }
+      .card { flex:0 0 110px; }
+      .card img { height:160px; }
+    }
+  </style>
 </head>
 <body>
-<div id="header">
-  <h1>📺 JTV</h1>
-  <div id="searchWrap"><input id="search" type="search" placeholder="Search channels or shows…" autocomplete="off"></div>
-  <select id="sortSelect">
-    <option value="default">Sort: Default</option>
-    <option value="number">Sort: Number</option>
-    <option value="name">Sort: Name A-Z</option>
-    <option value="category">Sort: Category</option>
-    <option value="language">Sort: Language</option>
-  </select>
-  <button class="hdr-btn" id="viewBtn" type="button">▦ Grid</button>
-  <button class="hdr-btn" id="refreshBtn" type="button">⟳ EPG</button>
-  <button class="hdr-btn" id="helpBtn" type="button">?</button>
-  <div id="epgStatus"></div>
+
+<nav class="navbar" id="navbar">
+  <div class="brand"><i class="fas fa-film"></i> flexji</div>
+  <div class="nav-links">
+    <a id="navHome" href="#"><i class="fas fa-home"></i> Home</a>
+    <a id="navTrending" href="#"><i class="fas fa-fire"></i> Trending</a>
+    <a id="navTv" href="#"><i class="fas fa-tv"></i> TV Shows</a>
+  </div>
+  <div class="search-box">
+    <input type="text" id="searchInput" placeholder="Search movies & TV..." />
+    <button id="searchBtn"><i class="fas fa-search"></i></button>
+  </div>
+</nav>
+
+<div class="hero" id="heroSection" style="display:none;">
+  <div class="hero-content">
+    <h1 id="heroTitle">Title</h1>
+    <div class="meta" id="heroMeta"></div>
+    <p class="plot" id="heroPlot">Description…</p>
+    <button class="btn" id="heroPlayBtn"><i class="fas fa-play"></i> Play</button>
+  </div>
 </div>
-<div id="categories"></div>
-<div id="wrap"><div id="grid"><div class="msg"><div class="spinner"></div><div>Loading channels & catalog…</div></div></div></div>
 
-<div id="chNumOverlay"><div class="num-label">Channel</div><div class="num-value" id="chNumValue"></div></div>
-
-<div id="detailModal" class="hidden">
-  <div class="detail-panel">
-    <div class="detail-header">
-      <img class="detail-logo" id="dLogo" src="" alt="" onerror="this.style.visibility='hidden'">
-      <div class="detail-meta">
-        <div class="detail-num" id="dNum"></div>
-        <div class="detail-name" id="dName"></div>
-        <div class="detail-tags" id="dTags"></div>
-        <div class="detail-cat" id="dCat"></div>
+<div class="container" id="app">
+  <div class="detail-view" id="detailView">
+    <div class="detail-poster"><img id="detailPoster" src="" alt="poster" /></div>
+    <div class="detail-info">
+      <h1 id="detailTitle">Title</h1>
+      <div class="meta" id="detailMeta"></div>
+      <p class="plot" id="detailPlot">Description…</p>
+      <button class="btn" id="detailPlayBtn"><i class="fas fa-play"></i> Play</button>
+      <div class="episode-section" id="episodeSection">
+        <h3><i class="fas fa-list-ul"></i> Episodes</h3>
+        <div class="season-selector" id="seasonSelector"></div>
+        <div class="episode-grid" id="episodeGrid"></div>
       </div>
-      <button class="detail-close" id="dClose" tabindex="0" type="button">×</button>
     </div>
-    <div class="detail-tabs"><button class="detail-tab active" id="dTabInfo" type="button">Now / Next</button><button class="detail-tab" id="dTabGuide" type="button">Full Guide</button></div>
-    <div class="detail-body" id="dBody"></div>
-    <div class="detail-actions"><button class="btn-cancel" id="dCancel" type="button">✕ Close</button><button class="btn-watch" id="dWatch" type="button">▶ Watch Live</button></div>
   </div>
+  <div id="rowsContainer"></div>
 </div>
 
-<div id="helpModal" class="hidden">
-  <div class="help-panel">
-    <h2>⌨️ Keyboard Shortcuts</h2>
-    <div class="help-body">
-      <div class="help-row"><span>Focus search</span><span class="help-key">/ or S</span></div>
-      <div class="help-row"><span>Type channel number</span><span class="help-key">0-9</span></div>
-      <div class="help-row"><span>Confirm channel</span><span class="help-key">Enter</span></div>
-      <div class="help-row"><span>Cancel / Close</span><span class="help-key">Esc</span></div>
-      <div class="help-row"><span>Favorite</span><span class="help-key">F</span></div>
-      <div class="help-row"><span>Refresh guide</span><span class="help-key">R</span></div>
-    </div>
-    <div class="detail-actions"><button id="helpClose" type="button" style="flex:1;padding:14px;border-radius:8px;font-size:15px;font-weight:bold;cursor:pointer;font-family:inherit;background:#2a2a2a;color:#ddd;border:1px solid #333;">Close</button></div>
+<footer class="footer">
+  <div class="disclaimer">
+    <p><i class="fas fa-shield-alt"></i> <strong>DMCA Disclaimer</strong></p>
+    <p>flexji does not host any files or content on its servers. All video content is sourced from third‑party streaming providers. If you believe any content infringes your copyright, please contact the respective provider directly.</p>
+    <p style="margin-top:8px; color:#666; font-size:0.75rem;">&copy; 2026 flexji · All rights reserved.</p>
   </div>
-</div>
+</footer>
 
-<div id="toast"></div>
-
+<script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3.6.2/dist/fetch.umd.min.js"></script>
 <script>
-if (typeof Promise === 'undefined') {
-  (function(){function P(e){var s=this;s._s=0;s._v=null;s._h=[];function r(v){if(s._s)return;s._s=1;s._v=v;f(s);}function j(v){if(s._s)return;s._s=2;s._v=v;f(s);}function f(p){if(p._s===0)return;var hs=p._h;p._h=[];for(var i=0;i<hs.length;i++)h(p,hs[i]);}function h(p,hd){if(p._s===1){if(hd.of){try{var x=hd.of(p._v);if(x&&typeof x.then==='function')x.then(hd.r,hd.j);else hd.r(x);}catch(e){hd.j(e);}}else hd.r(p._v);}else{if(hd.or){try{var y=hd.or(p._v);if(y&&typeof y.then==='function')y.then(hd.r,hd.j);else hd.r(y);}catch(e){hd.j(e);}}else hd.j(p._v);}}s.then=function(of,or){return new P(function(res,rej){var hd={of:of,or:or,r:res,j:rej};if(s._s)h(s,hd);else s._h.push(hd);});};s['catch']=function(or){return s.then(null,or);};try{e(r,j);}catch(e){j(e);}}P.resolve=function(v){return new P(function(r){r(v);});};P.reject=function(v){return new P(function(r,j){j(v);});};P.all=function(a){return new P(function(r,j){var o=[],d=0;if(!a.length)return r(o);for(var i=0;i<a.length;i++)(function(x){a[x].then(function(v){o[x]=v;if(++d===a.length)r(o);},j);})(i);});};window.Promise=P;})();
-}
-if (!Array.prototype.includes) Array.prototype.includes = function(x){ return this.indexOf(x) !== -1; };
-var rAF = window.requestAnimationFrame || function(cb){ return setTimeout(function(){ cb(Date.now()); }, 16); };
-function safeLog(){ try{ console.log.apply(console,arguments);}catch(e){} }
+(function() {
+  'use strict';
 
-function xhrFetch(url, opts) {
-  opts = opts || {};
-  return new Promise(function(resolve, reject) {
-    var xhr = new XMLHttpRequest();
-    xhr.open(opts.method || 'GET', url, true);
-    xhr.timeout = opts.timeout || 20000;
-    if (opts.headers) for (var k in opts.headers) if (opts.headers.hasOwnProperty(k)) try { xhr.setRequestHeader(k, opts.headers[k]); } catch(e){}
-    xhr.onload = function() { if (xhr.status >= 200 && xhr.status < 300) resolve({ ok:true, status: xhr.status, text: function(){ return Promise.resolve(xhr.responseText); }, json: function(){ return Promise.resolve(JSON.parse(xhr.responseText)); } }); else reject(new Error('HTTP ' + xhr.status)); };
-    xhr.onerror = function(){ reject(new Error('Network error')); };
-    xhr.ontimeout = function(){ reject(new Error('Timeout')); };
-    try { xhr.send(opts.body || null); } catch(e){ reject(e); }
-  });
-}
-function xhrFetchBuffer(url, opts) {
-  opts = opts || {};
-  return new Promise(function(resolve, reject) {
-    var xhr = new XMLHttpRequest();
-    xhr.open(opts.method || 'GET', url, true);
-    xhr.responseType = 'arraybuffer';
-    xhr.timeout = opts.timeout || 120000;
-    xhr.onload = function() { if (xhr.status >= 200 && xhr.status < 300) resolve(xhr.response); else reject(new Error('HTTP ' + xhr.status)); };
-    xhr.onerror = function(){ reject(new Error('Network error')); };
-    xhr.ontimeout = function(){ reject(new Error('Timeout')); };
-    try { xhr.send(null); } catch(e){ reject(e); }
-  });
-}
-
-var CHANNELS_CANDIDATES = ['/jstr4web.json', 'https://jjtvxweb.pages.dev/jstr4web.json'];
-var CATALOG_URL = 'https://raw.githubusercontent.com/mitthu786/tvepg/refs/heads/main/jiotv/jiodata.json';
-var CORS_PROXY = 'https://demonji.onrender.com/cors-proxy.php/';
-var EPG_SOURCES = [
-  { url: 'https://epgshare01.online/epgshare01/epg_ripper_IN1.xml.gz', name: 'IN1' },
-  { url: 'https://epgshare01.online/epgshare01/epg_ripper_IN2.xml.gz', name: 'IN2' },
-  { url: 'https://epgshare01.online/epgshare01/epg_ripper_IN4.xml.gz', name: 'IN4' }
-];
-var EPG_CACHE_KEY = 'jtv_epg_cache_v22';
-var EPG_CACHE_TTL_MS = 4 * 60 * 60 * 1000;
-var FAV_KEY = 'jtv_favorites_v1', RECENT_KEY = 'jtv_recents_v1', PREF_KEY = 'jtv_prefs_v1';
-var OVERRUN_GRACE_MS = 45 * 60 * 1000;
-
-var gridEl = document.getElementById('grid'), searchEl = document.getElementById('search'), categoriesEl = document.getElementById('categories');
-var wrapEl = document.getElementById('wrap'), epgStatusEl = document.getElementById('epgStatus');
-var chNumOverlay = document.getElementById('chNumOverlay'), chNumValue = document.getElementById('chNumValue');
-var detailModal = document.getElementById('detailModal'), helpModal = document.getElementById('helpModal');
-var dLogo = document.getElementById('dLogo'), dNum = document.getElementById('dNum'), dName = document.getElementById('dName'), dCat = document.getElementById('dCat'), dTags = document.getElementById('dTags');
-var dBody = document.getElementById('dBody'), dClose = document.getElementById('dClose'), dCancel = document.getElementById('dCancel'), dWatch = document.getElementById('dWatch');
-var dTabInfo = document.getElementById('dTabInfo'), dTabGuide = document.getElementById('dTabGuide');
-var toastEl = document.getElementById('toast'), sortSelect = document.getElementById('sortSelect'), viewBtn = document.getElementById('viewBtn');
-var refreshBtn = document.getElementById('refreshBtn'), helpBtn = document.getElementById('helpBtn'), helpClose = document.getElementById('helpClose');
-
-var allChannels = [], displayedChannels = [], selectedCategory = 'all', searchQuery = '';
-var cardMap = {}, currentDetailChannel = null, currentDetailTab = 'info';
-var chNumBuffer = '', chNumTimer = null, toastTimer = null;
-var favorites = {}, recents = [], sortMode = 'default', viewMode = 'grid';
-var epgByChannelId = {}, epgLoaded = false, progressUpdateTimer = null;
-var midnightTimer = null, exhaustRetryTimer = null;
-
-function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-function truncate(s,n){ if(!s) return ''; return s.length > n ? s.substring(0, n-1) + '…' : s; }
-function formatTimeOnly(ms){ var d = new Date(ms), h = d.getHours(), m = d.getMinutes(); var ap = h >= 12 ? 'PM' : 'AM'; h = h % 12; if (h === 0) h = 12; return h + ':' + (m < 10 ? '0' : '') + m + ' ' + ap; }
-function formatRange(s, e){ return formatTimeOnly(s) + ' - ' + formatTimeOnly(e); }
-function formatDayLabel(ms){
-  var d = new Date(ms), now = new Date();
-  var dDay = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
-  var nDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-  var diff = Math.round((dDay - nDay) / 86400000);
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Tomorrow';
-  if (diff === -1) return 'Yesterday';
-  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
-}
-function setEpgStatus(text, kind){
-  if (!epgStatusEl) return;
-  if (!text) { epgStatusEl.classList.remove('visible','error','warn','ok'); epgStatusEl.textContent = ''; return; }
-  epgStatusEl.textContent = text; epgStatusEl.classList.add('visible');
-  epgStatusEl.classList.remove('error','warn','ok'); if (kind) epgStatusEl.classList.add(kind);
-}
-function showToast(msg, isError){
-  toastEl.textContent = msg; toastEl.classList.add('visible');
-  if (isError) toastEl.classList.add('error'); else toastEl.classList.remove('error');
-  clearTimeout(toastTimer); toastTimer = setTimeout(function(){ toastEl.classList.remove('visible'); }, 2500);
-}
-function extractNumericId(id) { if (!id) return null; var m = String(id).match(/(\d{1,6})\s*$/); return m ? m[1] : null; }
-
-/* ════════ THREE-TIER NORMALIZERS ════════ */
-function normExact(name) {
-  return String(name || '').toLowerCase()
-    .replace(/&/g, ' and ')
-    .replace(/[^\w\s]/g, ' ')
-    .replace(/\s+/g, ' ').trim();
-}
-function normMedium(name) {
-  return normExact(name)
-    .replace(/\b(hd|sd|fhd|uhd|4k|8k|1080p|720p|1080i|720i|576p|480p|tv|channel|television|network)\b/g, ' ')
-    .replace(/\s+/g, ' ').trim();
-}
-function normLoose(name) {
-  return normMedium(name)
-    .replace(/\b(india|in|uk|us|usa|canada|australia|asia|europe|africa|hindi|english|tamil|telugu|kannada|malayalam|marathi|bengali|punjabi|gujarati|odia|urdu|assamese|bhojpuri)\b/g, ' ')
-    .replace(/\s+/g, ' ').trim();
-}
-function tokenize(name) {
-  var s = normMedium(name);
-  if (!s) return [];
-  return s.split(/\s+/).filter(function(t){ return t.length >= 2; });
-}
-
-function loadPrefs(){
-  try { favorites = JSON.parse(localStorage.getItem(FAV_KEY) || '{}'); } catch(e){ favorites = {}; }
-  try { recents = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch(e){ recents = []; }
-  try { var p = JSON.parse(localStorage.getItem(PREF_KEY) || '{}'); if (p.sortMode) sortMode = p.sortMode; if (p.viewMode) viewMode = p.viewMode; } catch(e){}
-  if (sortSelect) sortSelect.value = sortMode; updateViewBtn();
-}
-function savePrefs(){ try { localStorage.setItem(PREF_KEY, JSON.stringify({ sortMode: sortMode, viewMode: viewMode })); } catch(e){} }
-function saveFavorites(){ try { localStorage.setItem(FAV_KEY, JSON.stringify(favorites)); } catch(e){} }
-function saveRecents(){ try { localStorage.setItem(RECENT_KEY, JSON.stringify(recents)); } catch(e){} }
-function updateViewBtn(){ if (viewBtn) viewBtn.textContent = viewMode === 'grid' ? '▦ Grid' : '☰ List'; }
-function toggleFavorite(chId){
-  chId = String(chId);
-  if (favorites[chId]) delete favorites[chId]; else favorites[chId] = true;
-  saveFavorites();
-  var entry = cardMap[chId];
-  if (entry) { var star = entry.el.querySelector('.card-star'); if (star) { if (favorites[chId]) star.classList.add('active'); else star.classList.remove('active'); } }
-  if (selectedCategory === 'favorites') applyFilter();
-  showToast(favorites[chId] ? 'Added to favorites ⭐' : 'Removed from favorites');
-}
-function addRecent(chId){ chId = String(chId); recents = [chId].concat(recents.filter(function(x){ return x !== chId; })).slice(0, 20); saveRecents(); }
-
-function parseEPGDate(dateStr) {
-  if (!dateStr) return null;
-  var s = String(dateStr).trim();
-  if (!s) return null;
-  if (/Z$/.test(s)) { try { var dZ = new Date(s).getTime(); if (!isNaN(dZ)) return dZ; } catch(e){} }
-  var m = s.match(/^(\d{14})/);
-  if (m) {
-    var dt = m[1], rest = s.substring(14).trim(), tz = '+0530';
-    if (rest) {
-      var tzm = rest.match(/([+-])(\d{1,2}):?(\d{2})?/);
-      if (tzm) { var sg = tzm[1] === '-' ? -1 : 1; var th = parseInt(tzm[2], 10) || 0; var tm = parseInt(tzm[3] || '0', 10) || 0; tz = (sg < 0 ? '-' : '+') + (th < 10 ? '0' : '') + th + (tm < 10 ? '0' : '') + tm; }
-      else if (/IST/i.test(rest)) tz = '+0530';
-      else if (/UTC|GMT/i.test(rest)) tz = '+0000';
-    }
-    var year = parseInt(dt.slice(0,4), 10), month = parseInt(dt.slice(4,6), 10) - 1, day = parseInt(dt.slice(6,8), 10);
-    var hour = parseInt(dt.slice(8,10), 10), minute = parseInt(dt.slice(10,12), 10), second = parseInt(dt.slice(12,14), 10) || 0;
-    if (isNaN(year) || isNaN(month) || isNaN(day) || isNaN(hour) || isNaN(minute)) return null;
-    var ms = Date.UTC(year, month, day, hour, minute, second);
-    var sg2 = tz.charAt(0) === '-' ? -1 : 1;
-    var th2 = parseInt(tz.substr(1,2), 10) || 0, tm2 = parseInt(tz.substr(3,2), 10) || 0;
-    return ms - (th2 * 3600 + tm2 * 60) * 1000 * sg2;
+  if (!Element.prototype.remove) {
+    Element.prototype.remove = function() { if (this.parentNode) this.parentNode.removeChild(this); };
   }
-  var m12 = s.match(/^(\d{12})/);
-  if (m12) return parseEPGDate(m12[1] + '00' + s.substring(12));
-  try { var d = new Date(s).getTime(); if (!isNaN(d)) return d; } catch(e){}
-  return null;
-}
-function bytesToUtf8String(bytes) {
-  if (typeof TextDecoder !== 'undefined') { try { return new TextDecoder('utf-8').decode(bytes); } catch (e) {} }
-  var result = '', i = 0;
-  while (i < bytes.length) {
-    var b = bytes[i++];
-    if (b < 0x80) result += String.fromCharCode(b);
-    else if (b < 0xE0) result += String.fromCharCode(((b & 0x1F) << 6) | (bytes[i++] & 0x3F));
-    else if (b < 0xF0) result += String.fromCharCode(((b & 0x0F) << 12) | ((bytes[i++] & 0x3F) << 6) | (bytes[i++] & 0x3F));
-    else { var cp = ((b & 0x07) << 18) | ((bytes[i++] & 0x3F) << 12) | ((bytes[i++] & 0x3F) << 6) | (bytes[i++] & 0x3F); cp -= 0x10000; result += String.fromCharCode(0xD800 + (cp >> 10), 0xDC00 + (cp & 0x3FF)); }
-  }
-  return result;
-}
-function chunkedUngzip(bytes) {
-  return new Promise(function(resolve, reject) {
-    if (typeof pako === 'undefined') { reject(new Error('pako')); return; }
-    try { var inflator = new pako.Inflate({ to: 'string', chunkSize: 1024 * 1024 }); inflator.push(bytes, true); if (inflator.err) { reject(new Error('inflate')); return; } resolve(inflator.result); } catch (e) { reject(e); }
-  });
-}
-function decodeXmlEntities(s) {
-  if (!s || s.indexOf('&') === -1) return s;
-  return s.replace(/&(#x?[0-9a-fA-F]+|amp|lt|gt|quot|apos);/g, function(m, e) {
-    if (e === 'amp') return '&'; if (e === 'lt') return '<'; if (e === 'gt') return '>';
-    if (e === 'quot') return '"'; if (e === 'apos') return "'";
-    if (e.charAt(0) === '#') { var code = (e.charAt(1) === 'x' || e.charAt(1) === 'X') ? parseInt(e.substr(2), 16) : parseInt(e.substr(1), 10); if (!isNaN(code)) return String.fromCharCode(code); }
-    return m;
-  });
-}
 
-/* ════════ Catalog ════════ */
-function fetchStreamChannels() {
-  var last = CHANNELS_CANDIDATES[CHANNELS_CANDIDATES.length - 1];
-  return fetchChannelsFrom(0).catch(function() {
-    return xhrFetch(CORS_PROXY + last, { timeout: 25000 })
-      .then(function(r){ return r.text(); })
-      .then(function(t){ return parseChannelJson(t); });
-  });
-}
-function fetchCatalogMeta() {
-  return xhrFetch(CATALOG_URL, { timeout: 25000 })
-    .then(function(r){ return r.text(); })
-    .then(function(t) { var d = JSON.parse(t); return Array.isArray(d) ? d : (d && Array.isArray(d.channels) ? d.channels : []); })
-    .catch(function() {
-      return xhrFetch(CORS_PROXY + CATALOG_URL, { timeout: 30000 })
-        .then(function(r){ return r.text(); })
-        .then(function(t) { var d = JSON.parse(t); return Array.isArray(d) ? d : (d && Array.isArray(d.channels) ? d.channels : []); })
-        .catch(function() { return null; });
-    });
-}
-function mergeChannelMetadata(streamChannels, catalogChannels) {
-  var byId = {}, nameLists = {};
-  for (var i = 0; i < catalogChannels.length; i++) {
-    var c = catalogChannels[i]; if (!c) continue;
-    var cid = (c.channel_id != null) ? String(c.channel_id) : null;
-    if (cid) byId[cid] = c;
-    if (c.channel_name) { var norm = normMedium(c.channel_name); if (norm) { if (!nameLists[norm]) nameLists[norm] = []; nameLists[norm].push(c); } }
-  }
-  var byName = {};
-  for (var n in nameLists) if (nameLists[n].length === 1) byName[n] = nameLists[n][0];
+  var PROXY   = 'https://demonji.onrender.com/cors-proxy.php?url=';
+  var API_BASE = 'https://api.2embed.cc';
+  var IMG_BASE = 'https://image.tmdb.org/t/p';
 
-  var merged = [];
-  for (var j = 0; j < streamChannels.length; j++) {
-    var s = streamChannels[j], idStr = String(s.id), numId = extractNumericId(idStr);
-    var meta = byId[idStr] || (numId ? byId[numId] : null);
-    if (!meta && s.name) { var sn = normMedium(s.name); if (sn && byName[sn]) meta = byName[sn]; }
-    var isHD = false, isCatchup = false;
-    if (meta) {
-      isHD = String(meta.isHD || '').toLowerCase() === 'true';
-      isCatchup = String(meta.isCatchupAvailable || '').toLowerCase() === 'true';
-    }
-    merged.push({
-      id: s.id, url: s.url, url1: s.url1, url2: s.url2, url3: s.url3, keyId: s.keyId, key: s.key, keys: s.keys,
-      name: (meta && meta.channel_name) || s.name || 'Unknown',
-      logo: (meta && meta.logoUrl) || s.logo || '',
-      category: (meta && meta.channelCategoryId) || s.category || s.group || 'Other',
-      language: (meta && meta.channelLanguageId) || '',
-      isHD: isHD, isCatchup: isCatchup, hasCatalog: !!meta
+  var navbar         = document.getElementById('navbar');
+  var heroSection    = document.getElementById('heroSection');
+  var heroTitle      = document.getElementById('heroTitle');
+  var heroMeta       = document.getElementById('heroMeta');
+  var heroPlot       = document.getElementById('heroPlot');
+  var heroPlayBtn    = document.getElementById('heroPlayBtn');
+  var rowsContainer  = document.getElementById('rowsContainer');
+  var detailView     = document.getElementById('detailView');
+  var detailPoster   = document.getElementById('detailPoster');
+  var detailTitle    = document.getElementById('detailTitle');
+  var detailMeta     = document.getElementById('detailMeta');
+  var detailPlot     = document.getElementById('detailPlot');
+  var detailPlayBtn  = document.getElementById('detailPlayBtn');
+  var episodeSection = document.getElementById('episodeSection');
+  var seasonSelector = document.getElementById('seasonSelector');
+  var episodeGrid    = document.getElementById('episodeGrid');
+  var searchInput    = document.getElementById('searchInput');
+  var searchBtn      = document.getElementById('searchBtn');
+  var navHome        = document.getElementById('navHome');
+  var navTrending    = document.getElementById('navTrending');
+  var navTv          = document.getElementById('navTv');
+
+  var currentItem = null, currentType = 'movie', currentTmdb = null, currentSeason = 1;
+  var episodesCache = {}, seasonsList = {}, heroItem = null;
+
+  function apiFetch(endpoint, params) {
+    var parts = [];
+    if (params) for (var k in params) if (params.hasOwnProperty(k))
+      parts.push(encodeURIComponent(k) + '=' + encodeURIComponent(params[k]));
+    var fullUrl = API_BASE + endpoint + (parts.length ? '?' + parts.join('&') : '');
+    return fetch(PROXY + encodeURIComponent(fullUrl)).then(function(r) {
+      if (!r.ok) throw new Error('API ' + r.status);
+      return r.json();
     });
   }
-  var withMeta = 0; for (var k = 0; k < merged.length; k++) if (merged[k].hasCatalog) withMeta++;
-  safeLog('[catalog] merged ' + withMeta + '/' + merged.length + ' channels');
-  return merged;
-}
 
-/* ════════ Channel lookup — 3 tiers + fuzzy ════════ */
-function buildChannelLookup() {
-  var byId = {}, byNumeric = {};
-  var exLists = {}, mdLists = {}, lsLists = {}, tokenIdx = {};
-
-  for (var i = 0; i < allChannels.length; i++) {
-    var ch = allChannels[i], idStr = String(ch.id);
-    byId[idStr] = ch;
-    var num = extractNumericId(idStr);
-    if (num && !byNumeric[num]) byNumeric[num] = ch;
-
-    if (ch.name) {
-      var ex = normExact(ch.name);
-      if (ex) { if (!exLists[ex]) exLists[ex] = []; exLists[ex].push(ch); }
-      var md = normMedium(ch.name);
-      if (md) { if (!mdLists[md]) mdLists[md] = []; mdLists[md].push(ch); }
-      var ls = normLoose(ch.name);
-      if (ls) { if (!lsLists[ls]) lsLists[ls] = []; lsLists[ls].push(ch); }
-
-      /* Token inverted index for fuzzy */
-      var tokens = tokenize(ch.name);
-      var seen = {};
-      for (var t = 0; t < tokens.length; t++) {
-        if (seen[tokens[t]]) continue;
-        seen[tokens[t]] = true;
-        if (!tokenIdx[tokens[t]]) tokenIdx[tokens[t]] = [];
-        tokenIdx[tokens[t]].push(i);
-      }
-    }
-  }
-  var byExact = {}, byMedium = {}, byLoose = {};
-  for (var k in exLists) if (exLists[k].length === 1) byExact[k] = exLists[k][0];
-  for (var k in mdLists) if (mdLists[k].length === 1) byMedium[k] = mdLists[k][0];
-  for (var k in lsLists) if (lsLists[k].length === 1) byLoose[k] = lsLists[k][0];
-
-  return { byId: byId, byNumeric: byNumeric, byExact: byExact, byMedium: byMedium, byLoose: byLoose, tokenIdx: tokenIdx };
-}
-function fuzzyMatch(lookup, name) {
-  var tokens = tokenize(name);
-  if (tokens.length < 2) return null;
-  var counts = {};
-  for (var i = 0; i < tokens.length; i++) {
-    var cand = lookup.tokenIdx[tokens[i]] || [];
-    for (var j = 0; j < cand.length; j++) counts[cand[j]] = (counts[cand[j]] || 0) + 1;
-  }
-  var bestIdx = -1, bestScore = 0;
-  var tokensSet = {};
-  for (var ti = 0; ti < tokens.length; ti++) tokensSet[tokens[ti]] = true;
-
-  for (var idx in counts) {
-    if (counts[idx] < 2) continue;
-    var ch = allChannels[parseInt(idx, 10)];
-    if (!ch || !ch.name) continue;
-    var chTokens = tokenize(ch.name);
-    var common = 0;
-    for (var ci = 0; ci < chTokens.length; ci++) if (tokensSet[chTokens[ci]]) common++;
-    var union = tokens.length + chTokens.length - common;
-    if (union <= 0) continue;
-    var score = common / union;
-    if (score > bestScore) { bestScore = score; bestIdx = parseInt(idx, 10); }
-  }
-  if (bestScore >= 0.7 && bestIdx >= 0) return allChannels[bestIdx];
-  return null;
-}
-function matchEpgChannel(lookup, xmltvId, xmltvNames) {
-  /* 1. Exact ID */
-  if (lookup.byId[xmltvId]) return lookup.byId[xmltvId];
-
-  /* 2. Numeric ID */
-  var num = extractNumericId(xmltvId);
-  if (num && lookup.byNumeric[num]) return lookup.byNumeric[num];
-
-  /* 3. Clean ID (strip .in/.us/.uk suffix) → treat as name */
-  var idClean = xmltvId.replace(/\.(in|us|uk|ca|au|nz|za|ae|sg|my|pk|bd|lk|np|ph|th|id)$/i, '');
-  var idEx = normExact(idClean);
-  if (idEx && lookup.byExact[idEx]) return lookup.byExact[idEx];
-  var idMd = normMedium(idClean);
-  if (idMd && lookup.byMedium[idMd]) return lookup.byMedium[idMd];
-  var idLs = normLoose(idClean);
-  if (idLs && lookup.byLoose[idLs]) return lookup.byLoose[idLs];
-
-  /* 4. Each display-name → 3 tiers */
-  if (xmltvNames && xmltvNames.length) {
-    for (var i = 0; i < xmltvNames.length; i++) {
-      var nm = xmltvNames[i];
-      if (!nm) continue;
-      var nEx = normExact(nm);
-      if (nEx && lookup.byExact[nEx]) return lookup.byExact[nEx];
-      var nMd = normMedium(nm);
-      if (nMd && lookup.byMedium[nMd]) return lookup.byMedium[nMd];
-      var nLs = normLoose(nm);
-      if (nLs && lookup.byLoose[nLs]) return lookup.byLoose[nLs];
-    }
-    /* 5. Fuzzy on each display-name */
-    for (var f = 0; f < xmltvNames.length; f++) {
-      var fm = fuzzyMatch(lookup, xmltvNames[f]);
-      if (fm) return fm;
-    }
-  }
-  return null;
-}
-
-/* ════════ XMLTV parser — captures ALL display-names ════════ */
-function processXmlText(xmlText, label) {
-  if (!xmlText || xmlText.length < 500) throw new Error('XML too small');
-  var t0 = Date.now();
-  var idToNames = {};
-
-  var chRe = /<channel\s+([^>]*?)>([\s\S]*?)<\/channel>/g, cm;
-  while ((cm = chRe.exec(xmlText)) !== null) {
-    var idM = cm[1].match(/\bid="([^"]*)"/); if (!idM) continue;
-    var rawId = idM[1];
-    if (!idToNames[rawId]) idToNames[rawId] = [];
-    var dnRe = /<display-name[^>]*>([\s\S]*?)<\/display-name>/g, dn;
-    while ((dn = dnRe.exec(cm[2])) !== null) {
-      var nm = decodeXmlEntities(dn[1]).trim();
-      if (nm && idToNames[rawId].indexOf(nm) === -1) idToNames[rawId].push(nm);
-    }
+  function proxyImage(path, size) {
+    size = size || 'w300';
+    if (!path) return 'https://via.placeholder.com/300x450/222/666?text=no+poster';
+    if (path.indexOf('http://') === 0 || path.indexOf('https://') === 0)
+      return PROXY + encodeURIComponent(path);
+    return PROXY + encodeURIComponent(IMG_BASE + '/' + size + path);
   }
 
-  var rawByChannel = {}, progCount = 0, badStart = 0, badStop = 0;
-  var progRe = /<programme\s+([^>]*?)>([\s\S]*?)<\/programme>/g, pm;
-  while ((pm = progRe.exec(xmlText)) !== null) {
-    var attrs = pm[1], inner = pm[2];
-    var chMatch = attrs.match(/\bchannel="([^"]*)"/);
-    var startMatch = attrs.match(/\bstart="([^"]*)"/);
-    if (!chMatch || !startMatch) continue;
-    var rawId = chMatch[1];
-    var pdcMatch = attrs.match(/\bpdc-start="([^"]*)"/);
-    var startMs = null;
-    if (pdcMatch) startMs = parseEPGDate(pdcMatch[1]);
-    if (!startMs) startMs = parseEPGDate(startMatch[1]);
-    if (!startMs) { badStart++; continue; }
-    var stopMatch = attrs.match(/\bstop="([^"]*)"/);
-    var endMs = null;
-    if (stopMatch) endMs = parseEPGDate(stopMatch[1]);
-    if (!endMs || endMs <= startMs) { badStop++; endMs = startMs + 3600000; }
-    var titleM = inner.match(/<title[^>]*>([\s\S]*?)<\/title>/);
-    var descM = inner.match(/<desc[^>]*>([\s\S]*?)<\/desc>/);
-    var iconM = inner.match(/<icon\s+[^>]*\bsrc="([^"]*)"/);
-    var catM = inner.match(/<category[^>]*>([\s\S]*?)<\/category>/);
-    var seasonM = inner.match(/<episode-num\s+system="xmltv_ns"[^>]*>([\s\S]*?)<\/episode-num>/);
-    var epM = inner.match(/<episode-num[^>]*>([\s\S]*?)<\/episode-num>/);
-    var desc = descM ? decodeXmlEntities(descM[1]).trim() : ''; if (desc.length > 400) desc = desc.substring(0, 400);
-    var epStr = '';
-    if (seasonM) { var sp = seasonM[1].split('/'); epStr = 'S' + ((parseInt(sp[0],10)||0)+1) + ' E' + ((parseInt(sp[1],10)||0)+1); }
-    else if (epM) epStr = decodeXmlEntities(epM[1]).trim();
-    var entry = { t: titleM ? decodeXmlEntities(titleM[1]).trim() : 'No title', d: desc, s: startMs, e: endMs, ic: iconM ? iconM[1] : '', ep: epStr, g: catM ? decodeXmlEntities(catM[1]).trim() : '' };
-    if (!rawByChannel[rawId]) rawByChannel[rawId] = [];
-    rawByChannel[rawId].push(entry);
-    progCount++;
+  /* TMDB id from any API item (tmdb_id field, or numeric id) */
+  function getTmdbId(item) {
+    if (!item) return null;
+    if (item.tmdb_id) return String(item.tmdb_id);
+    if (item.id && /^\d+$/.test(String(item.id))) return String(item.id);
+    return null;
   }
 
-  var lookup = buildChannelLookup(), result = {}, matched = 0, unmatched = 0, unmatchedSample = [];
-  for (var rawId in rawByChannel) {
-    if (!rawByChannel.hasOwnProperty(rawId)) continue;
-    var progs = rawByChannel[rawId], dispNames = idToNames[rawId] || [];
-    var ch = matchEpgChannel(lookup, rawId, dispNames);
-    if (!ch) {
-      unmatched++;
-      if (unmatchedSample.length < 10) unmatchedSample.push(rawId + (dispNames.length ? '(' + dispNames[0] + ')' : ''));
-      continue;
-    }
-    var key = String(ch.id);
-    if (!result[key]) result[key] = [];
-    for (var p = 0; p < progs.length; p++) result[key].push(progs[p]);
-    matched++;
+  function pad2(n) { return n < 10 ? '0' + n : String(n); }
+
+  /* ═══ OPEN PLAYER IN NEW TAB ═══ */
+  function openPlayerInTab(tmdbId, type, season, episode, title, year) {
+    if (!tmdbId) { alert('No playable source for this title.'); return; }
+    var url = 'player.html?type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(tmdbId);
+    if (type === 'tv') url += '&season=' + (season || 1) + '&episode=' + (episode || 1);
+    if (title) url += '&title=' + encodeURIComponent(title);
+    if (year)  url += '&year=' + encodeURIComponent(year);
+    var w = window.open(url, '_blank');
+    if (!w) location.href = url;
   }
 
-  for (var k in result) {
-    if (!result.hasOwnProperty(k)) continue;
-    result[k].sort(function(a,b){ return a.s - b.s; });
-    var seen = {}, deduped = [];
-    for (var i = 0; i < result[k].length; i++) {
-      var pr = result[k][i], dk = pr.s + '|' + (pr.t || '').toLowerCase().trim();
-      if (!seen[dk]) { seen[dk] = true; deduped.push(pr); }
-    }
-    result[k] = deduped;
-    for (var j = 0; j < result[k].length - 1; j++) if (result[k][j].e < result[k][j+1].s) result[k][j].e = result[k][j+1].s;
-  }
-  safeLog('[epg] ' + label + ': ' + progCount + ' progs, badStart=' + badStart + ' badStop=' + badStop + ', matched=' + matched + ' → ' + Object.keys(result).length + ' ch, unmatched=' + unmatched);
-  if (unmatchedSample.length) safeLog('[epg] ' + label + ' unmatched sample: ' + unmatchedSample.join(' | '));
-  return { data: result, programCount: progCount, matched: matched, unmatched: unmatched };
-}
-
-/* ════════ Multi-source fetch ════════ */
-function fetchOneEpgSource(src) {
-  return xhrFetchBuffer(src.url, { timeout: 180000 })
-    .then(function(buf) {
-      if (!buf) throw new Error('Empty');
-      var bytes = new Uint8Array(buf);
-      if (bytes.length < 500) throw new Error('Too small');
-      if (bytes[0] === 0x1f && bytes[1] === 0x8b) return chunkedUngzip(bytes).then(function(x){ return processXmlText(x, src.name); });
-      return processXmlText(bytesToUtf8String(bytes), src.name);
-    })
-    .catch(function() {
-      return xhrFetchBuffer(CORS_PROXY + src.url, { timeout: 180000 }).then(function(buf) {
-        var bytes = new Uint8Array(buf);
-        if (bytes.length < 500) throw new Error('Too small');
-        if (bytes[0] === 0x1f && bytes[1] === 0x8b) return chunkedUngzip(bytes).then(function(x){ return processXmlText(x, src.name + ' (proxy)'); });
-        return processXmlText(bytesToUtf8String(bytes), src.name + ' (proxy)');
-      }).catch(function(){ safeLog('[epg] ' + src.name + ' failed entirely'); return null; });
-    });
-}
-function fetchAndParseAllEpgs() {
-  if (typeof pako === 'undefined') return Promise.resolve(null);
-  var promises = EPG_SOURCES.map(fetchOneEpgSource);
-  return Promise.all(promises).then(function(results) {
-    var merged = {}, totalProgs = 0, sourcesOk = 0, totalUnmatched = 0;
-    for (var i = 0; i < results.length; i++) {
-      var r = results[i];
-      if (!r || !r.data) continue;
-      sourcesOk++;
-      totalProgs += r.programCount;
-      totalUnmatched += (r.unmatched || 0);
-      for (var key in r.data) {
-        if (!r.data.hasOwnProperty(key)) continue;
-        if (!merged[key]) merged[key] = [];
-        for (var j = 0; j < r.data[key].length; j++) merged[key].push(r.data[key][j]);
-      }
-    }
-    for (var k in merged) {
-      if (!merged.hasOwnProperty(k)) continue;
-      merged[k].sort(function(a,b){ return a.s - b.s; });
-      var seen = {}, deduped = [];
-      for (var m = 0; m < merged[k].length; m++) {
-        var pr = merged[k][m], dk = pr.s + '|' + (pr.t || '').toLowerCase().trim();
-        if (!seen[dk]) { seen[dk] = true; deduped.push(pr); }
-      }
-      merged[k] = deduped;
-      for (var n = 0; n < merged[k].length - 1; n++) if (merged[k][n].e < merged[k][n+1].s) merged[k][n].e = merged[k][n+1].s;
-    }
-    safeLog('[epg] merged ' + sourcesOk + '/' + EPG_SOURCES.length + ' sources · ' + totalProgs + ' raw progs → ' + Object.keys(merged).length + ' channels · ' + totalUnmatched + ' unmatched XMLTV ch');
-    return { data: merged, programCount: totalProgs, sourcesOk: sourcesOk };
+  window.addEventListener('scroll', function() {
+    if (window.pageYOffset > 50) navbar.classList.add('scrolled');
+    else navbar.classList.remove('scrolled');
   });
-}
 
-/* ════════ Cache ════════ */
-function buildCacheForWindow(now, beforeH, afterH, stripAfterH) {
-  var cfgMin = now - beforeH * 3600000;
-  var cfgMax = now + afterH * 3600000;
-  var nearCutoff = now + stripAfterH * 3600000;
-  var out = {}, cnt = 0;
-  for (var key in epgByChannelId) {
-    if (!epgByChannelId.hasOwnProperty(key)) continue;
-    var filt = [], arr = epgByChannelId[key];
-    for (var i = 0; i < arr.length; i++) {
-      var p = arr[i];
-      if (p.e < cfgMin || p.s >= cfgMax) continue;
-      if (p.s > nearCutoff) filt.push({ t: p.t, s: p.s, e: p.e, ep: p.ep || '', g: p.g || '' });
-      else filt.push({ t: p.t, d: p.d || '', s: p.s, e: p.e, ic: p.ic || '', ep: p.ep || '', g: p.g || '' });
-    }
-    if (filt.length) { out[key] = filt; cnt += filt.length; }
+  function renderHero(item, type) {
+    if (!item) { heroSection.style.display = 'none'; return; }
+    heroItem = item;
+    currentTmdb = getTmdbId(item);
+    currentType = type;
+
+    var poster = item.poster || item.poster_path;
+    if (poster && poster.indexOf('http') !== 0) poster = 'https://image.tmdb.org/t/p/w1280' + poster;
+    heroSection.style.backgroundImage = poster ? 'url(' + PROXY + encodeURIComponent(poster) + ')' : 'none';
+    heroSection.style.display = 'flex';
+
+    heroTitle.textContent = item.title || item.name || 'Untitled';
+    var year = item.release_date ? item.release_date.split('-')[0]
+             : (item.first_air_date ? item.first_air_date.split('-')[0] : '');
+    var rating = item.vote_average ? item.vote_average.toFixed(1) : 'N/A';
+    heroMeta.innerHTML = '<span>' + year + '</span>' +
+      '<span><i class="fas fa-star" style="color:#f5c518;"></i> ' + rating + '</span>' +
+      '<span>' + type.toUpperCase() + '</span>';
+    heroPlot.textContent = item.overview || 'No description available.';
+
+    heroPlayBtn.onclick = function() {
+      var t = item.title || item.name || '';
+      var y = year || '';
+      if (type === 'tv') {
+        var eps = getFirstEpisode(currentTmdb, 1);
+        var n = (eps && eps.episode_number) ? eps.episode_number : 1;
+        openPlayerInTab(currentTmdb, 'tv', 1, n, t + ' · S01E' + pad2(n), y);
+      } else {
+        openPlayerInTab(currentTmdb, 'movie', 0, 0, t, y);
+      }
+    };
   }
-  return { data: out, channelCount: Object.keys(out).length, progCount: cnt };
-}
-function saveCache() {
-  var now = Date.now();
-  var plans = [
-    { before: 6, after: 72, strip: 6, label: '6h/72h full' },
-    { before: 6, after: 60, strip: 6, label: '6h/60h full' },
-    { before: 6, after: 48, strip: 6, label: '6h/48h · strip>6h' },
-    { before: 6, after: 36, strip: 6, label: '6h/36h · strip>6h' },
-    { before: 4, after: 30, strip: 4, label: '4h/30h · strip>4h' },
-    { before: 2, after: 24, strip: 2, label: '2h/24h · strip>2h' }
-  ];
-  for (var a = 0; a < plans.length; a++) {
-    var pl = plans[a];
-    var built = buildCacheForWindow(now, pl.before, pl.after, pl.strip);
-    if (!built.channelCount) continue;
-    try {
-      localStorage.setItem(EPG_CACHE_KEY, JSON.stringify({ v: 22, fetchedAt: now, plan: pl.label, data: built.data }));
-      safeLog('[cache] saved ' + built.channelCount + ' ch / ' + built.progCount + ' progs · ' + pl.label);
+
+  function renderDetail(item, type, reqId) {
+    currentItem = item;
+    currentType = type;
+    var newTmdb = reqId || getTmdbId(item);
+    if (newTmdb !== currentTmdb) { currentTmdb = newTmdb; currentSeason = 1; }
+
+    var poster = item.poster || item.poster_path;
+    if (poster && poster.indexOf('http') !== 0) poster = 'https://image.tmdb.org/t/p/w300' + poster;
+    detailPoster.src = proxyImage(poster);
+
+    detailTitle.textContent = item.title || item.name || 'Untitled';
+    var year = item.release_date ? item.release_date.split('-')[0]
+             : (item.first_air_date ? item.first_air_date.split('-')[0] : '');
+    var rating = item.vote_average ? item.vote_average.toFixed(1) : 'N/A';
+    var genres = item.genres ? item.genres.join(' · ') : '';
+    detailMeta.innerHTML =
+      '<span><i class="far fa-calendar-alt"></i> ' + year + '</span>' +
+      '<span><i class="fas fa-star" style="color:#f5c518;"></i> ' + rating + '</span>' +
+      '<span><i class="fas fa-tag"></i> ' + type.toUpperCase() + '</span>' +
+      (genres ? '<span><i class="fas fa-theater-masks"></i> ' + genres + '</span>' : '');
+    detailPlot.textContent = item.overview || 'No description available.';
+
+    detailView.classList.add('active');
+    episodeSection.classList.remove('active');
+    seasonSelector.innerHTML = '';
+    episodeGrid.innerHTML = '';
+
+    if (type === 'tv' && currentTmdb) {
+      episodeSection.classList.add('active');
+      fetchSeasons(currentTmdb);
+    }
+
+    detailPlayBtn.onclick = function() {
+      var t = item.title || item.name || '';
+      var y = year || '';
+      if (type === 'tv') {
+        var ep = getFirstEpisode(currentTmdb, currentSeason);
+        var n = (ep && ep.episode_number) ? ep.episode_number : 1;
+        openPlayerInTab(currentTmdb, 'tv', currentSeason, n, t + ' · S' + pad2(currentSeason) + 'E' + pad2(n), y);
+      } else {
+        openPlayerInTab(currentTmdb, 'movie', 0, 0, t, y);
+      }
+    };
+
+    window.scrollTo(0, 0);
+  }
+
+  function fetchSeasons(tmdbId) {
+    seasonSelector.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-pulse"></i>Loading seasons…</div>';
+    if (seasonsList[tmdbId] && seasonsList[tmdbId].length) { populateSeasonButtons(tmdbId, seasonsList[tmdbId]); return; }
+    apiFetch('/tv', { tmdb_id: tmdbId }).then(function(data) {
+      if (data && data.seasons && data.seasons.length) {
+        var nums = [];
+        for (var i = 0; i < data.seasons.length; i++)
+          if (data.seasons[i].season_number > 0 && data.seasons[i].episode_count > 0)
+            nums.push(data.seasons[i].season_number);
+        if (nums.length) { seasonsList[tmdbId] = nums; populateSeasonButtons(tmdbId, nums); }
+        else fallbackSeasons(tmdbId);
+      } else fallbackSeasons(tmdbId);
+    }).catch(function() { fallbackSeasons(tmdbId); });
+  }
+
+  function populateSeasonButtons(tmdbId, nums) {
+    seasonSelector.innerHTML = '';
+    for (var i = 0; i < nums.length; i++) {
+      (function(s) {
+        var btn = document.createElement('button');
+        btn.textContent = 'S' + s;
+        btn.setAttribute('data-season', s);
+        btn.onclick = function() {
+          var all = seasonSelector.getElementsByTagName('button');
+          for (var j = 0; j < all.length; j++) all[j].classList.remove('active');
+          this.classList.add('active');
+          currentSeason = parseInt(this.getAttribute('data-season'), 10);
+          loadEpisodes(tmdbId, currentSeason);
+        };
+        seasonSelector.appendChild(btn);
+      })(nums[i]);
+    }
+    var first = seasonSelector.getElementsByTagName('button')[0];
+    if (first) {
+      first.classList.add('active');
+      currentSeason = parseInt(first.getAttribute('data-season'), 10);
+      loadEpisodes(tmdbId, currentSeason);
+    }
+  }
+
+  function fallbackSeasons(tmdbId) {
+    var f = [1,2,3,4,5,6,7,8];
+    seasonsList[tmdbId] = f;
+    populateSeasonButtons(tmdbId, f);
+  }
+
+  function loadEpisodes(tmdbId, seasonNum) {
+    episodeGrid.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-pulse"></i>Loading episodes…</div>';
+    if (episodesCache[tmdbId] && episodesCache[tmdbId][seasonNum]) {
+      renderEpisodes(tmdbId, episodesCache[tmdbId][seasonNum]);
       return;
-    } catch (e) { safeLog('[cache] save failed at ' + pl.label); }
-  }
-}
-function loadCache() {
-  try {
-    var raw = localStorage.getItem(EPG_CACHE_KEY);
-    if (!raw) return false;
-    var c = JSON.parse(raw);
-    if (!c || !c.data || c.v !== 22) return false;
-    var timeFresh = (Date.now() - c.fetchedAt) < EPG_CACHE_TTL_MS;
-    var n = 0, newestEnd = 0, oldestStart = Infinity;
-    for (var id in c.data) {
-      if (!c.data.hasOwnProperty(id)) continue;
-      epgByChannelId[id] = c.data[id];
-      for (var i = 0; i < c.data[id].length; i++) {
-        if (c.data[id][i].e > newestEnd) newestEnd = c.data[id][i].e;
-        if (c.data[id][i].s < oldestStart) oldestStart = c.data[id][i].s;
-      }
-      n++;
     }
-    if (!n) return false;
-    var contentFresh = newestEnd > Date.now() + 6 * 3600000;
-    var spanH = ((newestEnd - oldestStart) / 3600000).toFixed(1);
-    var aheadH = ((newestEnd - Date.now()) / 3600000).toFixed(1);
-    safeLog('[cache] ' + n + ' ch · ' + spanH + 'h span · ' + aheadH + 'h ahead · plan=' + (c.plan || '?'));
-    epgLoaded = true;
-    if (!timeFresh || !contentFresh) { safeLog('[cache] stale — refetch'); return false; }
-    return true;
-  } catch (e) { return false; }
-}
-function clearCacheAndRefresh() {
-  try { localStorage.removeItem(EPG_CACHE_KEY); } catch(e){}
-  epgByChannelId = {}; epgLoaded = false;
-  refreshAllCardsEpg();
-  loadEPG();
-}
-
-/* ════════ Program state ════════ */
-function getProgramState(progs, now) {
-  if (!progs || !progs.length) return null;
-  now = now || Date.now();
-  var strict = null;
-  for (var i = 0; i < progs.length; i++) { var p = progs[i]; if (p.s <= now && p.e > now) { if (!strict || p.s > strict.s) strict = p; } }
-  if (strict) return { p: strict, s: strict.s, e: strict.e, state: 'live', stale: false };
-  var grace = null;
-  for (var g = 0; g < progs.length; g++) { var pg = progs[g]; if (pg.s <= now && pg.e <= now && (now - pg.e) < OVERRUN_GRACE_MS) { if (!grace || pg.e > grace.e) grace = pg; } }
-  if (grace) return { p: grace, s: grace.s, e: grace.e, state: 'live', stale: false };
-  var upcoming = null;
-  for (var u = 0; u < progs.length; u++) {
-    var pu = progs[u];
-    if (pu.s > now && (!upcoming || pu.s < upcoming.s)) upcoming = pu;
-  }
-  if (upcoming) return { p: upcoming, s: upcoming.s, e: upcoming.e, state: 'upcoming', stale: false };
-  var last = progs[progs.length - 1];
-  return { p: last, s: last.s, e: last.e, state: 'stale', stale: true };
-}
-function getNextProgram(progs, current, now) {
-  if (!progs || !progs.length) return null;
-  now = now || Date.now();
-  var best = null;
-  for (var i = 0; i < progs.length; i++) { var p = progs[i]; if (current && p === current) continue; if (p.s > now && (!best || p.s < best.s)) best = p; }
-  return best;
-}
-function getChannelNumber(ch) {
-  if (!ch) return null;
-  var id = ch.id;
-  if (typeof id === 'number') return id;
-  if (typeof id === 'string') { var n = parseInt(id, 10); if (!isNaN(n) && String(n) === id) return n; }
-  return null;
-}
-function progProgress(st) {
-  if (!st || st.state !== 'live') return null;
-  if (!(st.s <= Date.now() && st.e > Date.now())) return null;
-  var total = st.e - st.s;
-  if (total <= 0) return null;
-  return Math.max(0, Math.min(100, ((Date.now() - st.s) / total) * 100));
-}
-
-function buildEpgBlockHtml(ch) {
-  if (!epgLoaded) return '<div class="card-epg"><div class="epg-empty">Loading guide…</div></div>';
-  var progs = epgByChannelId[String(ch.id)];
-  var st = getProgramState(progs);
-  if (!st) return '<div class="card-epg"><div class="epg-empty">No guide data</div></div>';
-  var p = st.p;
-  if (st.state === 'stale') {
-    return '<div class="card-epg stale"><div class="epg-now-row"><span class="epg-now-label stale">⚠ STALE</span></div><div class="epg-now-title">' + escapeHtml(p.t || 'No Title') + '</div><div class="epg-now-desc">Last known: <b>' + formatDayLabel(p.s) + '</b> · ' + formatRange(p.s, p.e) + '</div><div class="epg-stale-hint">Source hasn\'t updated this channel — tap ⟳ EPG to retry</div></div>';
-  }
-  if (st.state === 'upcoming') {
-    var html2 = '<div class="card-epg upcoming"><div class="epg-now-row"><span class="epg-now-label next">○ NEXT</span><span class="epg-now-time">' + formatRange(p.s, p.e) + '</span></div><div class="epg-now-title">' + escapeHtml(p.t || 'No Title') + '</div>';
-    if (p.ep || p.g) html2 += '<div class="epg-now-meta">' + (p.ep ? escapeHtml(p.ep) : '') + (p.ep && p.g ? ' · ' : '') + (p.g ? escapeHtml(p.g) : '') + '</div>';
-    if (p.d) html2 += '<div class="epg-now-desc">' + escapeHtml(truncate(p.d, 120)) + '</div>';
-    return html2 + '</div>';
-  }
-  var prog = progProgress(st);
-  var html3 = '<div class="card-epg"><div class="epg-now-row"><span class="epg-now-label">● LIVE</span><span class="epg-now-time">' + formatRange(p.s, p.e) + '</span></div><div class="epg-now-title">' + escapeHtml(p.t || 'No Title') + '</div>';
-  if (p.ep || p.g) html3 += '<div class="epg-now-meta">' + (p.ep ? escapeHtml(p.ep) : '') + (p.ep && p.g ? ' · ' : '') + (p.g ? escapeHtml(p.g) : '') + '</div>';
-  if (p.d) html3 += '<div class="epg-now-desc">' + escapeHtml(truncate(p.d, 120)) + '</div>';
-  if (prog !== null) html3 += '<div class="epg-progress"><div class="epg-progress-fill" style="width:' + prog.toFixed(1) + '%"></div></div>';
-  var next = getNextProgram(progs, p, Date.now());
-  if (next) html3 += '<div class="epg-next-mini">Next: <b>' + escapeHtml(truncate(next.t, 40)) + '</b> at ' + formatTimeOnly(next.s) + '</div>';
-  return html3 + '</div>';
-}
-function updateCardEpg(id) {
-  var entry = cardMap[id]; if (!entry) return;
-  var html = buildEpgBlockHtml(entry.ch);
-  if (html !== entry.lastEpg) { entry.epg.innerHTML = html; entry.lastEpg = html; }
-}
-function refreshAllCardsEpg() {
-  var ids = Object.keys(cardMap); if (!ids.length) return;
-  var i = 0, BATCH = 20;
-  function step() { var end = Math.min(i + BATCH, ids.length); for (; i < end; i++) updateCardEpg(ids[i]); if (i < ids.length) rAF(step); }
-  rAF(step);
-}
-
-function parseChannelJson(text) {
-  var c = String(text).trim();
-  if (c.charCodeAt(0) === 0xFEFF) c = c.slice(1);
-  try { var p = JSON.parse(c); if (Array.isArray(p)) return p; if (p && Array.isArray(p.channels)) return p.channels; } catch(e){}
-  throw new Error('Invalid JSON');
-}
-function fetchChannelsFrom(idx) {
-  if (idx >= CHANNELS_CANDIDATES.length) return Promise.reject(new Error('All failed'));
-  return xhrFetch(CHANNELS_CANDIDATES[idx], { timeout: 20000 })
-    .then(function(r){ return r.text(); })
-    .then(function(t){ var p = parseChannelJson(t); if (p && p.length) return p; throw new Error('Empty'); })
-    .catch(function(){ return fetchChannelsFrom(idx + 1); });
-}
-
-function buildCardHtml(ch, idx) {
-  var cat = ch.category || 'Other';
-  var num = getChannelNumber(ch);
-  var numHtml = num !== null ? '<span class="card-num">' + num + '</span>' : '';
-  var starActive = favorites[String(ch.id)] ? ' active' : '';
-  var hdBadge = ch.isHD ? '<span class="card-hd">HD</span>' : '';
-  var cuBadge = ch.isCatchup ? '<span class="card-cu">↺ CU</span>' : '';
-  var langHtml = ch.language ? '<span class="card-lang">' + escapeHtml(ch.language) + '</span>' : '';
-  var catRow = escapeHtml(cat) + (langHtml ? ' · ' + langHtml : '');
-  return '<div class="card" tabindex="0" data-idx="' + idx + '" data-chid="' + escapeHtml(String(ch.id)) + '">' +
-    '<button class="card-star' + starActive + '" data-chid="' + escapeHtml(String(ch.id)) + '" type="button">★</button>' +
-    '<div class="card-top"><img class="card-logo" src="' + escapeHtml(ch.logo || '') + '" alt="" onerror="this.style.visibility=\'hidden\'"><div class="card-meta"><div class="card-name">' + numHtml + escapeHtml(ch.name || 'Unknown') + hdBadge + cuBadge + '</div><div class="card-cat">' + catRow + '</div></div></div>' +
-    buildEpgBlockHtml(ch) +
-    '<div class="card-actions"><button class="card-btn" type="button">▶ Watch</button></div>' +
-  '</div>';
-}
-function renderAllCards(onDone) {
-  var batch = 25, i = 0;
-  gridEl.innerHTML = '';
-  var list = displayedChannels;
-  function step() {
-    var end = Math.min(i + batch, list.length), html = '';
-    for (; i < end; i++) html += buildCardHtml(list[i], i);
-    gridEl.insertAdjacentHTML('beforeend', html);
-    if (i < list.length) rAF(step);
-    else { buildCardMap(); if (onDone) onDone(); }
-  }
-  if (!list.length) { gridEl.innerHTML = '<div class="msg">No channels match your filter.</div>'; if (onDone) onDone(); return; }
-  rAF(step);
-}
-function buildCardMap() {
-  cardMap = {};
-  var cards = gridEl.querySelectorAll('.card');
-  for (var i = 0; i < cards.length; i++) {
-    var card = cards[i], idx = parseInt(card.getAttribute('data-idx'), 10);
-    var ch = displayedChannels[idx]; if (!ch) continue;
-    cardMap[String(ch.id)] = { el: card, epg: card.querySelector('.card-epg'), ch: ch, lastEpg: '' };
-    (function(cardEl, channel) {
-      cardEl.addEventListener('click', function(e) { if (e.target.closest && (e.target.closest('.card-btn') || e.target.closest('.card-star'))) return; openDetails(channel); });
-      cardEl.addEventListener('keydown', function(ev) { if (ev.keyCode === 13) { ev.preventDefault(); openDetails(channel); } });
-      var playBtn = cardEl.querySelector('.card-btn'); if (playBtn) playBtn.addEventListener('click', function(e) { e.stopPropagation(); openPlayer(channel); });
-      var star = cardEl.querySelector('.card-star'); if (star) star.addEventListener('click', function(e) { e.stopPropagation(); toggleFavorite(channel.id); });
-    })(card, ch);
-  }
-}
-
-function sortChannels(arr) {
-  var copy = arr.slice();
-  if (sortMode === 'number') copy.sort(function(a,b){ var na = getChannelNumber(a), nb = getChannelNumber(b); if (na === null && nb === null) return (a.name || '').localeCompare(b.name || ''); if (na === null) return 1; if (nb === null) return -1; return na - nb; });
-  else if (sortMode === 'name') copy.sort(function(a,b){ return (a.name || '').localeCompare(b.name || ''); });
-  else if (sortMode === 'category') copy.sort(function(a,b){ var ca = (a.category || 'Other').toLowerCase(); var cb = (b.category || 'Other').toLowerCase(); if (ca !== cb) return ca.localeCompare(cb); return (a.name || '').localeCompare(b.name || ''); });
-  else if (sortMode === 'language') copy.sort(function(a,b){ var la = (a.language || '').toLowerCase(); var lb = (b.language || '').toLowerCase(); if (la !== lb) return la.localeCompare(lb); return (a.name || '').localeCompare(b.name || ''); });
-  return copy;
-}
-function channelMatches(ch, q, cat) {
-  var chCat = ch.category || 'Other';
-  if (cat === 'favorites') { if (!favorites[String(ch.id)]) return false; }
-  else if (cat === 'recents') { if (recents.indexOf(String(ch.id)) === -1) return false; }
-  else if (cat === 'live') { var st = getProgramState(epgByChannelId[String(ch.id)]); if (!st || st.state !== 'live') return false; }
-  else if (cat === 'catchup') { if (!ch.isCatchup) return false; }
-  else if (cat !== 'all' && chCat !== cat) return false;
-  if (q) {
-    var nameLow = (ch.name || '').toLowerCase(), catLow = chCat.toLowerCase(), langLow = (ch.language || '').toLowerCase();
-    if (nameLow.indexOf(q) === -1 && catLow.indexOf(q) === -1 && langLow.indexOf(q) === -1) {
-      var progs = epgByChannelId[String(ch.id)];
-      if (!progs) return false;
-      var found = false;
-      for (var i = 0; i < progs.length; i++) if ((progs[i].t || '').toLowerCase().indexOf(q) !== -1 || (progs[i].d || '').toLowerCase().indexOf(q) !== -1) { found = true; break; }
-      if (!found) return false;
-    }
-  }
-  return true;
-}
-function applyFilter() {
-  var q = searchQuery, cat = selectedCategory, visible = [];
-  for (var i = 0; i < allChannels.length; i++) if (channelMatches(allChannels[i], q, cat)) visible.push(allChannels[i]);
-  displayedChannels = sortChannels(visible);
-  renderAllCards(function(){
-    if (viewMode === 'compact') { var cards = gridEl.querySelectorAll('.card'); for (var k = 0; k < cards.length; k++) cards[k].classList.add('compact'); }
-    refreshAllCardsEpg();
-  });
-}
-function renderCategories() {
-  var set = {};
-  for (var i = 0; i < allChannels.length; i++) { var cat = allChannels[i].category || 'Other'; set[cat] = true; }
-  var cats = ['all']; for (var k in set) if (set.hasOwnProperty(k)) cats.push(k);
-  cats.sort(function(a,b){ if(a==='all') return -1; if(b==='all') return 1; return a.toLowerCase().localeCompare(b.toLowerCase()); });
-  var html = '<button class="cat-chip fav-chip' + (selectedCategory==='favorites'?' active':'') + '" data-cat="favorites" type="button">★ Favorites</button>';
-  html += '<button class="cat-chip recent-chip' + (selectedCategory==='recents'?' active':'') + '" data-cat="recents" type="button">🕐 Recent</button>';
-  html += '<button class="cat-chip live-chip' + (selectedCategory==='live'?' active':'') + '" data-cat="live" type="button">● Live</button>';
-  html += '<button class="cat-chip cu-chip' + (selectedCategory==='catchup'?' active':'') + '" data-cat="catchup" type="button">↺ Catch-Up</button>';
-  html += '<button class="cat-chip' + (selectedCategory==='all'?' active':'') + '" data-cat="all" type="button">All</button>';
-  for (var j = 0; j < cats.length; j++) { if (cats[j] === 'all') continue; var a = cats[j] === selectedCategory ? ' active' : ''; html += '<button class="cat-chip' + a + '" data-cat="' + escapeHtml(cats[j]) + '" type="button">' + escapeHtml(cats[j]) + '</button>'; }
-  categoriesEl.innerHTML = html;
-  var chips = categoriesEl.querySelectorAll('.cat-chip');
-  for (var c = 0; c < chips.length; c++) (function(chip){ chip.addEventListener('click', function(){ selectedCategory = chip.getAttribute('data-cat'); renderCategories(); applyFilter(); wrapEl.scrollTop = 0; }); })(chips[c]);
-}
-
-function openDetails(ch) {
-  currentDetailChannel = ch; currentDetailTab = 'info';
-  dTabInfo.classList.add('active'); dTabGuide.classList.remove('active');
-  var num = getChannelNumber(ch);
-  dNum.textContent = num !== null ? 'CH ' + num : '';
-  dName.textContent = ch.name || 'Unknown';
-  dCat.textContent = (ch.category || 'Other') + (ch.language ? ' · ' + ch.language : '');
-  var tagsHtml = '';
-  if (ch.isHD) tagsHtml += '<span class="tag-hd">HD</span>';
-  if (ch.isCatchup) tagsHtml += '<span class="tag-cu">↺ Catch-Up</span>';
-  dTags.innerHTML = tagsHtml;
-  dLogo.src = ch.logo || ''; dLogo.style.visibility = ch.logo ? 'visible' : 'hidden';
-  renderDetailBody(); detailModal.classList.remove('hidden');
-}
-function renderDetailBody() { if (!currentDetailChannel) return; if (currentDetailTab === 'info') renderInfoTab(currentDetailChannel); else renderGuideTab(currentDetailChannel); }
-function renderInfoTab(ch) {
-  var progs = epgByChannelId[String(ch.id)] || [];
-  var st = getProgramState(progs);
-  var body = '';
-  if (st) {
-    var p = st.p;
-    var cls, lbl;
-    if (st.state === 'live') { cls = 'now'; lbl = '● LIVE'; }
-    else if (st.state === 'upcoming') { cls = 'next'; lbl = '○ NEXT'; }
-    else { cls = 'stale'; lbl = '⚠ STALE — LAST KNOWN'; }
-    body += '<div class="detail-show ' + cls + '"><div class="show-label">' + lbl + ' · ' + formatRange(p.s, p.e) + '</div><div class="show-title">' + escapeHtml(p.t || 'No Title') + '</div>';
-    if (p.ep || p.g) body += '<div class="show-meta-row">' + (p.ep ? escapeHtml(p.ep) : '') + (p.g ? ' · ' + escapeHtml(p.g) : '') + '</div>';
-    if (p.ic) body += '<div class="show-image"><img src="' + escapeHtml(p.ic) + '" onerror="this.parentNode.style.display=\'none\'"></div>';
-    if (p.d) body += '<div class="show-desc">' + escapeHtml(p.d) + '</div>';
-    if (st.state === 'live') {
-      var prog = progProgress(st);
-      if (prog !== null) body += '<div class="epg-progress"><div class="epg-progress-fill" style="width:' + prog.toFixed(1) + '%"></div></div>';
-    }
-    if (st.state === 'stale') body += '<div class="show-stale-hint">⚠ Source has no fresh data — showing ' + formatDayLabel(p.s).toLowerCase() + '\'s last program. Tap ⟳ EPG to retry.</div>';
-    body += '</div>';
-    var next = getNextProgram(progs, p, Date.now());
-    if (next && st.state === 'live') {
-      body += '<div class="detail-show next"><div class="show-label">○ NEXT · ' + formatRange(next.s, next.e) + '</div><div class="show-title">' + escapeHtml(next.t || 'No Title') + '</div>';
-      if (next.d) body += '<div class="show-desc">' + escapeHtml(next.d) + '</div>';
-      body += '</div>';
-    }
-  } else if (epgLoaded) body += '<div class="detail-show none"><div class="show-label">● LIVE</div><div class="show-title">No guide data for this channel</div></div>';
-  else body += '<div class="detail-show none"><div class="show-label">● LIVE</div><div class="show-title">Loading guide…</div></div>';
-  dBody.innerHTML = body;
-}
-function renderGuideTab(ch) {
-  var progs = epgByChannelId[String(ch.id)] || [];
-  if (!progs.length) { dBody.innerHTML = '<div class="msg" style="padding:30px">No guide data for this channel.</div>'; return; }
-  var now = Date.now();
-  var st = getProgramState(progs);
-  var actualLive = st && st.state === 'live' ? st.p : null;
-  var todayStart = new Date(); todayStart.setHours(0,0,0,0);
-  var todayStartMs = todayStart.getTime();
-  var hasToday = false;
-  for (var h = 0; h < progs.length; h++) {
-    if (progs[h].e > todayStartMs && progs[h].s < todayStartMs + 86400000) { hasToday = true; break; }
-  }
-  var rangeStartMs = hasToday ? todayStartMs : progs[0].s;
-  var rangeEndMs = Math.max(todayStartMs + 3 * 86400000, progs[progs.length - 1].e + 86400000);
-  var filtered = progs.filter(function(p){ return p.e > rangeStartMs && p.s < rangeEndMs; });
-  if (!filtered.length) filtered = progs.slice(0, 60);
-  var body = '';
-  if (!hasToday) {
-    var lastDate = formatDayLabel(progs[progs.length - 1].s);
-    body += '<div class="stale-banner">⚠ No guide data for today — showing last known programs from ' + lastDate + '. Source is stale for this channel.</div>';
-  }
-  var lastDayKey = '';
-  for (var i = 0; i < filtered.length; i++) {
-    var p = filtered[i];
-    var dayKey = new Date(p.s).toDateString();
-    if (dayKey !== lastDayKey) { body += '<div class="timeline-day-header">' + formatDayLabel(p.s) + '</div>'; lastDayKey = dayKey; }
-    var isLive = actualLive && actualLive === p;
-    var isPast = p.e <= now;
-    var cls = isLive ? ' live' : (isPast ? ' past' : '');
-    var badge = isLive ? ' <span class="airing-tag">● AIRING</span>' : '';
-    body += '<div class="timeline-row' + cls + '"><div class="timeline-time">' + formatRange(p.s, p.e) + '</div><div class="timeline-title">' + escapeHtml(p.t || 'No Title') + (p.ep ? ' <span style="color:#7cd0f5;font-size:11px">' + escapeHtml(p.ep) + '</span>' : '') + badge + '</div></div>';
-  }
-  dBody.innerHTML = body;
-}
-function closeDetails(){ detailModal.classList.add('hidden'); currentDetailChannel = null; }
-
-function openPlayer(ch) {
-  addRecent(ch.id);
-  try {
-    localStorage.setItem('currentChannel', JSON.stringify(ch));
-    localStorage.setItem('allChannels', JSON.stringify(allChannels));
-    var progs = epgByChannelId[String(ch.id)];
-    if (progs && progs.length) {
-      var ser = [];
-      for (var i = 0; i < progs.length; i++) ser.push({ title: progs[i].t, description: progs[i].d, start: progs[i].s, end: progs[i].e, icon: progs[i].ic || '', episode: progs[i].ep || '', genre: progs[i].g || '' });
-      localStorage.setItem('channelPrograms', JSON.stringify(ser));
-    } else localStorage.removeItem('channelPrograms');
-  } catch (e) {}
-  var url = 'jplayer.html?id=' + encodeURIComponent(ch.id);
-  try { var w = window.open(url, '_blank'); if (!w) window.location.href = url; } catch (e) { window.location.href = url; }
-}
-
-function showChNumOverlay(){ chNumValue.textContent = chNumBuffer || '—'; chNumOverlay.classList.add('visible'); }
-function hideChNumOverlay(){ chNumOverlay.classList.remove('visible'); }
-function handleChNumDigit(digit) { if (chNumBuffer.length >= 4) chNumBuffer = ''; chNumBuffer += digit; showChNumOverlay(); clearTimeout(chNumTimer); chNumTimer = setTimeout(commitChNum, 1200); }
-function commitChNum() {
-  var num = chNumBuffer; chNumBuffer = ''; clearTimeout(chNumTimer); hideChNumOverlay();
-  if (!num) return;
-  var n = parseInt(num, 10);
-  for (var i = 0; i < allChannels.length; i++) if (getChannelNumber(allChannels[i]) === n) { showToast('Tuning to CH ' + n + ' · ' + (allChannels[i].name || '')); openPlayer(allChannels[i]); return; }
-  showToast('Channel ' + num + ' not found', true);
-}
-function cancelChNum(){ chNumBuffer = ''; clearTimeout(chNumTimer); hideChNumOverlay(); }
-
-function computeEpgRange() {
-  var oldest = Infinity, newest = 0;
-  for (var id in epgByChannelId) {
-    if (!epgByChannelId.hasOwnProperty(id)) continue;
-    var progs = epgByChannelId[id];
-    for (var i = 0; i < progs.length; i++) { if (progs[i].s < oldest) oldest = progs[i].s; if (progs[i].e > newest) newest = progs[i].e; }
-  }
-  return { oldest: oldest, newest: newest };
-}
-function countWithData() {
-  var c = 0;
-  for (var i = 0; i < allChannels.length; i++) if (epgByChannelId[String(allChannels[i].id)]) c++;
-  return c;
-}
-function countLive() {
-  var c = 0, now = Date.now();
-  for (var i = 0; i < allChannels.length; i++) {
-    var st = getProgramState(epgByChannelId[String(allChannels[i].id)], now);
-    if (st && st.state === 'live') c++;
-  }
-  return c;
-}
-function scheduleMidnightRefresh() {
-  if (midnightTimer) clearTimeout(midnightTimer);
-  var now = new Date();
-  var next = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 2, 0);
-  var delay = Math.max(60000, next.getTime() - now.getTime());
-  midnightTimer = setTimeout(function() {
-    clearCacheAndRefresh();
-    if (exhaustRetryTimer) clearTimeout(exhaustRetryTimer);
-    exhaustRetryTimer = setTimeout(function checkStale() {
-      var r = computeEpgRange();
-      if (r.newest < Date.now() + 6 * 3600000) { clearCacheAndRefresh(); exhaustRetryTimer = setTimeout(checkStale, 30 * 60 * 1000); }
-      else { scheduleMidnightRefresh(); }
-    }, 30 * 60 * 1000);
-  }, delay);
-}
-function loadEPG() {
-  var t0 = Date.now();
-  setEpgStatus('Loading guide (' + EPG_SOURCES.length + ' sources)…');
-  fetchAndParseAllEpgs().then(function(result) {
-    if (result && Object.keys(result.data).length) {
-      epgByChannelId = result.data; epgLoaded = true; saveCache();
-      var range = computeEpgRange(), now = Date.now();
-      var hoursTotal = ((range.newest - range.oldest) / 3600000).toFixed(1);
-      var hoursAhead = ((range.newest - now) / 3600000).toFixed(1);
-      var elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-      var withData = countWithData(), live = countLive(), total = allChannels.length;
-      var pct = Math.round((withData / total) * 100);
-      var kind = pct >= 60 ? 'ok' : (pct >= 30 ? 'warn' : 'error');
-      var endStr = new Date(range.newest).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit' });
-      setEpgStatus('Guide: ' + result.sourcesOk + '/' + EPG_SOURCES.length + ' src · ' + withData + '/' + total + ' ch (' + pct + '%) · ' + live + ' live · ends ' + endStr, kind);
-      setTimeout(function(){ setEpgStatus(''); }, 12000);
-      refreshAllCardsEpg();
-      if (range.newest < now + 6 * 3600000) {
-        if (exhaustRetryTimer) clearTimeout(exhaustRetryTimer);
-        exhaustRetryTimer = setTimeout(function(){ clearCacheAndRefresh(); }, 15 * 60 * 1000);
-      }
-      scheduleMidnightRefresh();
-    } else {
-      setEpgStatus('Guide unavailable — channels only', 'error');
-      setTimeout(function(){ setEpgStatus(''); }, 5000);
-    }
-  });
-}
-
-function loadChannels() {
-  gridEl.innerHTML = '<div class="msg"><div class="spinner"></div><div>Loading channels & catalog…</div></div>';
-  Promise.all([fetchStreamChannels(), fetchCatalogMeta()])
-    .then(function(results) {
-      var streams = results[0], catalog = results[1] || [];
-      if (!streams || !streams.length) throw new Error('No channels');
-      allChannels = mergeChannelMetadata(streams, catalog);
-      displayedChannels = allChannels.slice();
-      loadPrefs(); renderCategories();
-      var cacheFresh = loadCache();
-      renderAllCards(function() {
-        if (cacheFresh) {
-          refreshAllCardsEpg();
-          var withData = countWithData(), live = countLive(), range = computeEpgRange();
-          var hoursAhead = ((range.newest - Date.now()) / 3600000).toFixed(1);
-          setEpgStatus('Cache: ' + withData + '/' + allChannels.length + ' ch · ' + live + ' live · ' + hoursAhead + 'h ahead');
-          setTimeout(function(){ setEpgStatus(''); }, 6000);
-          scheduleMidnightRefresh();
-        } else loadEPG();
-      });
-      if (progressUpdateTimer) clearInterval(progressUpdateTimer);
-      progressUpdateTimer = setInterval(function(){ refreshAllCardsEpg(); }, 30000);
-    })
-    .catch(function(e) {
-      gridEl.innerHTML = '<div class="msg err">⚠️ Could not load channels.<br><div style="color:#888;font-size:12px;margin-top:10px">' + escapeHtml(e.message || '') + '</div><button onclick="location.reload()">Retry</button></div>';
+    apiFetch('/season', { tmdb_id: tmdbId, season: seasonNum }).then(function(data) {
+      var eps = (data && data.episodes && data.episodes.length) ? data.episodes : fallbackEpisodes();
+      if (!episodesCache[tmdbId]) episodesCache[tmdbId] = {};
+      episodesCache[tmdbId][seasonNum] = eps;
+      renderEpisodes(tmdbId, eps);
+    }).catch(function() {
+      var eps = fallbackEpisodes();
+      if (!episodesCache[tmdbId]) episodesCache[tmdbId] = {};
+      episodesCache[tmdbId][seasonNum] = eps;
+      renderEpisodes(tmdbId, eps);
     });
-}
-
-var searchTimer = null;
-searchEl.addEventListener('input', function() { clearTimeout(searchTimer); searchTimer = setTimeout(function() { searchQuery = searchEl.value.trim().toLowerCase(); applyFilter(); wrapEl.scrollTop = 0; }, 150); });
-sortSelect.addEventListener('change', function() { sortMode = sortSelect.value; savePrefs(); applyFilter(); });
-viewBtn.addEventListener('click', function() { viewMode = viewMode === 'grid' ? 'compact' : 'grid'; updateViewBtn(); savePrefs(); var cards = gridEl.querySelectorAll('.card'); for (var i = 0; i < cards.length; i++) { if (viewMode === 'compact') cards[i].classList.add('compact'); else cards[i].classList.remove('compact'); } });
-refreshBtn.addEventListener('click', function() { showToast('Refreshing guide…'); clearCacheAndRefresh(); });
-helpBtn.addEventListener('click', function() { helpModal.classList.remove('hidden'); });
-helpClose.addEventListener('click', function() { helpModal.classList.add('hidden'); });
-dTabInfo.addEventListener('click', function(){ currentDetailTab = 'info'; dTabInfo.classList.add('active'); dTabGuide.classList.remove('active'); renderDetailBody(); });
-dTabGuide.addEventListener('click', function(){ currentDetailTab = 'guide'; dTabGuide.classList.add('active'); dTabInfo.classList.remove('active'); renderDetailBody(); });
-dClose.addEventListener('click', function(e){ e.preventDefault(); closeDetails(); });
-dCancel.addEventListener('click', function(e){ e.preventDefault(); closeDetails(); });
-dWatch.addEventListener('click', function(e){ e.preventDefault(); if (currentDetailChannel) openPlayer(currentDetailChannel); });
-detailModal.addEventListener('click', function(e){ if (e.target === detailModal) closeDetails(); });
-
-document.addEventListener('keydown', function(e) {
-  var k = e.keyCode, focused = document.activeElement;
-  var inDetail = !detailModal.classList.contains('hidden'), inHelp = !helpModal.classList.contains('hidden'), inSearch = focused === searchEl;
-  if (inHelp) { if (k === 27 || k === 13) { e.preventDefault(); helpModal.classList.add('hidden'); } return; }
-  if (inDetail) { if (k === 27 || k === 8) { e.preventDefault(); closeDetails(); } return; }
-  if (k === 191 && !inSearch) { e.preventDefault(); helpModal.classList.remove('hidden'); return; }
-  if (k === 82 && !inSearch && !chNumBuffer) { e.preventDefault(); refreshBtn.click(); return; }
-  if (k === 83 && !inSearch && !chNumBuffer) { e.preventDefault(); searchEl.focus(); return; }
-  if (k === 70 && focused && focused.classList && focused.classList.contains('card')) { e.preventDefault(); var favId = focused.getAttribute('data-chid'); if (favId) toggleFavorite(favId); return; }
-  var isNumKey = (k >= 48 && k <= 57) || (k >= 96 && k <= 105);
-  if (isNumKey && !inSearch) { e.preventDefault(); handleChNumDigit(String.fromCharCode(k >= 96 ? k - 48 : k)); return; }
-  if (k === 13 && chNumBuffer) { e.preventDefault(); clearTimeout(chNumTimer); commitChNum(); return; }
-  if ((k === 27 || k === 8) && chNumBuffer) { e.preventDefault(); cancelChNum(); return; }
-  if (focused && focused.classList && focused.classList.contains('card')) {
-    var visible = gridEl.querySelectorAll('.card'), cardIdx = Array.prototype.indexOf.call(visible, focused);
-    if (k === 37 && cardIdx > 0) { visible[cardIdx - 1].focus(); e.preventDefault(); }
-    else if (k === 39 && cardIdx < visible.length - 1) { visible[cardIdx + 1].focus(); e.preventDefault(); }
-    else if (k === 13) { e.preventDefault(); var chid = focused.getAttribute('data-chid'); for (var fi = 0; fi < displayedChannels.length; fi++) if (String(displayedChannels[fi].id) === chid) { openDetails(displayedChannels[fi]); return; } }
   }
-});
 
-function boot() { loadChannels(); }
-if (document.readyState === 'complete' || document.readyState === 'interactive') setTimeout(boot, 0);
-else document.addEventListener('DOMContentLoaded', boot);
+  function fallbackEpisodes() {
+    var out = [];
+    for (var i = 1; i <= 10; i++) out.push({ episode_number: i, title: 'Episode ' + i, overview: '' });
+    return out;
+  }
+
+  function renderEpisodes(tmdbId, eps) {
+    episodeGrid.innerHTML = '';
+    if (!eps || !eps.length) {
+      episodeGrid.innerHTML = '<div style="color:#888;padding:20px;"><i class="fas fa-exclamation-circle"></i> No episodes</div>';
+      return;
+    }
+    for (var i = 0; i < eps.length; i++) {
+      (function(ep) {
+        var card = document.createElement('div');
+        card.className = 'episode-card';
+        var n = ep.episode_number || '?';
+        var t = ep.title || 'Episode ' + n;
+        var d = ep.overview || '';
+        card.innerHTML = '<div class="ep-num">E' + n + '</div>' +
+                         '<div class="ep-title">' + t + '</div>' +
+                         (d ? '<div class="ep-desc">' + d + '</div>' : '');
+        card.onclick = function() {
+          var showTitle = (currentItem && (currentItem.title || currentItem.name)) || '';
+          var y = ((currentItem && (currentItem.release_date || currentItem.first_air_date)) || '').split('-')[0];
+          var epLabel = 'S' + pad2(currentSeason) + 'E' + pad2(n);
+          openPlayerInTab(tmdbId, 'tv', currentSeason, n, showTitle + ' · ' + epLabel, y);
+        };
+        episodeGrid.appendChild(card);
+      })(eps[i]);
+    }
+  }
+
+  function getFirstEpisode(tmdbId, seasonNum) {
+    if (episodesCache[tmdbId] && episodesCache[tmdbId][seasonNum] && episodesCache[tmdbId][seasonNum].length)
+      return episodesCache[tmdbId][seasonNum][0];
+    return null;
+  }
+
+  function fetchDetails(tmdbId, type) {
+    if (!tmdbId) { alert('No details for this title.'); return; }
+    apiFetch(type === 'tv' ? '/tv' : '/movie', { tmdb_id: tmdbId }).then(function(data) {
+      if (data && (data.title || data.name)) renderDetail(data, type, String(tmdbId));
+      else throw new Error('No data');
+    }).catch(function(err) { console.error(err); });
+  }
+
+  function createCard(item, type) {
+    var path = item.poster || item.poster_path;
+    if (path && path.indexOf('http') !== 0) path = 'https://image.tmdb.org/t/p/w200' + path;
+    var title = item.title || item.name || 'Untitled';
+    var year = item.release_date ? item.release_date.split('-')[0]
+             : (item.first_air_date ? item.first_air_date.split('-')[0] : '');
+    var card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = '<img src="' + proxyImage(path) + '" alt="" />' +
+                     '<div class="title">' + title + '</div>' +
+                     '<div class="year">' + year + '</div>';
+    var tmdbId = getTmdbId(item);
+    card.addEventListener('click', function() { fetchDetails(tmdbId, type); });
+    return card;
+  }
+
+  function renderRow(title, icon, items, type) {
+    var wrap = document.createElement('div');
+    wrap.className = 'row';
+    wrap.innerHTML = '<div class="row-header"><i class="' + icon + '"></i><h2>' + title + '</h2></div><div class="row-scroll"></div>';
+    var scroll = wrap.getElementsByClassName('row-scroll')[0];
+    if (!items || !items.length) scroll.innerHTML = '<div class="error-msg"><i class="fas fa-exclamation-triangle"></i> No results</div>';
+    else for (var i = 0; i < items.length; i++) scroll.appendChild(createCard(items[i], type));
+    rowsContainer.appendChild(wrap);
+  }
+
+  function loadTrendingMovies() {
+    apiFetch('/trending', { time_window: 'day', page: 1 }).then(function(data) {
+      if (data.results) {
+        var m = data.results.slice(0, 12);
+        renderRow('Trending Movies', 'fas fa-fire', m, 'movie');
+        if (m.length) renderHero(m[0], 'movie');
+      }
+    }).catch(function() {});
+  }
+  function loadTrendingTV() {
+    apiFetch('/trendingtv', { time_window: 'day', page: 1 }).then(function(data) {
+      if (data.results) renderRow('Trending TV', 'fas fa-tv', data.results.slice(0, 12), 'tv');
+    }).catch(function() {});
+  }
+
+  function performSearch(q) {
+    if (!q.trim()) { resetHome(); return; }
+    rowsContainer.innerHTML = '';
+    detailView.classList.remove('active');
+    heroSection.style.display = 'none';
+    apiFetch('/search', { q: q, page: 1 }).then(function(d) {
+      if (d.results) renderRow('Movies', 'fas fa-film', d.results.slice(0, 12), 'movie');
+    }).catch(function() {});
+    apiFetch('/searchtv', { q: q, page: 1 }).then(function(d) {
+      if (d.results) renderRow('TV Shows', 'fas fa-list-ul', d.results.slice(0, 12), 'tv');
+    }).catch(function() {});
+  }
+
+  function resetHome() {
+    rowsContainer.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-pulse"></i>Loading…</div>';
+    detailView.classList.remove('active');
+    heroSection.style.display = 'none';
+    rowsContainer.innerHTML = '';
+    loadTrendingMovies();
+    loadTrendingTV();
+    searchInput.value = '';
+  }
+
+  function init() {
+    resetHome();
+    searchBtn.addEventListener('click', function() { performSearch(searchInput.value); });
+    searchInput.addEventListener('keydown', function(e) { if (e.keyCode === 13) performSearch(searchInput.value); });
+    navHome.addEventListener('click', function(e) { e.preventDefault(); resetHome(); });
+    navTrending.addEventListener('click', function(e) {
+      e.preventDefault();
+      rowsContainer.innerHTML = '';
+      detailView.classList.remove('active');
+      heroSection.style.display = 'none';
+      loadTrendingMovies(); loadTrendingTV();
+    });
+    navTv.addEventListener('click', function(e) {
+      e.preventDefault();
+      rowsContainer.innerHTML = '';
+      detailView.classList.remove('active');
+      heroSection.style.display = 'none';
+      loadTrendingTV();
+    });
+  }
+  init();
+})();
 </script>
 </body>
 </html>
