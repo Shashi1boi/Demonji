@@ -8,7 +8,7 @@
   <link rel="dns-prefetch" href="https://vidsync.pro" />
   <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
 
-  <!-- FAST-START: fire API fetch + HLS.js load before CSS/HTML parse -->
+  <!-- FAST-START: fire API fetch + conditional HLS.js load before CSS parse -->
   <script>
     (function() {
       try {
@@ -26,13 +26,12 @@
         var url = 'https://vidsync.pro/api/core/streams?type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(id);
         if (type === 'tv') url += '&season=' + season + '&episode=' + episode;
 
-        window.__flexjiApiUrl   = url;
-        window.__flexjiIsTizen  = /Tizen|SMART-TV|SamsungBrowser/i.test(navigator.userAgent);
+        window.__flexjiApiUrl  = url;
+        window.__flexjiIsTizen = /Tizen|SMART-TV|SamsungBrowser/i.test(navigator.userAgent);
 
-        var probeVideo = document.createElement('video');
-        window.__flexjiHasNativeHls = !!probeVideo.canPlayType('application/vnd.apple.mpegurl');
+        var probe = document.createElement('video');
+        window.__flexjiHasNativeHls = !!probe.canPlayType('application/vnd.apple.mpegurl');
 
-        // Preload HLS.js only if the device can't do native HLS
         if (!window.__flexjiHasNativeHls) {
           var s = document.createElement('script');
           s.src = 'https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js';
@@ -40,7 +39,6 @@
           document.head.appendChild(s);
         }
 
-        // Start the stream-info fetch immediately
         window.__flexjiStreamPromise = fetch(url, { credentials: 'omit' })
           .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
           .catch(function() { return null; });
@@ -405,7 +403,7 @@
 
   var isTizen = window.__flexjiIsTizen || /Tizen|SMART-TV|SamsungBrowser/i.test(navigator.userAgent);
 
-  // ----- DOM -----
+  // ----- DOM refs -----
   var shell          = document.getElementById('shell');
   var video          = document.getElementById('video');
   var titleEl        = document.getElementById('title');
@@ -451,7 +449,7 @@
   var audioOpts        = document.getElementById('audioOpts');
   var qualityOpts      = document.getElementById('qualityOpts');
 
-  // ----- Display title (strip SxxExx) -----
+  // ----- Display title (strip trailing SxxExx) -----
   var displayTitle = (title || 'Untitled')
     .replace(/\s*[·•\-]\s*S\d+\s*E\d+\s*$/i, '')
     .replace(/\s+S\d+E\d+\s*$/i, '')
@@ -487,24 +485,24 @@
   function pad2(n) { return n < 10 ? '0' + n : String(n); }
 
   // ----- State -----
-  var hlsInstance        = null;
-  var currentData        = null;
-  var currentSource      = null;
-  var hideTimer          = null;
-  var toastTimer         = null;
-  var slowTimer          = null;
-  var userInitiatedPause = false;
-  var isSwitching        = false;
-  var selectedLang       = null;
-  var selectedQuality    = null;
-  var timeRestored       = false;
+  var hlsInstance          = null;
+  var currentData          = null;
+  var currentSource        = null;
+  var hideTimer            = null;
+  var toastTimer           = null;
+  var slowTimer            = null;
+  var userInitiatedPause   = false;
+  var isSwitching          = false;
+  var selectedLang         = null;
+  var selectedQuality      = null;
+  var timeRestored         = false;
   var firstPlaybackStarted = false;
 
-  // Stall watchdog
-  var stallWatchTimer   = null;
-  var stallLastTime     = 0;
-  var stallTicks        = 0;
-  var stallSuppressed   = false;
+  // Stall watchdog (only runs during confirmed playback)
+  var stallWatchTimer      = null;
+  var stallLastTime        = 0;
+  var stallTicks           = 0;
+  var stallSuppressed      = false;
 
   // ----- Toast -----
   function showToast(msg) {
@@ -652,7 +650,7 @@
     return u;
   }
 
-  // ----- Native HLS with serial retries -----
+  // ----- Native HLS retry machinery -----
   var nativeAttemptId = 0;
   var nativeTimer = null;
   var nativeOnMeta = null;
@@ -773,6 +771,9 @@
     timeRestored = false;
     firstPlaybackStarted = false;
     stallSuppressed = false;
+
+    // Critical: kill any running watchdog before touching video.src
+    stopStallWatch();
 
     if (hlsInstance) { try { hlsInstance.destroy(); } catch (e) {} hlsInstance = null; }
     cancelNativeAttempt();
@@ -923,17 +924,44 @@
     }
   }
 
-  // ----- Playback -----
+  // ----- Playback: safe tryPlay (retries, never starts watchdog) -----
   function tryPlay() {
-    var wasFirstPlay = !firstPlaybackStarted;
+    var attempts = 0;
+    var playingFired = false;
+
+    function onPlaying() {
+      playingFired = true;
+      video.removeEventListener('playing', onPlaying);
+    }
+    video.addEventListener('playing', onPlaying);
+
+    function cleanup() {
+      video.removeEventListener('playing', onPlaying);
+    }
 
     function doPlay() {
+      if (playingFired) { cleanup(); return; }
+      attempts++;
+
       var p = video.play();
-      if (!p || !p.then) return;
+      if (!p || !p.then) return; // legacy browser — assume accepted
+
       p.then(function() {
-        startStallWatch();
+        // play() accepted — 'playing' event will fire when buffered
       }).catch(function(e) {
-        if (e && e.name === 'AbortError') return;
+        if (playingFired) { cleanup(); return; }
+        if (e && e.name === 'AbortError') { cleanup(); return; }
+
+        var hasBuffer = video.buffered.length > 0 &&
+                        video.buffered.end(video.buffered.length - 1) > video.currentTime + 0.3;
+
+        if (attempts < 20 && (!hasBuffer || e.name === 'NotSupportedError')) {
+          setTimeout(doPlay, 400);
+          return;
+        }
+
+        // Genuine failure
+        cleanup();
         hideLoading();
         buffering.classList.remove('show');
         if (e && e.name === 'NotAllowedError') showPausedScreen();
@@ -941,39 +969,19 @@
       });
     }
 
-    // First-play buffer warm-up
-    if (wasFirstPlay) {
-      var ahead = 0;
-      if (video.buffered.length > 0) {
-        ahead = video.buffered.end(video.buffered.length - 1) - video.currentTime;
-      }
-      if (ahead < 1.0) {
-        var tries = 0;
-        var waitTimer = setInterval(function() {
-          tries++;
-          var a = video.buffered.length > 0
-            ? (video.buffered.end(video.buffered.length - 1) - video.currentTime)
-            : 0;
-          if (a >= 1.0 || tries >= 3) {
-            clearInterval(waitTimer);
-            doPlay();
-          }
-        }, 200);
-        return;
-      }
-    }
-
     doPlay();
   }
 
   // ============================================================
-  //  STALL WATCHDOG — aggressive recovery
+  //  STALL WATCHDOG — only runs during confirmed playback
   //  2s: nudge past segment boundary
   //  4s: hard reload at current timestamp
   //  10s: give up with error
   // ============================================================
   function startStallWatch() {
     stopStallWatch();
+    if (!firstPlaybackStarted) return; // guard
+
     stallLastTime = video.currentTime;
     stallTicks = 0;
 
@@ -1028,8 +1036,10 @@
 
     showToast('Recovering…');
     stallSuppressed = true;
+    stopStallWatch();
     savedTime = 0;
     timeRestored = true;
+    firstPlaybackStarted = false;
 
     try { video.pause(); } catch(e) {}
     try { video.removeAttribute('src'); video.load(); } catch(e) {}
@@ -1047,7 +1057,7 @@
         stallLastTime = t;
         stallTicks = 0;
         tryPlay();
-        startStallWatch();
+        // 'playing' event will start watchdog when playback resumes
       }, 200);
     };
 
@@ -1103,7 +1113,6 @@
     hidePausedScreen();
     updatePlayPauseBtn();
     scheduleHide();
-    if (firstPlaybackStarted) startStallWatch();
   });
 
   video.addEventListener('pause', function() {
@@ -1122,27 +1131,31 @@
   });
 
   video.addEventListener('waiting', function() {
-    if (firstPlaybackStarted) {
-      buffering.classList.add('show');
-      startStallWatch();
-    }
+    if (firstPlaybackStarted) buffering.classList.add('show');
   });
 
+  // 'playing' = authoritative start-of-playback. Only place watchdog starts.
   video.addEventListener('playing', function() {
     buffering.classList.remove('show');
     if (!firstPlaybackStarted) {
       firstPlaybackStarted = true;
       hideLoading();
-      startStallWatch();
     }
+    startStallWatch();
   });
 
   video.addEventListener('canplay', function() {
     buffering.classList.remove('show');
-    if (firstPlaybackStarted && !video.paused) startStallWatch();
   });
 
+  // timeupdate acts as a backup "playback is real" signal
   video.addEventListener('timeupdate', function() {
+    if (!firstPlaybackStarted && video.currentTime > 0 && !video.paused) {
+      firstPlaybackStarted = true;
+      hideLoading();
+      buffering.classList.remove('show');
+      startStallWatch();
+    }
     updateProgress();
     saveProgress();
   });
