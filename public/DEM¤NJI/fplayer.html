@@ -8,7 +8,6 @@
     * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Roboto,system-ui,sans-serif; }
     html, body { height:100%; background:#000; overflow:hidden; color:#fff; width: 100%; }
 
-    /* FIXED: Older Tizen does not support 'inset: 0'. Using top/left/right/bottom */
     #shell {
       position:fixed; top:0; left:0; right:0; bottom:0;
       background:#000;
@@ -30,7 +29,6 @@
     .grad.bottom { bottom:0; height:220px; background:linear-gradient(0deg, rgba(0,0,0,.90), transparent); }
     #shell.hide-ui .grad { opacity:0; }
 
-    /* FIXED: Added WebKit prefixes for Flexbox (solves the layout issue in your image) */
     .top-bar {
       position:absolute; top:0; left:0; right:0; width: 100%;
       padding:22px 32px;
@@ -78,7 +76,6 @@
     .close-btn svg { width:22px; height:22px; }
     .close-btn:hover { background:#e50914; border-color:#e50914; }
 
-    /* paused screen */
     .paused-screen {
       position:absolute; top:0; left:0; right:0; bottom:0;
       display:none; z-index:16; overflow:hidden;
@@ -124,7 +121,6 @@
     .ps-play-btn svg { width:38px; height:38px; fill:#fff; margin-left:5px; }
     .ps-hint { color:#888; font-size:.85rem; margin-top:6px; letter-spacing:.3px; }
 
-    /* buffering */
     .buffering {
       position:absolute; top:0; left:0; right:0; bottom:0;
       display:none; 
@@ -142,7 +138,6 @@
     @-webkit-keyframes spin { to { -webkit-transform:rotate(360deg); transform:rotate(360deg); } }
     @keyframes spin { to { -webkit-transform:rotate(360deg); transform:rotate(360deg); } }
 
-    /* loading/error */
     .loading-screen, .error-screen {
       position:absolute; top:0; left:0; right:0; bottom:0;
       display:none;
@@ -166,7 +161,6 @@
     .error-screen .retry-btn:hover { background:#f6121d; }
     .error-screen .retry-btn svg { width:18px; height:18px; fill:currentColor; }
 
-    /* bottom controls */
     .bottom-controls {
       position:absolute; left:0; right:0; bottom:0; width: 100%;
       padding:0 32px 22px; z-index:10;
@@ -189,10 +183,12 @@
       top:50%; -webkit-transform:translateY(-50%); transform:translateY(-50%);
     }
     .seekbar-bg        { right:0; background:rgba(255,255,255,.22); }
-    .seekbar-buffered { width:0; background:rgba(255,255,255,.45); }
-    .seekbar-played   { width:0; background:#e50914; }
+    /* HIGHLIGHTED WHITE BUFFER BAR */
+    .seekbar-buffered { width:0; background:#ffffff; opacity:0.6; z-index:1; }
+    .seekbar-played   { width:0; background:#e50914; z-index:2; }
+    
     .seekbar {
-      position:relative; z-index:2; width:100%; height:16px;
+      position:relative; z-index:3; width:100%; height:16px;
       -webkit-appearance:none; appearance:none;
       background:transparent; outline:none; cursor:pointer; margin:0; padding:0;
     }
@@ -232,7 +228,6 @@
 
     .spacer { -webkit-box-flex:1; -webkit-flex:1; flex:1; }
 
-    /* settings */
     .settings-backdrop {
       position:absolute; top:0; left:0; right:0; bottom:0;
       background:rgba(0,0,0,.55);
@@ -322,7 +317,6 @@
   <div class="grad top"></div>
   <div class="grad bottom"></div>
 
-  <!-- TOP BAR -->
   <div class="top-bar">
     <div class="info">
       <div class="brand">flexji</div>
@@ -334,7 +328,6 @@
     </button>
   </div>
 
-  <!-- PAUSED SCREEN (poster + title) -->
   <div class="paused-screen" id="pausedScreen">
     <div class="ps-bg" id="psBg"></div>
     <div class="ps-vignette"></div>
@@ -353,12 +346,10 @@
     </div>
   </div>
 
-  <!-- BUFFERING -->
   <div class="buffering" id="buffering">
     <div class="spinner"></div>
   </div>
 
-  <!-- LOADING / ERROR -->
   <div class="loading-screen" id="loadingScreen">
     <div class="spinner big"></div>
     <p id="loadingText">Loading stream…</p>
@@ -374,7 +365,6 @@
     </button>
   </div>
 
-  <!-- BOTTOM CONTROLS -->
   <div class="bottom-controls">
     <div class="progress-row">
       <div class="seekbar-wrap">
@@ -395,6 +385,11 @@
       <button class="icon-btn small" id="forwardBtn" title="Forward 10s (→)">
         <svg viewBox="0 0 24 24"><path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/></svg>
       </button>
+      <!-- NEXT EPISODE BUTTON -->
+      <button class="icon-btn small" id="nextEpBtn" title="Next Episode (N)" style="display:none;">
+        <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
+      </button>
+      
       <button class="icon-btn" id="volBtn" title="Mute (M)">
         <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
       </button>
@@ -409,7 +404,6 @@
     </div>
   </div>
 
-  <!-- SETTINGS -->
   <div class="settings-backdrop" id="settingsBackdrop"></div>
   <div class="settings-panel" id="settingsPanel" role="dialog" aria-modal="true" aria-label="Player settings">
     <div class="settings-head">
@@ -450,7 +444,6 @@
     check:        '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>'
   };
 
-  /* FIXED FOR TIZEN: URLSearchParams is not supported on 2015-2016 Tizen TVs */
   function getQueryParam(name) {
     var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)');
     var results = regex.exec(window.location.href);
@@ -459,13 +452,14 @@
     return decodeURIComponent(results[2].replace(/\+/g, ' '));
   }
 
-  var type     = getQueryParam('type') || 'movie';
-  var tmdbId   = getQueryParam('id'); 
-  var season   = parseInt(getQueryParam('season') || '1', 10);
-  var episode  = parseInt(getQueryParam('episode') || '1', 10);
-  var title    = getQueryParam('title') || '';
-  var year     = getQueryParam('year')  || '';
-  var posterUrl= getQueryParam('poster')|| '';
+  var type       = getQueryParam('type') || 'movie';
+  var tmdbId     = getQueryParam('id'); 
+  var season     = parseInt(getQueryParam('season') || '1', 10);
+  var episode    = parseInt(getQueryParam('episode') || '1', 10);
+  var title      = getQueryParam('title') || '';
+  var year       = getQueryParam('year')  || '';
+  var posterUrl  = getQueryParam('poster')|| '';
+  var savedTime  = parseFloat(getQueryParam('t') || '0');
 
   var shell          = document.getElementById('shell');
   var video          = document.getElementById('video');
@@ -489,6 +483,7 @@
   var playPauseBtn   = document.getElementById('playPause');
   var rewindBtn      = document.getElementById('rewindBtn');
   var forwardBtn     = document.getElementById('forwardBtn');
+  var nextEpBtn      = document.getElementById('nextEpBtn');
   var seekbar        = document.getElementById('seekbar');
   var seekPlayed     = document.getElementById('seekPlayed');
   var seekBuffered   = document.getElementById('seekBuffered');
@@ -512,7 +507,15 @@
   var displaySub = year;
   if (type === 'tv') {
     displaySub = (year ? year + ' · ' : '') + 'Season ' + pad2(season) + ', Episode ' + pad2(episode);
+    nextEpBtn.style.display = 'inline-flex';
+    nextEpBtn.onclick = function(e) {
+      e.stopPropagation();
+      var nextUrl = 'fplayer.html?type=tv&id=' + tmdbId + '&season=' + season + '&episode=' + (episode + 1) + 
+                    '&title=' + encodeURIComponent(title) + '&year=' + year;
+      location.href = nextUrl;
+    };
   }
+  
   titleEl.textContent     = displayTitle;
   subtitleEl.textContent  = displaySub;
   psTitle.textContent     = displayTitle;
@@ -538,8 +541,8 @@
   var isSwitching        = false;
   var selectedLang       = null;
   var selectedQuality    = null;
+  var timeRestored       = false;
 
-  /* FIXED FOR TIZEN: Fetch API does not exist on older WebKit. Switched to XMLHttpRequest */
   function fetchStream() {
     if (!tmdbId) { showError('Missing TMDB ID in URL.'); return; }
     loadingScreen.style.display = 'flex';
@@ -630,6 +633,7 @@
     if (!source) return;
     currentSource = source;
     isSwitching = true;
+    timeRestored = false; 
 
     if (hlsInstance) { try { hlsInstance.destroy(); } catch (e) {} hlsInstance = null; }
     try {
@@ -679,19 +683,20 @@
         return;
       }
       
-      /* FASTER LOAD: Configured HLS for lower latency & quicker manifest fetching */
+      /* AGGRESSIVE BUFFERING CONFIG TO PREVENT STUTTERING */
       hlsInstance = new Hls({
         capLevelToPlayerSize: true,
-        maxBufferLength: 30,
-        maxMaxBufferLength: 60,
+        maxBufferLength: 60,
+        maxMaxBufferLength: 120, 
+        maxBufferSize: 60 * 1000 * 1000, 
         backBufferLength: 30,
-        abrBandWidthUpFactor: 0.7,
         enableWorker: (typeof Worker !== 'undefined'),
-        lowLatencyMode: true,
-        manifestLoadingTimeOut: 10000,
-        manifestLoadingMaxRetry: 3,
-        levelLoadingTimeOut: 10000,
-        fragLoadingTimeOut: 15000,
+        lowLatencyMode: false, /* Disabled to stop constant starvation */
+        manifestLoadingTimeOut: 20000,
+        manifestLoadingMaxRetry: 5,
+        levelLoadingTimeOut: 20000,
+        fragLoadingTimeOut: 30000,
+        fragLoadingMaxRetry: 6,
         startLevel: -1
       });
 
@@ -700,19 +705,28 @@
         isSwitching = false;
         tryPlay();
       });
+      
       hlsInstance.on(Hls.Events.ERROR, function(evt, data) {
         if (!data || !data.fatal) return;
-        if (data.type === Hls.ErrorTypes.MEDIA_ERROR) {
-          try { hlsInstance.recoverMediaError(); } catch (e) {}
-          return;
+        switch(data.type) {
+          case Hls.ErrorTypes.NETWORK_ERROR:
+            console.warn("Fatal network error encountered, trying to recover...");
+            hlsInstance.startLoad();
+            break;
+          case Hls.ErrorTypes.MEDIA_ERROR:
+            console.warn("Fatal media error encountered, trying to recover...");
+            hlsInstance.recoverMediaError();
+            break;
+          default:
+            hlsInstance.destroy();
+            isSwitching = false;
+            if (!useRaw && rawUrl && rawUrl !== playUrl) {
+                playSource(source, true);
+            } else {
+                showError('Stream error. Try another title.');
+            }
+            break;
         }
-        if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !useRaw && rawUrl && rawUrl !== playUrl) {
-          isSwitching = false;
-          playSource(source, true);
-          return;
-        }
-        isSwitching = false;
-        showError('Stream error. Try another title.');
       });
       try {
         hlsInstance.loadSource(playUrl);
@@ -787,8 +801,21 @@
   video.addEventListener('waiting', function() { buffering.classList.add('show'); });
   video.addEventListener('playing', function() { buffering.classList.remove('show'); hideLoading(); });
   video.addEventListener('canplay', function() { buffering.classList.remove('show'); });
-  video.addEventListener('timeupdate', updateProgress);
-  video.addEventListener('loadedmetadata', function() { updateProgress(); updateVolume(); });
+  
+  video.addEventListener('timeupdate', function() {
+    updateProgress();
+    saveProgress();
+  });
+  
+  video.addEventListener('loadedmetadata', function() {
+    if (savedTime > 0 && !timeRestored && video.duration > savedTime) {
+      video.currentTime = savedTime;
+      timeRestored = true;
+    }
+    updateProgress(); 
+    updateVolume(); 
+  });
+  
   video.addEventListener('progress', function() {
     if (!video.duration || !video.buffered.length) return;
     var end = video.buffered.end(video.buffered.length - 1);
@@ -803,6 +830,20 @@
     seekPlayed.style.width = pct + '%';
     currentTimeEl.textContent = formatTime(video.currentTime);
     durationEl.textContent    = formatTime(video.duration);
+  }
+  
+  function saveProgress() {
+    if (!video.duration || video.currentTime < 5) return;
+    try {
+      var progressStore = JSON.parse(localStorage.getItem('flexji_progress') || '{}');
+      var key = type === 'tv' ? (tmdbId + '_' + season + '_' + episode) : tmdbId;
+      progressStore[key] = {
+        tmdbId: tmdbId, type: type, season: season, episode: episode,
+        currentTime: video.currentTime, duration: video.duration,
+        title: title, year: year, timestamp: Date.now()
+      };
+      localStorage.setItem('flexji_progress', JSON.stringify(progressStore));
+    } catch(e){}
   }
 
   function formatTime(s) {
@@ -918,6 +959,10 @@
 
     selectedLang    = lang;
     selectedQuality = chosen.quality;
+    
+    savedTime = video.currentTime;
+    timeRestored = false;
+    
     buildSettings(); closeSettings(); playSource(chosen, false);
   }
 
@@ -936,6 +981,10 @@
     }
     if (match) {
       selectedQuality = q;
+      
+      savedTime = video.currentTime;
+      timeRestored = false;
+      
       buildSettings(); closeSettings(); playSource(match, false);
     }
   }
@@ -1021,6 +1070,8 @@
       video.volume = Math.max(0, video.volume - 0.1); e.preventDefault(); showControls();
     } else if (k === 70 || k === 102) {
       toggleFullscreen(); e.preventDefault();
+    } else if (k === 78) {
+      if(nextEpBtn.style.display !== 'none') nextEpBtn.click(); e.preventDefault();
     } else if (k === 77 || k === 109) {
       video.muted = !video.muted; updateVolume();
     } else if (k === 27 || k === 10009) {
