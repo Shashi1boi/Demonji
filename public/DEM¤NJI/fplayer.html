@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>flexji · player</title>
+  <link rel="preconnect" href="https://vidsync.pro" crossorigin />
+  <link rel="dns-prefetch" href="https://vidsync.pro" />
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
   <style>
     * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Roboto,system-ui,sans-serif; }
     html, body { height:100%; background:#000; overflow:hidden; color:#fff; width: 100%; }
@@ -53,6 +56,21 @@
     }
     .top-bar p { color:#ccc; font-size:.9rem; }
 
+    /* ===== QUALITY HUD (source vs decoded) ===== */
+    .quality-hud {
+      display:none; align-items:center; gap:6px;
+      margin-top:10px; font-size:.72rem;
+      background:rgba(0,0,0,.55); padding:4px 11px; border-radius:12px;
+      color:#999; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
+      border:1px solid rgba(255,255,255,.06);
+      width:fit-content;
+    }
+    .quality-hud.show { display:inline-flex; }
+    .quality-hud strong { color:#fff; font-weight:700; margin-left:4px; }
+    .quality-hud .qh-sep { color:#444; margin:0 2px; }
+    .quality-hud.match   #qhAct { color:#4ade80; }
+    .quality-hud.mismatch #qhAct { color:#f87171; }
+
     .icon-btn {
       background:rgba(255,255,255,.08);
       border:1px solid rgba(255,255,255,.15);
@@ -78,7 +96,7 @@
 
     .paused-screen {
       position:absolute; top:0; left:0; right:0; bottom:0;
-      display:none; z-index:16; overflow:hidden;
+      display:none; z-index:8; overflow:hidden;
     }
     .paused-screen.active { display:block; }
     .ps-bg {
@@ -183,7 +201,6 @@
       top:50%; -webkit-transform:translateY(-50%); transform:translateY(-50%);
     }
     .seekbar-bg        { right:0; background:rgba(255,255,255,.22); }
-    /* HIGHLIGHTED WHITE BUFFER BAR */
     .seekbar-buffered { width:0; background:#ffffff; opacity:0.6; z-index:1; }
     .seekbar-played   { width:0; background:#e50914; z-index:2; }
     
@@ -294,6 +311,7 @@
       .top-bar h1 { font-size:1.15rem; }
       .top-bar .brand { font-size:1rem; margin-bottom:4px; }
       .top-bar p { font-size:.78rem; }
+      .quality-hud { font-size:.65rem; padding:3px 8px; }
       .ps-title { font-size:1.55rem; }
       .ps-sub { font-size:.9rem; }
       .ps-poster { max-height:32vh; }
@@ -322,6 +340,11 @@
       <div class="brand">flexji</div>
       <h1 id="title">Loading…</h1>
       <p id="subtitle"></p>
+      <div class="quality-hud" id="qualityHud">
+        <span>Source <strong id="qhSel">—</strong></span>
+        <span class="qh-sep">·</span>
+        <span>Decoded <strong id="qhAct">—</strong></span>
+      </div>
     </div>
     <button class="icon-btn close-btn" id="closeBtn" title="Close (Esc)">
       <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
@@ -385,7 +408,6 @@
       <button class="icon-btn small" id="forwardBtn" title="Forward 10s (→)">
         <svg viewBox="0 0 24 24"><path d="M12 5V1l5 5-5 5V7c-3.31 0-6 2.69-6 6s2.69 6 6 6 6-2.69 6-6h2c0 4.42-3.58 8-8 8s-8-3.58-8-8 3.58-8 8-8z"/></svg>
       </button>
-      <!-- NEXT EPISODE BUTTON -->
       <button class="icon-btn small" id="nextEpBtn" title="Next Episode (N)" style="display:none;">
         <svg viewBox="0 0 24 24"><path d="M6 18l8.5-6L6 6v12zM16 6v12h2V6h-2z"/></svg>
       </button>
@@ -473,6 +495,10 @@
   var psSub          = document.getElementById('psSub');
   var psPlayBtn      = document.getElementById('psPlayBtn');
 
+  var qualityHud     = document.getElementById('qualityHud');
+  var qhSel          = document.getElementById('qhSel');
+  var qhAct          = document.getElementById('qhAct');
+
   var buffering      = document.getElementById('buffering');
   var loadingScreen  = document.getElementById('loadingScreen');
   var loadingText    = document.getElementById('loadingText');
@@ -511,7 +537,8 @@
     nextEpBtn.onclick = function(e) {
       e.stopPropagation();
       var nextUrl = 'fplayer.html?type=tv&id=' + tmdbId + '&season=' + season + '&episode=' + (episode + 1) + 
-                    '&title=' + encodeURIComponent(title) + '&year=' + year;
+                    '&title=' + encodeURIComponent(title) + '&year=' + encodeURIComponent(year);
+      if (posterUrl) nextUrl += '&poster=' + encodeURIComponent(posterUrl);
       location.href = nextUrl;
     };
   }
@@ -543,6 +570,28 @@
   var selectedQuality    = null;
   var timeRestored       = false;
 
+  // ==== Quality HUD ====
+  function updateQualityHud() {
+    if (!selectedQuality) { qualityHud.classList.remove('show'); return; }
+    qualityHud.classList.add('show');
+    qhSel.textContent = selectedQuality;
+
+    var h = video.videoHeight;
+    if (h) {
+      qhAct.textContent = h + 'p';
+      var selNum = parseInt(String(selectedQuality).replace(/[^\d]/g, ''), 10) || 0;
+      qualityHud.classList.remove('match', 'mismatch');
+      if (selNum && h === selNum) qualityHud.classList.add('match');
+      else if (selNum && h < selNum) qualityHud.classList.add('mismatch');
+    } else {
+      qhAct.textContent = '—';
+      qualityHud.classList.remove('match', 'mismatch');
+    }
+  }
+  video.addEventListener('loadedmetadata', updateQualityHud);
+  video.addEventListener('playing', updateQualityHud);
+  video.addEventListener('resize', updateQualityHud);
+
   function fetchStream() {
     if (!tmdbId) { showError('Missing TMDB ID in URL.'); return; }
     loadingScreen.style.display = 'flex';
@@ -554,6 +603,8 @@
 
     var xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
+    xhr.timeout = 15000;
+    xhr.ontimeout = function() { showError('Stream request timed out. Please retry.'); };
     xhr.onreadystatechange = function() {
       if (xhr.readyState === 4) {
         if (xhr.status >= 200 && xhr.status < 300) {
@@ -608,17 +659,26 @@
     return pool[0];
   }
 
+  // More generous quality detection: 4K screens get 4K, 1080p+ screens get 1080p
   function detectMaxQuality() {
-    var maxRes = Math.max(window.screen.width, window.screen.height) * (window.devicePixelRatio || 1);
-    var cores  = navigator.hardwareConcurrency || 2;
-    var mem    = navigator.deviceMemory || 2;
-    var q = 360;
-    if (maxRes >= 1920) q = 1080;
-    else if (maxRes >= 1280) q = 720;
-    else if (maxRes >= 854)  q = 480;
+    var s = window.screen || {};
+    var w = s.width  || window.innerWidth;
+    var h = s.height || window.innerHeight;
+    var dpr = window.devicePixelRatio || 1;
+    var maxRes = Math.max(w, h) * dpr;
+
+    var q;
+    if (maxRes >= 3800)      q = 2160;
+    else if (maxRes >= 1900) q = 1080;
+    else if (maxRes >= 1200) q = 720;
+    else                     q = 480;
+
+    // Only cap for clearly weak hardware
+    var cores = navigator.hardwareConcurrency || 4;
+    var mem   = navigator.deviceMemory || 4;
     if (cores <= 2 && q > 720) q = 720;
-    if (cores <= 1 && q > 480) q = 480;
-    if (mem   <= 1 && q > 480) q = 480;
+    if (mem   <= 2 && q > 720) q = 720;
+
     return q;
   }
 
@@ -683,21 +743,30 @@
         return;
       }
       
-      /* AGGRESSIVE BUFFERING CONFIG TO PREVENT STUTTERING */
+      /* ============================================================
+         KEY FIX: capLevelToPlayerSize is REMOVED so a "1080p" stream
+         actually decodes at 1080p even when the player window is small.
+         Buffers were also enlarged and ABR tuned for smooth playback.
+         ============================================================ */
       hlsInstance = new Hls({
-        capLevelToPlayerSize: true,
-        maxBufferLength: 60,
-        maxMaxBufferLength: 120, 
-        maxBufferSize: 60 * 1000 * 1000, 
+        maxBufferLength: 90,             // was 60
+        maxMaxBufferLength: 180,         // was 120
+        maxBufferSize: 150 * 1000 * 1000,// was 60 MB -> 150 MB for HD
         backBufferLength: 30,
         enableWorker: (typeof Worker !== 'undefined'),
-        lowLatencyMode: false, /* Disabled to stop constant starvation */
-        manifestLoadingTimeOut: 20000,
-        manifestLoadingMaxRetry: 5,
-        levelLoadingTimeOut: 20000,
-        fragLoadingTimeOut: 30000,
+        lowLatencyMode: false,
+        startLevel: -1,
+        abrEwmaDefaultEstimate: 5000000, // assume 5 Mbps on start -> faster first frame
+        abrBandWidthFactor: 0.95,        // slightly conservative downward switch
+        abrBandWidthUpFactor: 0.70,      // avoid oscillating
+        manifestLoadingTimeOut: 15000,
+        manifestLoadingMaxRetry: 4,
+        levelLoadingTimeOut: 15000,
+        levelLoadingMaxRetry: 4,
+        fragLoadingTimeOut: 25000,
         fragLoadingMaxRetry: 6,
-        startLevel: -1
+        highBufferWatchdogPeriod: 3,     // detect stalls faster
+        nudgeMaxRetry: 6
       });
 
       hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
@@ -705,16 +774,22 @@
         isSwitching = false;
         tryPlay();
       });
+
+      // keep the HUD in sync when HLS auto-switches levels
+      hlsInstance.on(Hls.Events.LEVEL_SWITCHED, function() {
+        setTimeout(updateQualityHud, 400);
+      });
+      hlsInstance.on(Hls.Events.FRAG_CHANGED, updateQualityHud);
       
       hlsInstance.on(Hls.Events.ERROR, function(evt, data) {
         if (!data || !data.fatal) return;
         switch(data.type) {
           case Hls.ErrorTypes.NETWORK_ERROR:
-            console.warn("Fatal network error encountered, trying to recover...");
+            console.warn("Fatal network error, recovering…");
             hlsInstance.startLoad();
             break;
           case Hls.ErrorTypes.MEDIA_ERROR:
-            console.warn("Fatal media error encountered, trying to recover...");
+            console.warn("Fatal media error, recovering…");
             hlsInstance.recoverMediaError();
             break;
           default:
@@ -1047,7 +1122,7 @@
   document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
 
   closeBtn.addEventListener('click', function() {
-    window.close(); setTimeout(function() { if (!window.closed) location.href = 'index.html'; }, 120);
+    window.close(); setTimeout(function() { if (!window.closed) location.href = 'flexji.html'; }, 120);
   });
 
   document.addEventListener('keydown', function(e) {
