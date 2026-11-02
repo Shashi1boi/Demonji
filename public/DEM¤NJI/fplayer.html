@@ -403,7 +403,6 @@
 
   var isTizen = window.__flexjiIsTizen || /Tizen|SMART-TV|SamsungBrowser/i.test(navigator.userAgent);
 
-  // ----- DOM refs -----
   var shell          = document.getElementById('shell');
   var video          = document.getElementById('video');
   var titleEl        = document.getElementById('title');
@@ -484,7 +483,6 @@
 
   function pad2(n) { return n < 10 ? '0' + n : String(n); }
 
-  // ----- State -----
   var hlsInstance          = null;
   var currentData          = null;
   var currentSource        = null;
@@ -498,13 +496,11 @@
   var timeRestored         = false;
   var firstPlaybackStarted = false;
 
-  // Stall watchdog (only runs during confirmed playback)
   var stallWatchTimer      = null;
   var stallLastTime        = 0;
   var stallTicks           = 0;
   var stallSuppressed      = false;
 
-  // ----- Toast -----
   function showToast(msg) {
     toastText.textContent = msg;
     toastEl.classList.add('show');
@@ -512,7 +508,6 @@
     toastTimer = setTimeout(function() { toastEl.classList.remove('show'); }, 1800);
   }
 
-  // ----- Language helpers -----
   function normLang(x) {
     if (!x) return '';
     return String(x).toLowerCase().trim().split(/[-_]/)[0];
@@ -529,7 +524,6 @@
     return false;
   }
 
-  // ----- Session cache -----
   function cacheKey() {
     return 'vstream:' + type + ':' + tmdbId + (type === 'tv' ? ':' + season + ':' + episode : '');
   }
@@ -553,7 +547,6 @@
     return url;
   }
 
-  // ----- Stream fetch -----
   function fetchStream() {
     if (!tmdbId) { showError('Missing TMDB ID in URL.'); return; }
 
@@ -650,7 +643,6 @@
     return u;
   }
 
-  // ----- Native HLS retry machinery -----
   var nativeAttemptId = 0;
   var nativeTimer = null;
   var nativeOnMeta = null;
@@ -720,6 +712,7 @@
         return;
       }
       var url = remaining.shift();
+      var hasFallback = remaining.length > 0;
       var myId = ++nativeAttemptId;
       showLoading('Loading video…');
       try { video.pause(); } catch (e) {}
@@ -745,12 +738,23 @@
       video.addEventListener('loadedmetadata', nativeOnMeta);
       video.addEventListener('error', nativeOnErr);
 
+      // Fallback URL available: try after 15 s so alternative kicks in.
+      // Last URL only: give it 60 s before declaring failure.
+      var timeoutMs = hasFallback
+        ? (isTizen ? 15000 : 12000)
+        : 60000;
+
       nativeTimer = setTimeout(function() {
         if (resolved || myId !== nativeAttemptId) return;
         resolved = true;
         cancelNativeAttempt();
-        attemptNext();
-      }, isTizen ? 8000 : 5000);
+        if (hasFallback) {
+          attemptNext();
+        } else {
+          isSwitching = false;
+          showError('Stream is taking too long. Please retry.');
+        }
+      }, timeoutMs);
     }
   }
 
@@ -763,7 +767,6 @@
     }, 100);
   }
 
-  // ----- playSource -----
   function playSource(source, forceProxy) {
     if (!source) return;
     currentSource = source;
@@ -772,7 +775,6 @@
     firstPlaybackStarted = false;
     stallSuppressed = false;
 
-    // Critical: kill any running watchdog before touching video.src
     stopStallWatch();
 
     if (hlsInstance) { try { hlsInstance.destroy(); } catch (e) {} hlsInstance = null; }
@@ -791,7 +793,6 @@
                 /\.m3u8(\?|$)/i.test(proxyUrl || '');
     var canNative = video.canPlayType('application/vnd.apple.mpegurl');
 
-    // Native HLS path (Tizen, Safari)
     if (isHls && canNative) {
       var urls = [];
       if (isTizen) {
@@ -805,7 +806,7 @@
       if (urls.length === 1) { playNativeHls(urls); return; }
 
       showLoading('Connecting…');
-      raceManifest(urls, isTizen ? 4500 : 3000).then(function(winner) {
+      raceManifest(urls, isTizen ? 12000 : 10000).then(function(winner) {
         var fallbacks = urls.filter(function(u) { return u !== winner; });
         playNativeHls([winner].concat(fallbacks));
       }).catch(function() {
@@ -814,7 +815,6 @@
       return;
     }
 
-    // HLS.js path
     if (isHls) {
       var url = isTizen ? (proxyUrl || rawUrl) : (forceProxy ? (proxyUrl || rawUrl) : (rawUrl || proxyUrl));
       waitForHls(function(ok) {
@@ -829,7 +829,6 @@
       return;
     }
 
-    // Progressive MP4/WebM
     showLoading('Loading video…');
     video.src = isTizen ? (proxyUrl || rawUrl) : (rawUrl || proxyUrl);
     isSwitching = false;
@@ -849,12 +848,12 @@
       maxMaxBufferLength:  isTizen ? 120 : 90,
       maxBufferSize:       isTizen ? (60 * 1000 * 1000) : (90 * 1000 * 1000),
       backBufferLength:    isTizen ? -1 : 30,
-      manifestLoadingTimeOut:  isTizen ? 25000 : 8000,
-      manifestLoadingMaxRetry: isTizen ? 5 : 2,
-      levelLoadingTimeOut:     isTizen ? 20000 : 10000,
-      levelLoadingMaxRetry:    isTizen ? 4 : 2,
-      fragLoadingTimeOut:      isTizen ? 30000 : 15000,
-      fragLoadingMaxRetry:     isTizen ? 8 : 4,
+      manifestLoadingTimeOut:  isTizen ? 30000 : 20000,
+      manifestLoadingMaxRetry: isTizen ? 6 : 4,
+      levelLoadingTimeOut:     isTizen ? 20000 : 15000,
+      levelLoadingMaxRetry:    isTizen ? 4 : 3,
+      fragLoadingTimeOut:      isTizen ? 30000 : 25000,
+      fragLoadingMaxRetry:     isTizen ? 8 : 6,
       highBufferWatchdogPeriod: 3,
       nudgeMaxRetry: 6,
       enableWorker: !isTizen,
@@ -924,19 +923,30 @@
     }
   }
 
-  // ----- Playback: safe tryPlay (retries, never starts watchdog) -----
+  // ----- Playback: retries for up to 60 s, never starts watchdog here -----
   function tryPlay() {
     var attempts = 0;
     var playingFired = false;
+    var finalWatchdog = null;
 
     function onPlaying() {
       playingFired = true;
+      if (finalWatchdog) { clearTimeout(finalWatchdog); finalWatchdog = null; }
       video.removeEventListener('playing', onPlaying);
     }
     video.addEventListener('playing', onPlaying);
 
+    finalWatchdog = setTimeout(function() {
+      if (playingFired || firstPlaybackStarted) return;
+      video.removeEventListener('playing', onPlaying);
+      hideLoading();
+      buffering.classList.remove('show');
+      showError('Stream is taking too long. Please retry.');
+    }, 60000);
+
     function cleanup() {
       video.removeEventListener('playing', onPlaying);
+      if (finalWatchdog) { clearTimeout(finalWatchdog); finalWatchdog = null; }
     }
 
     function doPlay() {
@@ -944,10 +954,13 @@
       attempts++;
 
       var p = video.play();
-      if (!p || !p.then) return; // legacy browser — assume accepted
+      if (!p || !p.then) return;
 
       p.then(function() {
-        // play() accepted — 'playing' event will fire when buffered
+        setTimeout(function() {
+          if (playingFired || video.paused) return;
+          if (attempts < 150) doPlay();
+        }, 5000);
       }).catch(function(e) {
         if (playingFired) { cleanup(); return; }
         if (e && e.name === 'AbortError') { cleanup(); return; }
@@ -955,12 +968,11 @@
         var hasBuffer = video.buffered.length > 0 &&
                         video.buffered.end(video.buffered.length - 1) > video.currentTime + 0.3;
 
-        if (attempts < 20 && (!hasBuffer || e.name === 'NotSupportedError')) {
+        if (attempts < 150) {
           setTimeout(doPlay, 400);
           return;
         }
 
-        // Genuine failure
         cleanup();
         hideLoading();
         buffering.classList.remove('show');
@@ -973,14 +985,11 @@
   }
 
   // ============================================================
-  //  STALL WATCHDOG — only runs during confirmed playback
-  //  2s: nudge past segment boundary
-  //  4s: hard reload at current timestamp
-  //  10s: give up with error
+  //  STALL WATCHDOG — recovery still aggressive, error at 30 s
   // ============================================================
   function startStallWatch() {
     stopStallWatch();
-    if (!firstPlaybackStarted) return; // guard
+    if (!firstPlaybackStarted) return;
 
     stallLastTime = video.currentTime;
     stallTicks = 0;
@@ -1005,19 +1014,16 @@
       stallTicks++;
       buffering.classList.add('show');
 
-      // ~2s: nudge past segment boundary
       if (stallTicks === 4) {
         try { video.currentTime = video.currentTime + 0.8; } catch(e) {}
         video.play().catch(function(){});
       }
 
-      // ~4s: hard reload — reliable Tizen fix
       if (stallTicks === 8) {
         reloadInPlace();
       }
 
-      // ~10s: give up
-      if (stallTicks >= 20) {
+      if (stallTicks >= 60) {
         stopStallWatch();
         showError('Playback stuck. Please retry.');
       }
@@ -1057,7 +1063,6 @@
         stallLastTime = t;
         stallTicks = 0;
         tryPlay();
-        // 'playing' event will start watchdog when playback resumes
       }, 200);
     };
 
@@ -1072,7 +1077,7 @@
         stopStallWatch();
         showError('Playback stuck. Please retry.');
       }
-    }, 8000);
+    }, 30000);
   }
 
   function togglePlay() {
@@ -1108,7 +1113,6 @@
   }
   function hidePausedScreen() { pausedScreen.classList.remove('active'); }
 
-  // ----- Video events -----
   video.addEventListener('play', function() {
     hidePausedScreen();
     updatePlayPauseBtn();
@@ -1134,7 +1138,6 @@
     if (firstPlaybackStarted) buffering.classList.add('show');
   });
 
-  // 'playing' = authoritative start-of-playback. Only place watchdog starts.
   video.addEventListener('playing', function() {
     buffering.classList.remove('show');
     if (!firstPlaybackStarted) {
@@ -1148,7 +1151,6 @@
     buffering.classList.remove('show');
   });
 
-  // timeupdate acts as a backup "playback is real" signal
   video.addEventListener('timeupdate', function() {
     if (!firstPlaybackStarted && video.currentTime > 0 && !video.paused) {
       firstPlaybackStarted = true;
@@ -1234,7 +1236,6 @@
     else volBtn.innerHTML = ICONS.volumeHigh;
   }
 
-  // ----- Settings -----
   function buildSettings() {
     if (!currentData) return;
     var audioMap = {};
@@ -1429,7 +1430,6 @@
   settingsClose.addEventListener('click', function(e) { e.stopPropagation(); closeSettings(); });
   settingsBackdrop.addEventListener('click', closeSettings);
 
-  // ----- Loading / error -----
   function showLoading(msg) {
     loadingText.textContent = msg || 'Loading…';
     loadingScreen.style.display = 'flex';
@@ -1437,7 +1437,7 @@
     clearTimeout(slowTimer);
     slowTimer = setTimeout(function() {
       if (loadingScreen.style.display !== 'none') loadingScreen.classList.add('slow');
-    }, 6000);
+    }, 8000);
   }
   function hideLoading() {
     clearTimeout(slowTimer);
@@ -1453,7 +1453,6 @@
   }
   function hideError() { errorScreen.style.display = 'none'; }
 
-  // ----- Controls visibility -----
   function showControls() {
     shell.classList.remove('hide-ui');
     clearTimeout(hideTimer);
@@ -1509,7 +1508,6 @@
     setTimeout(function() { if (!window.closed) location.href = 'flexji.html'; }, 120);
   });
 
-  // ----- Keyboard -----
   document.addEventListener('keydown', function(e) {
     var k = e.keyCode;
     var tag = (document.activeElement && document.activeElement.tagName) || '';
