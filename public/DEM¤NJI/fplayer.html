@@ -484,6 +484,8 @@
   var hideTimer      = null;
   var avProgressTimer= null;
   var avplayFailed   = false;
+  var tizenRetries   = 0;
+  var MAX_TIZEN_RETRIES = 3;
 
   /* ═══════════ FETCH STREAM ═══════════ */
   function fetchStream() {
@@ -589,7 +591,7 @@
   }
 
   /* ══════════════════════════════════════════════
-     TIZEN AVPLAY ENGINE (STRICT LIFECYCLE FIX)
+     TIZEN AVPLAY ENGINE (LOW-LEVEL DECODER FIX)
      ══════════════════════════════════════════════ */
 
   function destroyTizen() {
@@ -621,7 +623,6 @@
     obj.id = 'av-player';
     avObject = obj;
     
-    // CSS sizing is handled by #av-player ID, but inline just in case
     obj.style.width = '100%';
     obj.style.height = '100%';
     obj.style.position = 'absolute';
@@ -640,17 +641,23 @@
       // 2) State: NONE -> IDLE
       webapis.avplay.open(openUrl);
       
-      // 3) State: IDLE - CRITICAL FIX: Set Display Method and Rect ONLY ONCE, before prepareAsync
-      // This prevents the hardware decoder from detaching the video plane (Audio-only bug)
+      // 3) State: IDLE - CRITICAL FIX: Set Display Method and Rect before prepareAsync
       try {
-        webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_LETTER_BOX');
+        // Use FULL_SCREEN mode to avoid aspect-ratio calculation issues
+        webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN');
         
-        // Map to Tizen's 1920x1080 virtual grid, or use exact window size
         var w = window.innerWidth || 1920;
         var h = window.innerHeight || 1080;
         webapis.avplay.setDisplayRect(0, 0, w, h);
+
+        // CRITICAL FIX: Force the decoder to start at the lowest bitrate
+        // This prevents the hardware decoder from crashing on the initial segment
+        webapis.avplay.setStreamingProperty(
+          'ADAPTIVE_INFO', 
+          'BITRATES=2000~100000|STARTBITRATE=LOWEST'
+        );
       } catch (e) {
-        console.warn('Display settings failed:', e);
+        console.warn('Display/Streaming settings failed:', e);
       }
 
       // 4) Set Listener
@@ -700,9 +707,23 @@
         hideLoading();
         startAvProgress();
         scheduleHide();
+        tizenRetries = 0; // Reset retries on success
         
       }, function (err) {
         console.error('AVPlay prepare failed:', err);
+        
+        // RETRY MECHANISM: Try to reload the stream up to MAX_TIZEN_RETRIES times
+        if (tizenRetries < MAX_TIZEN_RETRIES) {
+          tizenRetries++;
+          console.log('Retrying Tizen playback (' + tizenRetries + '/' + MAX_TIZEN_RETRIES + ')...');
+          destroyTizen();
+          setTimeout(function() {
+            playOnTizen(source, useRaw);
+          }, 1000); // Wait 1 second before retrying
+          return;
+        }
+        
+        // If retries exhausted, try raw URL or fall back to HTML5
         if (!useRaw && rawUrl && rawUrl !== playUrl) {
           playOnTizen(source, true);
         } else if (!avplayFailed) {
@@ -1333,6 +1354,7 @@
   retryBtn.addEventListener('click', function () {
     hideError();
     avplayFailed = false;
+    tizenRetries = 0;
     fetchStream();
   });
 
