@@ -7,27 +7,27 @@
   <style>
     * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Roboto,system-ui,sans-serif; }
     html, body { height:100%; background:#000; overflow:hidden; color:#fff; }
+    
     #shell { position:fixed; inset:0; background:#000; user-select:none; outline:none; }
     #shell.hide-ui { cursor:none; }
 
-    /* Video element (mobile/PC) */
+    /* HTML5 Video (Mobile / PC) */
     #video {
       position:absolute; inset:0;
       width:100%; height:100%;
       background:#000; object-fit:contain;
       z-index:1;
     }
-    /* Tizen AVPlay native surface */
+
+    /* Tizen Native AVPlay Surface */
     #av-player {
-      position:fixed; top:0; left:0;
-      z-index:2;
-      background:#000;
+      position:absolute; top:0; left:0;
+      width:100%; height:100%;
+      z-index:2; background:#000;
     }
-    /* Hide video element when AVPlay is active */
+
+    /* Hide HTML5 video when AVPlay is active */
     #shell.tizen #video { display:none; }
-    /* Hide paused poster-overlay bug: only overlay sits above AVPlay */
-    #shell.tizen .paused-screen { z-index:20; }
-    #shell.tizen .paused-screen .ps-bg { filter:blur(60px) brightness(.25) saturate(1.2); }
 
     .grad { position:absolute; left:0; right:0; pointer-events:none; z-index:5; transition:opacity .25s; }
     .grad.top    { top:0;    height:180px; background:linear-gradient(180deg, rgba(0,0,0,.85), transparent); }
@@ -60,8 +60,7 @@
 
     .close-btn {
       width:46px; height:46px; border-radius:50%;
-      flex-shrink:0;
-      background:rgba(0,0,0,.55);
+      flex-shrink:0; background:rgba(0,0,0,.55);
       border:1px solid rgba(255,255,255,.2);
     }
     .close-btn:hover { background:#e50914; border-color:#e50914; }
@@ -79,8 +78,7 @@
     .ps-poster-wrap.hidden { display:none; }
     .ps-poster {
       max-height:44vh; max-width:min(70vw, 340px);
-      border-radius:14px;
-      box-shadow:0 30px 80px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.08);
+      border-radius:14px; box-shadow:0 30px 80px rgba(0,0,0,.9), 0 0 0 1px rgba(255,255,255,.08);
       object-fit:contain; display:block; background:#111;
     }
     .ps-meta { max-width:80vw; }
@@ -161,22 +159,13 @@
 
     .spacer { flex:1; }
 
-    .settings-backdrop {
-      position:absolute; inset:0; background:rgba(0,0,0,.55);
-      backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
-      display:none; z-index:28; opacity:0; transition:opacity .2s;
-    }
+    .settings-backdrop { position:absolute; inset:0; background:rgba(0,0,0,.55); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); display:none; z-index:28; opacity:0; transition:opacity .2s; }
     .settings-backdrop.open { display:block; opacity:1; }
-
     .settings-panel {
-      position:absolute; top:50%; left:50%;
-      transform:translate(-50%, -48%) scale(0.96);
-      width:90%; max-width:460px; max-height:72vh;
-      background:rgba(20,20,22,.99);
-      border-radius:16px; border:1px solid rgba(255,255,255,.09);
-      box-shadow:0 30px 80px rgba(0,0,0,.85);
-      display:none; flex-direction:column; z-index:30; overflow:hidden;
-      opacity:0; transition:opacity .2s, transform .2s;
+      position:absolute; top:50%; left:50%; transform:translate(-50%, -48%) scale(0.96);
+      width:90%; max-width:460px; max-height:72vh; background:rgba(20,20,22,.99);
+      border-radius:16px; border:1px solid rgba(255,255,255,.09); box-shadow:0 30px 80px rgba(0,0,0,.85);
+      display:none; flex-direction:column; z-index:30; overflow:hidden; opacity:0; transition:opacity .2s, transform .2s;
     }
     .settings-panel.open { display:flex; opacity:1; transform:translate(-50%, -50%) scale(1); }
     .settings-head { display:flex; align-items:center; justify-content:space-between; padding:18px 20px; border-bottom:1px solid rgba(255,255,255,.07); flex-shrink:0; }
@@ -189,7 +178,6 @@
     .settings-body { overflow-y:auto; padding:8px 0 14px; flex:1; }
     .settings-body::-webkit-scrollbar { width:6px; }
     .settings-body::-webkit-scrollbar-thumb { background:rgba(255,255,255,.2); border-radius:4px; }
-
     .settings-section { padding:8px 0; }
     .settings-section + .settings-section { border-top:1px solid rgba(255,255,255,.05); margin-top:6px; }
     .settings-label { padding:8px 20px 4px; font-size:.7rem; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#888; }
@@ -351,7 +339,7 @@
 (function() {
   'use strict';
 
-  /* ═══════════ POLYFILLS (Tizen 2015 compat) ═══════════ */
+  /* ═══════════ POLYFILLS ═══════════ */
   function parseQuery(s) {
     var out = {};
     if (!s) return out;
@@ -484,7 +472,7 @@
   /* ═══════════ STATE ═══════════ */
   var hlsInstance    = null;
   var avObject       = null;
-  var activeEngine   = null;   // 'avplay' | 'html5'
+  var activeEngine   = null;
   var currentData    = null;
   var currentSource  = null;
   var isPlaying      = false;
@@ -533,7 +521,6 @@
     if (!data || !data.sources || !data.sources.length) return null;
     var maxQ = detectMaxQuality();
 
-    // Preferred = original audio language if available
     var preferred = null;
     for (var i = 0; i < data.sources.length; i++) {
       var s = data.sources[i];
@@ -543,14 +530,12 @@
       }
     }
 
-    // Sort once by quality descending
     var pool = data.sources.slice().sort(function(a, b) {
       var qa = parseInt(String(a.quality || '').replace(/[^\d]/g, ''), 10) || 0;
       var qb = parseInt(String(b.quality || '').replace(/[^\d]/g, ''), 10) || 0;
       return qb - qa;
     });
 
-    // First pass: preferred language AND within device ceiling
     if (preferred) {
       for (var j = 0; j < pool.length; j++) {
         var sj = pool[j];
@@ -559,13 +544,11 @@
         if (qj > 0 && qj <= maxQ) return sj;
       }
     }
-    // Second pass: any language within ceiling
     for (var k = 0; k < pool.length; k++) {
       var sk = pool[k];
       var qk = parseInt(String(sk.quality || '').replace(/[^\d]/g, ''), 10) || 0;
       if (qk > 0 && qk <= maxQ) return sk;
     }
-    // Fallback: best available
     return pool[0];
   }
 
@@ -606,7 +589,7 @@
   }
 
   /* ══════════════════════════════════════════════
-     TIZEN AVPLAY ENGINE  (Samsung TV 2015–2017)
+     TIZEN AVPLAY ENGINE (STRICT LIFECYCLE FIX)
      ══════════════════════════════════════════════ */
 
   function destroyTizen() {
@@ -618,25 +601,6 @@
       avObject = null;
     }
     activeEngine = null;
-  }
-
-  function applyAvplayRect() {
-    try {
-      var w = window.innerWidth;
-      var h = window.innerHeight;
-      webapis.avplay.setDisplayRect(0, 0, w, h);
-    } catch (e) { /* ignore */ }
-  }
-
-  function sizeAvObject() {
-    if (!avObject) return;
-    var w = window.innerWidth, h = window.innerHeight;
-    avObject.setAttribute('width', w);
-    avObject.setAttribute('height', h);
-    avObject.style.width  = w + 'px';
-    avObject.style.height = h + 'px';
-    avObject.style.top    = '0px';
-    avObject.style.left   = '0px';
   }
 
   function playOnTizen(source, useRaw) {
@@ -651,44 +615,45 @@
     showLoading('Buffering video…');
     buffering.classList.remove('show');
 
-    // 1) Create the AVPlay plugin object sized to the full shell
+    // 1) Create the AVPlay object and insert it
     var obj = document.createElement('object');
     obj.setAttribute('type', 'application/avplayer');
     obj.id = 'av-player';
     avObject = obj;
-
-    var w = window.innerWidth, h = window.innerHeight;
-    obj.setAttribute('width', w);
-    obj.setAttribute('height', h);
-    obj.style.cssText =
-      'position:fixed;top:0;left:0;width:' + w + 'px;height:' + h + 'px;' +
-      'z-index:2;background:#000;';
+    
+    // CSS sizing is handled by #av-player ID, but inline just in case
+    obj.style.width = '100%';
+    obj.style.height = '100%';
+    obj.style.position = 'absolute';
+    obj.style.top = '0';
+    obj.style.left = '0';
+    
     shell.insertBefore(obj, shell.firstChild);
-
-    // force reflow so plugin is created before open()
-    void obj.offsetWidth;
+    void obj.offsetWidth; // Force layout
 
     var openUrl = playUrl;
-    // Tizen reliably plays HLS with a component hint
     if (/\.m3u8(\?|$)/i.test(playUrl) && playUrl.indexOf('|') === -1) {
       openUrl = playUrl + '|COMPONENT=HLS';
     }
 
     try {
+      // 2) State: NONE -> IDLE
       webapis.avplay.open(openUrl);
-    } catch (e) {
-      console.warn('AVPlay open failed:', e);
-      destroyTizen();
-      avplayFailed = true;
-      playOnHtml5(source, useRaw);
-      return;
-    }
+      
+      // 3) State: IDLE - CRITICAL FIX: Set Display Method and Rect ONLY ONCE, before prepareAsync
+      // This prevents the hardware decoder from detaching the video plane (Audio-only bug)
+      try {
+        webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_LETTER_BOX');
+        
+        // Map to Tizen's 1920x1080 virtual grid, or use exact window size
+        var w = window.innerWidth || 1920;
+        var h = window.innerHeight || 1080;
+        webapis.avplay.setDisplayRect(0, 0, w, h);
+      } catch (e) {
+        console.warn('Display settings failed:', e);
+      }
 
-    // 2) Display rect — set now and re-apply after play (2015 models reset it)
-    applyAvplayRect();
-
-    // 3) Listener
-    try {
+      // 4) Set Listener
       webapis.avplay.setListener({
         oncurrentplaytime: function (timeMs) {
           if (!durationMs) {
@@ -708,6 +673,7 @@
         onerror: function (err) {
           console.error('AVPlay error:', err);
           buffering.classList.remove('show');
+          
           if (!useRaw && rawUrl && rawUrl !== playUrl) {
             playOnTizen(source, true);
           } else if (!avplayFailed) {
@@ -719,15 +685,12 @@
           }
         }
       });
-    } catch (e) {
-      console.warn('setListener failed:', e);
-    }
 
-    // 4) Prepare, then play, then re-apply rect (critical fix)
-    try {
+      // 5) State: IDLE -> READY
       webapis.avplay.prepareAsync(function () {
         try { durationMs = webapis.avplay.getDuration() || 0; } catch (e) {}
-        applyAvplayRect();
+        
+        // 6) State: READY -> PLAYING
         try { webapis.avplay.play(); } catch (e) {}
 
         activeEngine = 'avplay';
@@ -735,23 +698,9 @@
         isSwitching = false;
         updatePlayPauseIcon();
         hideLoading();
-
-        // Tizen 2015–2017 sometimes resets display rect when play begins
-        applyAvplayRect();
-        setTimeout(applyAvplayRect, 100);
-        setTimeout(applyAvplayRect, 400);
-        setTimeout(applyAvplayRect, 1000);
-        // safety: also re-apply on first frame
-        setTimeout(function () {
-          try {
-            var t = webapis.avplay.getCurrentTime();
-            if (t > 0) applyAvplayRect();
-          } catch (e) {}
-        }, 1500);
-
-        // keep progress bar fresh even if oncurrentplaytime is sparse
         startAvProgress();
         scheduleHide();
+        
       }, function (err) {
         console.error('AVPlay prepare failed:', err);
         if (!useRaw && rawUrl && rawUrl !== playUrl) {
@@ -764,8 +713,9 @@
           showError('Prepare failed: ' + err);
         }
       });
+      
     } catch (e) {
-      console.error('AVPlay prepare threw:', e);
+      console.error('AVPlay exception:', e);
       destroyTizen();
       avplayFailed = true;
       playOnHtml5(source, useRaw);
@@ -809,17 +759,8 @@
     try { return webapis.avplay.getDuration() || 0; } catch (e) { return 0; }
   }
 
-  // Handle window resize so AVPlay stays full-screen
-  window.addEventListener('resize', function () {
-    sizeAvObject();
-    applyAvplayRect();
-  });
-  window.addEventListener('orientationchange', function () {
-    setTimeout(function () { sizeAvObject(); applyAvplayRect(); }, 300);
-  });
-
   /* ══════════════════════════════════════════════
-     HTML5 + HLS.JS ENGINE  (mobile / PC / fallback)
+     HTML5 + HLS.JS ENGINE (Mobile / PC)
      ══════════════════════════════════════════════ */
 
   function destroyHtml5() {
@@ -853,7 +794,6 @@
                 /\.m3u8(\?|$)/i.test(playUrl);
     var canNative = video.canPlayType('application/vnd.apple.mpegurl');
 
-    // Native HLS (Safari / iOS / some smart TVs)
     if (isHls && canNative) {
       video.src = playUrl;
       video.addEventListener('loadedmetadata', function onMeta() {
@@ -874,7 +814,6 @@
       return;
     }
 
-    // hls.js path with speed optimizations
     if (isHls) {
       if (typeof Hls === 'undefined' || !Hls.isSupported()) {
         video.src = playUrl;
@@ -884,12 +823,10 @@
         return;
       }
       hlsInstance = new Hls({
-        // ─── faster startup ───
         autoStartLoad: false,
         startLevel: 0,
         testBandwidth: false,
         abrEwmaDefaultEstimate: 800000,
-        // ─── smaller, safer buffers ───
         capLevelToPlayerSize: true,
         maxBufferLength: 15,
         maxMaxBufferLength: 30,
@@ -897,7 +834,6 @@
         backBufferLength: 15,
         lowLatencyMode: false,
         enableWorker: true,
-        // ─── tolerant network recovery ───
         manifestLoadingTimeOut: 15000,
         manifestLoadingMaxRetry: 2,
         levelLoadingTimeOut: 15000,
@@ -922,8 +858,7 @@
           try { hlsInstance.recoverMediaError(); } catch (e) {}
           return;
         }
-        if (data.type === Hls.ErrorTypes.NETWORK_ERROR &&
-            !useRaw && rawUrl && rawUrl !== playUrl) {
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR && !useRaw && rawUrl && rawUrl !== playUrl) {
           console.log('Proxy failed, retrying raw…');
           isSwitching = false;
           playOnHtml5(source, true);
@@ -943,7 +878,6 @@
       return;
     }
 
-    // Progressive (mp4 / webm)
     video.src = playUrl;
     hideLoading();
     isSwitching = false;
@@ -1118,7 +1052,6 @@
   volBtn.addEventListener('click', function (e) {
     e.stopPropagation();
     if (activeEngine === 'avplay') {
-      // toggle mute by memory
       if (volBtn.dataset.muted === '1') {
         volBtn.dataset.muted = '0';
         avSetVolume(parseFloat(volumeSlider.value) / 100 || 1);
@@ -1337,10 +1270,6 @@
       if (document.exitFullscreen) document.exitFullscreen();
       else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
     }
-    // re-apply AVPlay rect after fullscreen transition
-    setTimeout(function () {
-      if (isTizen) { sizeAvObject(); applyAvplayRect(); }
-    }, 400);
   }
   fullscreenBtn.addEventListener('click', function (e) {
     e.stopPropagation();
@@ -1349,7 +1278,6 @@
   function updateFullscreenIcon() {
     var isFs = document.fullscreenElement || document.webkitFullscreenElement;
     fullscreenBtn.innerHTML = isFs ? ICONS.exitFs : ICONS.fullscreen;
-    if (isTizen) setTimeout(applyAvplayRect, 300);
   }
   document.addEventListener('fullscreenchange', updateFullscreenIcon);
   document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
