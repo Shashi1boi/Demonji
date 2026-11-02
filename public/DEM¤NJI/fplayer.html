@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>flexji · player</title>
+  <link rel="preconnect" href="https://vidsync.pro" crossorigin />
+  <link rel="dns-prefetch" href="https://vidsync.pro" />
+
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Roboto,system-ui,sans-serif; }
+    html, body { height:100%; background:#000; overflow:hidden; color:#fff; width:100%; }
+
+    #shell {
+      position:fixed; inset:0; background:#000;
+      user-select:none; outline:none; overflow:hidden;
+    }
+
+    /* The embed iframe — fills the whole viewport */
+    #embedFrame {
+      position:absolute; inset:0;
+      width:100%; height:100%;
+      border:0; background:#000;
+      z-index:1;
+    }
+
+    /* ---- Top overlay (auto-hides) ---- */
+    .top-bar {
+      position:absolute; top:0; left:0; right:0;
+      padding:18px 24px 40px;
+      display:flex; align-items:flex-start; justify-content:space-between;
+      background:linear-gradient(180deg, rgba(0,0,0,.82) 0%, transparent 100%);
+      z-index:10;
+      transition:opacity .3s ease, transform .3s ease;
+      pointer-events:none;
+    }
+    .top-bar > * { pointer-events:auto; }
+    #shell.hide-ui .top-bar { opacity:0; transform:translateY(-8px); pointer-events:none; }
+    #shell.hide-ui .top-bar > * { pointer-events:none; }
+
+    .info { max-width:70%; flex:1; }
+    .brand {
+      color:#e50914; font-weight:800; font-size:1.15rem;
+      letter-spacing:-0.4px; margin-bottom:6px;
+    }
+    .info h1 {
+      font-size:1.7rem; font-weight:700; line-height:1.2;
+      margin-bottom:3px; text-shadow:0 2px 14px rgba(0,0,0,.9);
+    }
+    .info p { color:#bbb; font-size:.88rem; }
+
+    .icon-btn {
+      background:rgba(255,255,255,.08);
+      border:1px solid rgba(255,255,255,.15);
+      color:#fff; border-radius:8px; cursor:pointer;
+      display:inline-flex; align-items:center; justify-content:center;
+      width:42px; height:42px; flex-shrink:0;
+      transition:background .15s, border-color .15s, transform .1s;
+    }
+    .icon-btn:hover, .icon-btn:focus { background:rgba(255,255,255,.22); border-color:rgba(255,255,255,.4); outline:none; }
+    .icon-btn:active { transform:scale(.95); }
+    .icon-btn svg { width:20px; height:20px; fill:currentColor; display:block; }
+
+    .close-btn {
+      width:46px; height:46px; border-radius:50%;
+      background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.2);
+      margin-left:14px;
+    }
+    .close-btn:hover { background:#e50914; border-color:#e50914; }
+
+    /* ---- Loading state ---- */
+    .loading-screen {
+      position:absolute; inset:0; z-index:20;
+      display:flex; align-items:center; justify-content:center;
+      flex-direction:column; background:#0a0a0a; text-align:center; padding:24px;
+      transition:opacity .3s ease;
+    }
+    .loading-screen.hidden { opacity:0; pointer-events:none; }
+    .spinner {
+      width:56px; height:56px; border:4px solid rgba(255,255,255,.15);
+      border-top-color:#e50914; border-radius:50%;
+      animation:spin 1s linear infinite;
+    }
+    .loading-screen p { margin-top:20px; color:#bbb; font-size:.95rem; }
+    .loading-screen .hint { color:#555; font-size:.78rem; margin-top:10px; display:none; }
+    .loading-screen.slow .hint { display:block; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ---- Error state ---- */
+    .error-screen {
+      position:absolute; inset:0; z-index:21;
+      display:none; align-items:center; justify-content:center;
+      flex-direction:column; background:#0a0a0a; text-align:center; padding:24px;
+    }
+    .error-screen.active { display:flex; }
+    .error-screen .err-icon { width:60px; height:60px; color:#e50914; margin-bottom:20px; }
+    .error-screen .err-icon svg { width:100%; height:100%; fill:currentColor; }
+    .error-screen p { color:#ddd; margin-bottom:24px; font-size:1rem; max-width:480px; line-height:1.6; }
+    .retry-btn {
+      background:#e50914; border:none; color:#fff; padding:11px 26px;
+      border-radius:8px; font-size:.95rem; font-weight:600; cursor:pointer;
+      display:inline-flex; align-items:center; gap:8px;
+      transition:background .15s;
+    }
+    .retry-btn:hover { background:#f6121d; }
+    .retry-btn svg { width:18px; height:18px; fill:currentColor; }
+
+    /* ---- Toast ---- */
+    .toast {
+      position:absolute; left:50%; bottom:100px;
+      transform:translateX(-50%) translateY(10px);
+      background:rgba(0,0,0,.88); color:#fff;
+      padding:10px 20px; border-radius:24px;
+      font-size:.85rem; font-weight:600;
+      border:1px solid rgba(255,255,255,.12);
+      opacity:0; pointer-events:none; z-index:18;
+      transition:opacity .22s, transform .22s;
+      backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);
+      display:inline-flex; align-items:center; gap:8px;
+      white-space:nowrap;
+    }
+    .toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    .toast .tick { color:#4ade80; font-weight:800; }
+
+    @media (max-width:640px) {
+      .top-bar { padding:12px 14px 30px; }
+      .info h1 { font-size:1.15rem; }
+      .brand { font-size:.95rem; margin-bottom:3px; }
+      .info p { font-size:.75rem; }
+      .close-btn { width:40px; height:40px; }
+      .icon-btn { width:38px; height:38px; }
+      .icon-btn svg { width:18px; height:18px; }
+      .toast { bottom:80px; font-size:.78rem; padding:8px 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="shell" tabindex="0">
+
+  <!-- Official VidSync embed -->
+  <iframe
+    id="embedFrame"
+    src="about:blank"
+    allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
+    allowfullscreen
+    allowtransparency="true"
+    referrerpolicy="origin"
+    scrolling="no"
+    frameborder="0"
+  ></iframe>
+
+  <!-- Auto-hiding top overlay -->
+  <div class="top-bar" id="topBar">
+    <div class="info">
+      <div class="brand">flexji</div>
+      <h1 id="title">Loading…</h1>
+      <p id="subtitle"></p>
+    </div>
+    <button class="icon-btn close-btn" id="closeBtn" title="Close (Esc)" aria-label="Close player">
+      <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="spinner"></div>
+    <p id="loadingText">Loading player…</p>
+    <div class="hint">Taking longer than usual…</div>
+  </div>
+
+  <!-- Error -->
+  <div class="error-screen" id="errorScreen">
+    <div class="err-icon">
+      <svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+    </div>
+    <p id="errorText">The player could not be loaded.</p>
+    <button class="retry-btn" id="retryBtn">
+      <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+      Retry
+    </button>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"><span class="tick">✓</span><span id="toastText"></span></div>
+
+</div>
+
+<script>
+(function() {
+  'use strict';
+
+  // ===================== QUERY PARAMS =====================
+  function getQueryParam(name) {
+    var regex = new RegExp('[?&]' + name + '(=([^&#]*)|&|#|$)');
+    var results = regex.exec(window.location.href);
+    if (!results) return null;
+    if (!results[2]) return '';
+    return decodeURIComponent(results[2].replace(/\+/g, ' '));
+  }
+
+  var type      = getQueryParam('type') || 'movie';
+  var tmdbId    = getQueryParam('id');
+  var season    = parseInt(getQueryParam('season') || '1', 10);
+  var episode   = parseInt(getQueryParam('episode') || '1', 10);
+  var title     = getQueryParam('title') || '';
+  var year      = getQueryParam('year')  || '';
+  var posterUrl = getQueryParam('poster')|| '';
+  var savedTime = parseFloat(getQueryParam('t') || '0');
+
+  // Optional passthroughs
+  var dubLang   = getQueryParam('dubLang') || '';
+  var subtitle  = getQueryParam('subtitle') || '';
+  var watermark = getQueryParam('watermark') || '';
+
+  // Theme — flexji red as primary, slightly lighter red as secondary
+  var PRIMARY   = getQueryParam('primarycolor')   || 'e50914';
+  var SECONDARY = getQueryParam('secondarycolor') || 'f6121d';
+
+  var isTizen = /Tizen|SMART-TV|SamsungBrowser/i.test(navigator.userAgent);
+
+  // ===================== DOM =====================
+  var shell         = document.getElementById('shell');
+  var embedFrame    = document.getElementById('embedFrame');
+  var titleEl       = document.getElementById('title');
+  var subtitleEl    = document.getElementById('subtitle');
+  var loadingScreen = document.getElementById('loadingScreen');
+  var loadingText   = document.getElementById('loadingText');
+  var errorScreen   = document.getElementById('errorScreen');
+  var errorText     = document.getElementById('errorText');
+  var retryBtn      = document.getElementById('retryBtn');
+  var closeBtn      = document.getElementById('closeBtn');
+  var toastEl       = document.getElementById('toast');
+  var toastText     = document.getElementById('toastText');
+
+  var hideTimer  = null;
+  var toastTimer = null;
+  var slowTimer  = null;
+  var loadWatchdog = null;
+
+  // ===================== TITLE =====================
+  var displayTitle = (title || 'Untitled')
+    .replace(/\s*[·•\-]\s*S\d+\s*E\d+\s*$/i, '')
+    .replace(/\s+S\d+E\d+\s*$/i, '')
+    .trim() || 'Untitled';
+
+  titleEl.textContent    = displayTitle;
+  subtitleEl.textContent = year || '';
+  document.title = displayTitle + ' · flexji';
+
+  // ===================== TOAST =====================
+  function showToast(msg) {
+    toastText.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() { toastEl.classList.remove('show'); }, 2000);
+  }
+
+  // ===================== BUILD EMBED URL =====================
+  function buildEmbedUrl() {
+    var base;
+    if (type === 'tv') {
+      base = 'https://vidsync.pro/embed/tv/' + encodeURIComponent(tmdbId) +
+             '/' + season + '/' + episode;
+    } else {
+      base = 'https://vidsync.pro/embed/movie/' + encodeURIComponent(tmdbId);
+    }
+
+    var params = [];
+    params.push('primarycolor=' + encodeURIComponent(PRIMARY));
+    params.push('secondarycolor=' + encodeURIComponent(SECONDARY));
+
+    if (dubLang)   params.push('dubLang='  + encodeURIComponent(dubLang));
+    if (subtitle)  params.push('subtitle=' + encodeURIComponent(subtitle));
+    if (watermark) params.push('watermark='+ encodeURIComponent(watermark));
+
+    // Resume — VidSync supports resume seek natively
+    if (savedTime > 0) params.push('t=' + Math.floor(savedTime));
+
+    // Autoplay hint (harmless if unsupported)
+    params.push('autoplay=1');
+
+    return base + '?' + params.join('&');
+  }
+
+  // ===================== LOADING / ERROR =====================
+  function showLoading(msg) {
+    loadingText.textContent = msg || 'Loading player…';
+    loadingScreen.classList.remove('hidden');
+    loadingScreen.classList.remove('slow');
+    clearTimeout(slowTimer);
+    slowTimer = setTimeout(function() {
+      loadingScreen.classList.add('slow');
+    }, 8000);
+  }
+
+  function hideLoading() {
+    clearTimeout(slowTimer);
+    loadingScreen.classList.add('hidden');
+    loadingScreen.classList.remove('slow');
+  }
+
+  function showError(msg) {
+    errorText.textContent = msg || 'The player could not be loaded.';
+    errorScreen.classList.add('active');
+    hideLoading();
+    clearTimeout(loadWatchdog);
+  }
+
+  function hideError() {
+    errorScreen.classList.remove('active');
+  }
+
+  // ===================== PROGRESS TRACKING =====================
+  // The embed exposes resume seek. We save progress locally so the
+  // next launch can pass ?t=<seconds>.
+  function saveProgress(seconds, duration) {
+    if (!seconds || seconds < 5 || !duration) return;
+    try {
+      var store = JSON.parse(localStorage.getItem('flexji_progress') || '{}');
+      var key = type === 'tv' ? (tmdbId + '_' + season + '_' + episode) : String(tmdbId);
+      store[key] = {
+        tmdbId: tmdbId, type: type,
+        season: season, episode: episode,
+        currentTime: seconds, duration: duration,
+        title: title, year: year,
+        timestamp: Date.now()
+      };
+      localStorage.setItem('flexji_progress', JSON.stringify(store));
+    } catch(e) {}
+  }
+
+  // ===================== POSTMESSAGE BRIDGE =====================
+  // Listen for player events from the iframe. VidSync may emit
+  // common event names; we handle them defensively.
+  function handlePlayerMessage(ev) {
+    if (!ev || !ev.data) return;
+
+    var data = ev.data;
+    if (typeof data === 'string') {
+      try { data = JSON.parse(data); } catch(e) { return; }
+    }
+
+    var type_ = (data.type || data.event || '').toString().toLowerCase();
+    if (!type_) return;
+
+    // First-play confirmation
+    if (type_ === 'playing' || type_ === 'play' || type_ === 'ready' ||
+        type_ === 'loaded' || type_ === 'canplay') {
+      hideLoading();
+      clearTimeout(loadWatchdog);
+    }
+
+    // Progress
+    if (type_ === 'timeupdate' || type_ === 'progress' || type_ === 'time') {
+      var cur = parseFloat(data.currentTime || data.time || 0);
+      var dur = parseFloat(data.duration || 0);
+      if (cur > 0) saveProgress(cur, dur);
+    }
+
+    // Audio change confirmation
+    if (type_ === 'audiotrackchange' || type_ === 'audiochange' || type_ === 'dubchange') {
+      var lang = data.label || data.language || data.lang || '';
+      if (lang) showToast('Audio → ' + lang);
+    }
+
+    // Ended
+    if (type_ === 'ended') {
+      saveProgress(0, 0); // clear saved position
+    }
+
+    // Error
+    if (type_ === 'error') {
+      showError('The player reported an error. Please retry.');
+    }
+  }
+
+  window.addEventListener('message', handlePlayerMessage, false);
+
+  // Also allow VidSync to navigate the parent (auto-next episode etc.)
+  function buildNextEpisodeUrl(nextEp) {
+    var url = 'fplayer.html?type=tv&id=' + encodeURIComponent(tmdbId) +
+              '&season=' + season + '&episode=' + nextEp +
+              '&title=' + encodeURIComponent(title) +
+              '&year=' + encodeURIComponent(year);
+    if (posterUrl) url += '&poster=' + encodeURIComponent(posterUrl);
+    if (dubLang)   url += '&dubLang=' + encodeURIComponent(dubLang);
+    return url;
+  }
+
+  // ===================== CONTROLS VISIBILITY =====================
+  function showControls() {
+    shell.classList.remove('hide-ui');
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(function() {
+      shell.classList.add('hide-ui');
+    }, 3000);
+  }
+
+  document.addEventListener('mousemove', showControls);
+  document.addEventListener('touchstart', showControls, { passive: true });
+
+  // ===================== CLOSE / NAVIGATION =====================
+  function closePlayer() {
+    // Try to close the tab, otherwise return to library
+    window.close();
+    setTimeout(function() {
+      if (!window.closed) location.href = 'flexji.html';
+    }, 150);
+  }
+
+  closeBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    closePlayer();
+  });
+
+  // ===================== RETRY =====================
+  function loadPlayer() {
+    hideError();
+    showLoading('Loading player…');
+
+    // Absolute watchdog — if the iframe never fires ready within 45s,
+    // show a retry option. This doesn't kill a working player; it
+    // only catches a dead embed.
+    clearTimeout(loadWatchdog);
+    loadWatchdog = setTimeout(function() {
+      if (!loadingScreen.classList.contains('hidden')) {
+        showError('The player is taking too long to load. Please check your connection and retry.');
+      }
+    }, 45000);
+
+    var url = buildEmbedUrl();
+    embedFrame.src = url;
+  }
+
+  retryBtn.addEventListener('click', function() {
+    loadPlayer();
+  });
+
+  // ===================== IFRAME LOAD EVENTS =====================
+  embedFrame.addEventListener('load', function() {
+    // Iframe document loaded. Give the player a moment to signal ready.
+    // We don't hide the loading screen here — we wait for a 'playing'
+    // or 'ready' message, or a short fallback.
+    setTimeout(function() {
+      if (!loadingScreen.classList.contains('hidden')) {
+        // Fallback: assume loaded if no message arrived.
+        hideLoading();
+      }
+    }, isTizen ? 6000 : 3500);
+  });
+
+  embedFrame.addEventListener('error', function() {
+    showError('Failed to load the player. Please retry.');
+  });
+
+  // ===================== KEYBOARD =====================
+  document.addEventListener('keydown', function(e) {
+    var k = e.keyCode;
+
+    // Esc / Tizen back → close
+    if (k === 27 || k === 10009) {
+      e.preventDefault();
+      closePlayer();
+      return;
+    }
+
+    // Mute hint — we can't control the iframe directly, but we can
+    // postMessage a mute request if the player supports it.
+    if (k === 77 || k === 109) {
+      try {
+        embedFrame.contentWindow.postMessage({ type: 'mute', action: 'toggle' }, '*');
+      } catch(e) {}
+    }
+
+    // Fullscreen — request on shell (native browser fullscreen)
+    if (k === 70 || k === 102) {
+      e.preventDefault();
+      var fsEl = document.fullscreenElement || document.webkitFullscreenElement;
+      if (!fsEl) {
+        if (shell.requestFullscreen) shell.requestFullscreen().catch(function(){});
+        else if (shell.webkitRequestFullscreen) shell.webkitRequestFullscreen();
+      } else {
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      }
+    }
+
+    // Next episode — postMessage if possible, otherwise reload
+    if (k === 78) {
+      if (type === 'tv') {
+        try {
+          embedFrame.contentWindow.postMessage({ type: 'next' }, '*');
+        } catch(e) {
+          location.href = buildNextEpisodeUrl(episode + 1);
+        }
+      }
+    }
+  });
+
+  // ===================== INIT =====================
+  if (!tmdbId) {
+    showError('Missing TMDB ID in URL.');
+  } else {
+    loadPlayer();
+    showControls();
+  }
+
+  // ===================== VISIBILITY / CLEANUP =====================
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+      // Pause hint — helps avoid background data usage on TVs
+      try {
+        embedFrame.contentWindow.postMessage({ type: 'pause' }, '*');
+      } catch(e) {}
+    }
+  });
+
+  window.addEventListener('beforeunload', function() {
+    clearTimeout(hideTimer);
+    clearTimeout(toastTimer);
+    clearTimeout(slowTimer);
+    clearTimeout(loadWatchdog);
+  });
+
+})();
+</script>
+</body>
+</html>
