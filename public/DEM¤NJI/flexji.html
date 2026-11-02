@@ -6,129 +6,181 @@
   <title>flexji · watch free</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Roboto,system-ui,sans-serif; }
-    body { background:#141414; color:#fff; min-height:100vh; overflow-x:hidden; }
+    /* Global Resets & Typography */
+    * { margin:0; padding:0; box-sizing:border-box; font-family:'Inter', 'Segoe UI', Roboto, system-ui, sans-serif; }
+    body { background:#0a0a0a; color:#f0f0f0; min-height:100vh; overflow-x:hidden; -webkit-font-smoothing: antialiased; }
+    
+    /* Animations */
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulseGlow { 0% { box-shadow: 0 0 0 0 rgba(229,9,20,0.4); } 70% { box-shadow: 0 0 0 10px rgba(229,9,20,0); } 100% { box-shadow: 0 0 0 0 rgba(229,9,20,0); } }
 
+    /* Navbar - Enhanced Glassmorphism */
     .navbar {
-      position:relative; top:0; z-index:100;
-      background:linear-gradient(180deg,#141414 0%,transparent 100%);
-      padding:20px 4% 12px;
+      position:fixed; top:0; left:0; right:0; z-index:100;
+      background:linear-gradient(180deg, rgba(0,0,0,0.9) 0%, transparent 100%);
+      padding:20px 4% 15px;
       display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between;
-      transition:background 0.3s;
+      transition: background 0.4s ease, padding 0.4s ease;
     }
-    .navbar.scrolled { background:rgba(20,20,20,0.95); }
-    @supports (backdrop-filter: blur(8px)) { .navbar.scrolled { backdrop-filter:blur(8px); } }
+    .navbar.scrolled { background:rgba(10,10,10,0.85); padding:12px 4% 12px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+    @supports (backdrop-filter: blur(12px)) { .navbar.scrolled { backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); } }
 
-    .brand { font-size:2rem; font-weight:700; letter-spacing:-1px; color:#e50914; display:flex; align-items:center; }
+    .brand { font-size:2.2rem; font-weight:800; letter-spacing:-1.5px; color:#e50914; display:flex; align-items:center; text-transform:lowercase; }
     .brand i { font-size:1.8rem; margin-right:8px; }
+    
     .nav-links { display:flex; font-weight:500; }
-    .nav-links a { color:#e5e5e5; text-decoration:none; font-size:0.95rem; display:flex; align-items:center; margin:0 14px; }
-    .nav-links a i { margin-right:6px; }
-    .search-box { display:flex; align-items:center; background:#2a2a2a; border-radius:4px; padding:6px 12px; border:1px solid #3a3a3a; }
-    .search-box:focus-within { border-color:#e50914; }
-    .search-box input { background:transparent; border:none; color:#fff; outline:none; font-size:0.9rem; width:180px; padding:4px 0; }
-    .search-box input::placeholder { color:#888; }
-    .search-box button { background:transparent; border:none; color:#bbb; cursor:pointer; font-size:0.95rem; padding:0 0 0 8px; }
+    .nav-links a { color:#a0a0a0; text-decoration:none; font-size:0.95rem; display:flex; align-items:center; margin:0 16px; transition: color 0.2s, transform 0.2s; }
+    .nav-links a:hover, .nav-links a.active { color:#fff; transform: translateY(-1px); }
+    .nav-links a i { margin-right:8px; font-size: 1.1rem; }
+    
+    .search-box { display:flex; align-items:center; background:rgba(255,255,255,0.08); border-radius:30px; padding:8px 16px; border:1px solid transparent; transition: all 0.3s ease; }
+    .search-box:focus-within { border-color:#e50914; background:rgba(0,0,0,0.6); box-shadow: 0 0 12px rgba(229,9,20,0.2); }
+    .search-box input { background:transparent; border:none; color:#fff; outline:none; font-size:0.9rem; width:180px; padding:4px 0; transition: width 0.3s; }
+    .search-box input::placeholder { color:#888; font-weight: 400; }
+    .search-box:focus-within input { width: 220px; }
+    .search-box button { background:transparent; border:none; color:#bbb; cursor:pointer; font-size:1rem; padding:0 0 0 8px; transition: color 0.2s; }
+    .search-box button:hover { color: #fff; }
 
-    .hero { position:relative; margin:-10px 0 30px; padding:0 4%; min-height:70vh;
-      display:flex; align-items:center; background-size:cover; background-position:center;
-      border-radius:0 0 12px 12px; }
+    /* Hero Section - Cinematic Fade */
+    .hero { position:relative; margin: 0 0 40px; padding:0 4%; min-height:80vh;
+      display:flex; align-items:center; background-size:cover; background-position:top center; }
+    .hero::before { content:''; position:absolute; top:0; right:0; bottom:0; left:0;
+      background: radial-gradient(circle at 70% 30%, transparent 0%, rgba(10,10,10,0.7) 100%); }
     .hero::after { content:''; position:absolute; top:0; right:0; bottom:0; left:0;
-      background:linear-gradient(90deg,rgba(20,20,20,0.8) 0%,transparent 60%); border-radius:0 0 12px 12px; }
-    .hero-content { position:relative; z-index:2; max-width:600px; }
-    .hero-content h1 { font-size:3.5rem; font-weight:700; margin-bottom:8px; text-shadow:0 2px 10px rgba(0,0,0,0.5); }
-    .hero-content .meta { display:flex; color:#ddd; font-size:0.95rem; margin-bottom:12px; }
-    .hero-content .meta span { background:rgba(255,255,255,0.1); padding:2px 12px; border-radius:20px; margin-right:10px; }
-    .hero-content .plot { color:#ccc; line-height:1.6; max-width:500px; margin-bottom:20px; }
-    .hero-content .btn { background:#e50914; border:none; color:#fff; padding:12px 36px;
-      border-radius:4px; font-weight:600; font-size:1.1rem; cursor:pointer; display:inline-flex; align-items:center; }
-    .hero-content .btn i { margin-right:10px; }
+      background:linear-gradient(90deg, rgba(10,10,10,0.95) 0%, rgba(10,10,10,0.7) 40%, transparent 100%),
+                 linear-gradient(0deg, #0a0a0a 0%, transparent 20%); }
+                 
+    .hero-content { position:relative; z-index:2; max-width:650px; animation: fadeIn 0.8s ease-out; margin-top: 60px; }
+    .hero-content h1 { font-size:4.5rem; font-weight:800; margin-bottom:12px; line-height: 1.1; letter-spacing: -1px; text-shadow:0 4px 20px rgba(0,0,0,0.8); }
+    .hero-content .meta { display:flex; color:#ddd; font-size:0.95rem; margin-bottom:16px; font-weight: 500; }
+    .hero-content .meta span { background:rgba(255,255,255,0.15); padding:4px 14px; border-radius:20px; margin-right:12px; backdrop-filter: blur(4px); }
+    .hero-content .plot { color:#b3b3b3; line-height:1.7; font-size: 1.1rem; max-width:550px; margin-bottom:28px; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+    
+    .btn { background:#e50914; border:none; color:#fff; padding:12px 36px;
+      border-radius:30px; font-weight:700; font-size:1.1rem; cursor:pointer; display:inline-flex; align-items:center;
+      transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94); box-shadow: 0 4px 15px rgba(229,9,20,0.4); }
+    .btn:hover { transform: scale(1.05) translateY(-2px); background: #f6121d; box-shadow: 0 8px 25px rgba(229,9,20,0.6); }
+    .btn i { margin-right:10px; font-size: 1.2rem; }
 
-    .container { padding:0 4% 40px; max-width:1600px; margin:0 auto; }
-    .row { margin-bottom:44px; }
-    .row-header { display:flex; align-items:center; margin-bottom:12px; }
-    .row-header h2 { font-size:1.4rem; font-weight:600; margin-left:12px; }
-    .row-header i { color:#e50914; font-size:1.2rem; }
-    .row-scroll { display:flex; overflow-x:auto; padding-bottom:8px; -webkit-overflow-scrolling:touch; }
+    /* Content Rows & Cards */
+    .container { padding:0 4% 60px; max-width:1800px; margin:0 auto; position: relative; z-index: 5; }
+    .row { margin-bottom:48px; }
+    .row-header { display:flex; align-items:center; margin-bottom:16px; }
+    .row-header h2 { font-size:1.5rem; font-weight:700; margin-left:12px; letter-spacing: 0.5px; }
+    .row-header i { color:#e50914; font-size:1.3rem; }
+    
+    .row-scroll { display:flex; overflow-x:auto; padding:10px 0 20px; -webkit-overflow-scrolling:touch; scroll-behavior: smooth; }
     .row-scroll::-webkit-scrollbar { height:6px; }
-    .row-scroll::-webkit-scrollbar-track { background:#1a1a1a; border-radius:10px; }
-    .row-scroll::-webkit-scrollbar-thumb { background:#e50914; border-radius:10px; }
+    .row-scroll::-webkit-scrollbar-track { background:rgba(255,255,255,0.02); border-radius:10px; }
+    .row-scroll::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.15); border-radius:10px; }
+    .row-scroll::-webkit-scrollbar-thumb:hover { background:#e50914; }
 
-    .card { flex:0 0 180px; margin-right:12px; cursor:pointer; border-radius:6px; overflow:hidden; background:#151515; position:relative; }
-    .card img { width:100%; height:270px; object-fit:cover; display:block; background:#222; }
-    .card .title { padding:8px 10px 2px; font-weight:500; font-size:0.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .card .year { padding:0 10px 10px; font-size:0.7rem; color:#888; }
+    .card { flex:0 0 200px; margin-right:16px; cursor:pointer; border-radius:8px; overflow:visible; background:transparent; position:relative; transition: transform 0.3s ease; }
+    .card-img-wrap { border-radius:8px; overflow:hidden; position:relative; box-shadow: 0 4px 12px rgba(0,0,0,0.5); transition: all 0.3s ease; }
+    .card img { width:100%; height:300px; object-fit:cover; display:block; background:#1a1a1a; transition: transform 0.4s ease, filter 0.3s ease; }
+    .card:hover { transform: scale(1.05) translateY(-5px); z-index: 10; }
+    .card:hover .card-img-wrap { box-shadow: 0 15px 30px rgba(0,0,0,0.8); }
+    .card:hover img { transform: scale(1.08); filter: brightness(0.8); }
+    
+    /* Play Icon Overlay on Card Hover */
+    .card-play-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; opacity:0; transition:opacity 0.3s ease; }
+    .card-play-overlay i { font-size: 3rem; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.5); transform: scale(0.5); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .card:hover .card-play-overlay { opacity: 1; }
+    .card:hover .card-play-overlay i { transform: scale(1); }
 
-    .detail-view { display:none; margin-bottom:40px; background:linear-gradient(145deg,#181818,#0f0f0f);
-      border-radius:10px; padding:30px; border:1px solid #282828; }
+    .card .title { padding:12px 4px 2px; font-weight:600; font-size:0.95rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; text-shadow: 0 1px 2px rgba(0,0,0,0.8); }
+    .card .year { padding:0 4px; font-size:0.8rem; color:#888; font-weight: 500; }
+
+    /* Detail View Overlay */
+    .detail-view { display:none; margin-bottom:50px; background:linear-gradient(145deg, rgba(30,30,30,0.8), rgba(15,15,15,0.95));
+      border-radius:16px; padding:40px; border:1px solid rgba(255,255,255,0.08); box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+      animation: fadeIn 0.4s ease-out; backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
     .detail-view.active { display:flex; flex-wrap:wrap; }
-    .detail-poster { flex:0 0 200px; margin-right:30px; }
-    .detail-poster img { width:100%; border-radius:8px; box-shadow:0 12px 40px rgba(0,0,0,0.7); }
-    .detail-info { flex:1; min-width:260px; }
-    .detail-info h1 { font-size:2.6rem; font-weight:700; margin-bottom:6px; line-height:1.2; }
-    .detail-info .meta { color:#aaa; font-size:0.9rem; margin-bottom:12px; display:flex; flex-wrap:wrap; }
-    .detail-info .meta span { background:#222; padding:2px 14px; border-radius:30px; display:inline-flex; align-items:center; margin:0 8px 8px 0; }
-    .detail-info .meta span i { margin-right:6px; }
-    .detail-info .plot { color:#ccc; line-height:1.6; max-width:700px; margin-bottom:18px; }
-    .detail-info .btn { background:#e50914; border:none; color:#fff; padding:12px 32px; border-radius:4px;
-      font-weight:600; font-size:1rem; cursor:pointer; display:inline-flex; align-items:center; }
-    .detail-info .btn i { margin-right:10px; }
+    
+    .detail-poster { flex:0 0 240px; margin-right:40px; }
+    .detail-poster img { width:100%; border-radius:12px; box-shadow:0 15px 40px rgba(0,0,0,0.8); }
+    
+    .detail-info { flex:1; min-width:300px; }
+    .detail-info h1 { font-size:3rem; font-weight:800; margin-bottom:12px; line-height:1.1; letter-spacing: -0.5px; }
+    .detail-info .meta { color:#aaa; font-size:0.9rem; margin-bottom:16px; display:flex; flex-wrap:wrap; font-weight: 500; }
+    .detail-info .meta span { background:rgba(255,255,255,0.08); padding:6px 16px; border-radius:30px; display:inline-flex; align-items:center; margin:0 10px 10px 0; border: 1px solid rgba(255,255,255,0.05); }
+    .detail-info .meta span i { margin-right:8px; color: #e50914; }
+    .detail-info .meta span i.fa-star { color: #f5c518; }
+    .detail-info .plot { color:#ccc; line-height:1.7; font-size: 1.05rem; max-width:800px; margin-bottom:24px; }
 
-    .episode-section { display:none; width:100%; margin-top:20px; border-top:1px solid #2a2a2a; padding-top:20px; }
-    .episode-section.active { display:block; }
-    .episode-section h3 { font-size:1.2rem; margin-bottom:12px; display:flex; align-items:center; }
-    .episode-section h3 i { margin-right:10px; }
-    .season-selector { display:flex; flex-wrap:wrap; margin-bottom:14px; }
-    .season-selector button { background:#222; border:1px solid #3a3a3a; color:#ccc; padding:5px 16px;
-      border-radius:30px; cursor:pointer; font-weight:500; margin:0 8px 8px 0; }
-    .season-selector button.active { background:#e50914; border-color:#e50914; color:#fff; }
-    .episode-grid { display:flex; flex-wrap:wrap; max-height:400px; overflow-y:auto; padding-right:4px; }
+    /* Episode Section */
+    .episode-section { display:none; width:100%; margin-top:30px; border-top:1px solid rgba(255,255,255,0.1); padding-top:30px; }
+    .episode-section.active { display:block; animation: fadeIn 0.5s ease-out; }
+    .episode-section h3 { font-size:1.4rem; margin-bottom:16px; display:flex; align-items:center; font-weight: 700; }
+    .episode-section h3 i { margin-right:10px; color: #e50914; }
+    
+    .season-selector { display:flex; flex-wrap:wrap; margin-bottom:20px; gap: 10px; }
+    .season-selector button { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#ccc; padding:8px 24px;
+      border-radius:30px; cursor:pointer; font-weight:600; font-size: 0.95rem; transition: all 0.2s ease; }
+    .season-selector button:hover { background:rgba(255,255,255,0.15); color:#fff; }
+    .season-selector button.active { background:#e50914; border-color:#e50914; color:#fff; box-shadow: 0 4px 15px rgba(229,9,20,0.3); }
+    
+    .episode-grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; max-height:500px; overflow-y:auto; padding-right:8px; }
     .episode-grid::-webkit-scrollbar { width:6px; }
-    .episode-grid::-webkit-scrollbar-thumb { background:#e50914; border-radius:10px; }
-    .episode-card { background:#1a1a1a; border-radius:6px; padding:12px; cursor:pointer;
-      border:1px solid transparent; width:190px; margin:0 10px 10px 0; }
-    .episode-card .ep-num { color:#888; font-size:0.7rem; font-weight:600; }
-    .episode-card .ep-title { font-weight:500; margin:4px 0; }
-    .episode-card .ep-desc { color:#999; font-size:0.75rem; }
+    .episode-grid::-webkit-scrollbar-thumb { background:rgba(255,255,255,0.2); border-radius:10px; }
+    
+    .episode-card { background:rgba(25,25,25,0.6); border-radius:8px; padding:16px; cursor:pointer;
+      border:1px solid rgba(255,255,255,0.03); transition: all 0.2s ease; display: flex; flex-direction: column; }
+    .episode-card:hover { background:rgba(40,40,40,0.8); transform: translateY(-3px); border-color: rgba(229,9,20,0.4); box-shadow: 0 8px 20px rgba(0,0,0,0.4); }
+    .episode-card .ep-num { color:#e50914; font-size:0.8rem; font-weight:700; letter-spacing: 1px; margin-bottom: 6px; }
+    .episode-card .ep-title { font-weight:600; font-size: 1rem; margin-bottom:8px; color: #fff; }
+    .episode-card .ep-desc { color:#999; font-size:0.8rem; line-height: 1.5; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
-    .loading { text-align:center; padding:50px 20px; color:#888; font-size:1.1rem; }
-    .loading i { font-size:2rem; display:block; margin-bottom:16px; color:#e50914; }
-    .error-msg { text-align:center; padding:40px 20px; color:#e50914; }
-    .error-msg i { font-size:2rem; display:block; margin-bottom:12px; }
+    /* States */
+    .loading { text-align:center; padding:60px 20px; color:#888; font-size:1.1rem; font-weight: 500; }
+    .loading i { font-size:2.5rem; display:block; margin-bottom:16px; color:#e50914; animation: spin 1s linear infinite; }
+    .error-msg { text-align:center; padding:50px 20px; color:#e50914; font-weight: 600; }
+    .error-msg i { font-size:2.5rem; display:block; margin-bottom:16px; }
 
-    .footer { background:#0a0a0a; border-top:1px solid #222; padding:30px 4% 20px;
-      text-align:center; color:#888; font-size:0.85rem; line-height:1.6; margin-top:20px; }
+    /* Footer */
+    .footer { background:#050505; border-top:1px solid #1a1a1a; padding:40px 4% 30px;
+      text-align:center; color:#777; font-size:0.9rem; line-height:1.7; margin-top:40px; }
     .footer .disclaimer { max-width:800px; margin:0 auto; }
     .footer .disclaimer i { color:#e50914; margin-right:6px; }
 
+    /* Responsive */
+    @media (max-width:900px) {
+      .hero-content h1 { font-size:3.2rem; }
+      .detail-poster { flex:0 0 180px; margin-right:30px; }
+      .detail-info h1 { font-size:2.4rem; }
+    }
     @media (max-width:768px) {
-      .navbar { flex-direction:column; align-items:stretch; padding:12px 5%; }
-      .nav-links { justify-content:center; flex-wrap:wrap; }
-      .nav-links a { margin:4px 8px; }
-      .search-box input { width:120px; }
-      .brand { font-size:1.6rem; justify-content:center; }
-      .hero { min-height:50vh; }
-      .hero-content h1 { font-size:2.2rem; }
-      .detail-poster { flex:0 0 140px; margin-right:20px; }
-      .detail-info h1 { font-size:1.8rem; }
-      .card { flex:0 0 140px; }
-      .card img { height:200px; }
-      .episode-card { width:150px; }
+      .navbar { flex-direction:column; align-items:stretch; padding:16px 5%; background: rgba(10,10,10,0.95); }
+      .nav-links { justify-content:center; flex-wrap:wrap; margin: 16px 0; }
+      .nav-links a { margin:8px 12px; }
+      .search-box { width: 100%; justify-content: space-between; }
+      .search-box input, .search-box:focus-within input { width: 100%; }
+      .brand { font-size:1.8rem; justify-content:center; }
+      .hero { min-height:60vh; padding-top: 120px; }
+      .hero-content h1 { font-size:2.5rem; }
+      .card { flex:0 0 150px; }
+      .card img { height:225px; }
+      .detail-view { padding: 24px; }
+      .detail-poster { flex: 1 1 100%; margin-right: 0; margin-bottom: 24px; max-width: 200px; margin-left: auto; margin-right: auto; }
+      .detail-info h1 { font-size:2rem; text-align: center; }
+      .detail-info .meta { justify-content: center; }
+      .detail-info .plot { text-align: center; }
+      .detail-info .btn { width: 100%; justify-content: center; }
     }
     @media (max-width:480px) {
-      .detail-poster { flex:0 0 100px; }
-      .detail-info h1 { font-size:1.4rem; }
-      .card { flex:0 0 110px; }
-      .card img { height:160px; }
+      .card { flex:0 0 120px; margin-right: 12px; }
+      .card img { height:180px; }
+      .hero-content h1 { font-size:2rem; }
+      .episode-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
 
 <nav class="navbar" id="navbar">
-  <div class="brand"><i class="fas fa-film"></i> flexji</div>
+  <div class="brand"><i class="fas fa-play-circle"></i> flexji</div>
   <div class="nav-links">
-    <a id="navHome" href="#"><i class="fas fa-home"></i> Home</a>
+    <a id="navHome" href="#" class="active"><i class="fas fa-home"></i> Home</a>
     <a id="navTrending" href="#"><i class="fas fa-fire"></i> Trending</a>
     <a id="navTv" href="#"><i class="fas fa-tv"></i> TV Shows</a>
   </div>
@@ -143,7 +195,7 @@
     <h1 id="heroTitle">Title</h1>
     <div class="meta" id="heroMeta"></div>
     <p class="plot" id="heroPlot">Description…</p>
-    <button class="btn" id="heroPlayBtn"><i class="fas fa-play"></i> Play</button>
+    <button class="btn" id="heroPlayBtn"><i class="fas fa-play"></i> Watch Now</button>
   </div>
 </div>
 
@@ -156,7 +208,7 @@
       <p class="plot" id="detailPlot">Description…</p>
       <button class="btn" id="detailPlayBtn"><i class="fas fa-play"></i> Play</button>
       <div class="episode-section" id="episodeSection">
-        <h3><i class="fas fa-list-ul"></i> Episodes</h3>
+        <h3><i class="fas fa-layer-group"></i> Episodes</h3>
         <div class="season-selector" id="seasonSelector"></div>
         <div class="episode-grid" id="episodeGrid"></div>
       </div>
@@ -169,7 +221,7 @@
   <div class="disclaimer">
     <p><i class="fas fa-shield-alt"></i> <strong>DMCA Disclaimer</strong></p>
     <p>flexji does not host any files or content on its servers. All video content is sourced from third‑party streaming providers. If you believe any content infringes your copyright, please contact the respective provider directly.</p>
-    <p style="margin-top:8px; color:#666; font-size:0.75rem;">&copy; 2026 flexji · All rights reserved.</p>
+    <p style="margin-top:12px; color:#555; font-size:0.8rem; font-weight: 500;">&copy; 2026 flexji · All rights reserved.</p>
   </div>
 </footer>
 
@@ -211,6 +263,11 @@
   var currentItem = null, currentType = 'movie', currentTmdb = null, currentSeason = 1;
   var episodesCache = {}, seasonsList = {}, heroItem = null;
 
+  function setActiveNav(el) {
+    [navHome, navTrending, navTv].forEach(function(n) { n.classList.remove('active'); });
+    if(el) el.classList.add('active');
+  }
+
   function apiFetch(endpoint, params) {
     var parts = [];
     if (params) for (var k in params) if (params.hasOwnProperty(k))
@@ -224,13 +281,12 @@
 
   function proxyImage(path, size) {
     size = size || 'w300';
-    if (!path) return 'https://via.placeholder.com/300x450/222/666?text=no+poster';
+    if (!path) return 'https://via.placeholder.com/300x450/1a1a1a/555?text=No+Poster';
     if (path.indexOf('http://') === 0 || path.indexOf('https://') === 0)
       return PROXY + encodeURIComponent(path);
     return PROXY + encodeURIComponent(IMG_BASE + '/' + size + path);
   }
 
-  /* TMDB id from any API item (tmdb_id field, or numeric id) */
   function getTmdbId(item) {
     if (!item) return null;
     if (item.tmdb_id) return String(item.tmdb_id);
@@ -240,7 +296,6 @@
 
   function pad2(n) { return n < 10 ? '0' + n : String(n); }
 
-  /* ═══ OPEN PLAYER IN NEW TAB ═══ */
   function openPlayerInTab(tmdbId, type, season, episode, title, year) {
     if (!tmdbId) { alert('No playable source for this title.'); return; }
     var url = 'fplayer.html?type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(tmdbId);
@@ -252,7 +307,7 @@
   }
 
   window.addEventListener('scroll', function() {
-    if (window.pageYOffset > 50) navbar.classList.add('scrolled');
+    if (window.pageYOffset > 20) navbar.classList.add('scrolled');
     else navbar.classList.remove('scrolled');
   });
 
@@ -262,7 +317,7 @@
     currentTmdb = getTmdbId(item);
     currentType = type;
 
-    var poster = item.poster || item.poster_path;
+    var poster = item.backdrop_path || item.poster || item.poster_path;
     if (poster && poster.indexOf('http') !== 0) poster = 'https://image.tmdb.org/t/p/w1280' + poster;
     heroSection.style.backgroundImage = poster ? 'url(' + PROXY + encodeURIComponent(poster) + ')' : 'none';
     heroSection.style.display = 'flex';
@@ -273,7 +328,7 @@
     var rating = item.vote_average ? item.vote_average.toFixed(1) : 'N/A';
     heroMeta.innerHTML = '<span>' + year + '</span>' +
       '<span><i class="fas fa-star" style="color:#f5c518;"></i> ' + rating + '</span>' +
-      '<span>' + type.toUpperCase() + '</span>';
+      '<span>' + (type === 'tv' ? 'SERIES' : 'MOVIE') + '</span>';
     heroPlot.textContent = item.overview || 'No description available.';
 
     heroPlayBtn.onclick = function() {
@@ -296,8 +351,8 @@
     if (newTmdb !== currentTmdb) { currentTmdb = newTmdb; currentSeason = 1; }
 
     var poster = item.poster || item.poster_path;
-    if (poster && poster.indexOf('http') !== 0) poster = 'https://image.tmdb.org/t/p/w300' + poster;
-    detailPoster.src = proxyImage(poster);
+    if (poster && poster.indexOf('http') !== 0) poster = 'https://image.tmdb.org/t/p/w500' + poster;
+    detailPoster.src = proxyImage(poster, 'w500');
 
     detailTitle.textContent = item.title || item.name || 'Untitled';
     var year = item.release_date ? item.release_date.split('-')[0]
@@ -306,8 +361,8 @@
     var genres = item.genres ? item.genres.join(' · ') : '';
     detailMeta.innerHTML =
       '<span><i class="far fa-calendar-alt"></i> ' + year + '</span>' +
-      '<span><i class="fas fa-star" style="color:#f5c518;"></i> ' + rating + '</span>' +
-      '<span><i class="fas fa-tag"></i> ' + type.toUpperCase() + '</span>' +
+      '<span><i class="fas fa-star"></i> ' + rating + '</span>' +
+      '<span><i class="fas fa-tag"></i> ' + (type === 'tv' ? 'SERIES' : 'MOVIE') + '</span>' +
       (genres ? '<span><i class="fas fa-theater-masks"></i> ' + genres + '</span>' : '');
     detailPlot.textContent = item.overview || 'No description available.';
 
@@ -333,11 +388,11 @@
       }
     };
 
-    window.scrollTo(0, 0);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function fetchSeasons(tmdbId) {
-    seasonSelector.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-pulse"></i>Loading seasons…</div>';
+    seasonSelector.innerHTML = '<div class="loading"><i class="fas fa-circle-notch fa-spin"></i> Loading seasons...</div>';
     if (seasonsList[tmdbId] && seasonsList[tmdbId].length) { populateSeasonButtons(tmdbId, seasonsList[tmdbId]); return; }
     apiFetch('/tv', { tmdb_id: tmdbId }).then(function(data) {
       if (data && data.seasons && data.seasons.length) {
@@ -356,7 +411,7 @@
     for (var i = 0; i < nums.length; i++) {
       (function(s) {
         var btn = document.createElement('button');
-        btn.textContent = 'S' + s;
+        btn.textContent = 'Season ' + s;
         btn.setAttribute('data-season', s);
         btn.onclick = function() {
           var all = seasonSelector.getElementsByTagName('button');
@@ -383,7 +438,7 @@
   }
 
   function loadEpisodes(tmdbId, seasonNum) {
-    episodeGrid.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-pulse"></i>Loading episodes…</div>';
+    episodeGrid.innerHTML = '<div class="loading" style="grid-column: 1/-1;"><i class="fas fa-circle-notch fa-spin"></i> Loading episodes...</div>';
     if (episodesCache[tmdbId] && episodesCache[tmdbId][seasonNum]) {
       renderEpisodes(tmdbId, episodesCache[tmdbId][seasonNum]);
       return;
@@ -403,14 +458,14 @@
 
   function fallbackEpisodes() {
     var out = [];
-    for (var i = 1; i <= 10; i++) out.push({ episode_number: i, title: 'Episode ' + i, overview: '' });
+    for (var i = 1; i <= 10; i++) out.push({ episode_number: i, title: 'Episode ' + i, overview: 'Episode description unavailable.' });
     return out;
   }
 
   function renderEpisodes(tmdbId, eps) {
     episodeGrid.innerHTML = '';
     if (!eps || !eps.length) {
-      episodeGrid.innerHTML = '<div style="color:#888;padding:20px;"><i class="fas fa-exclamation-circle"></i> No episodes</div>';
+      episodeGrid.innerHTML = '<div style="color:#888;padding:20px; grid-column: 1/-1;"><i class="fas fa-exclamation-circle"></i> No episodes found</div>';
       return;
     }
     for (var i = 0; i < eps.length; i++) {
@@ -450,15 +505,20 @@
 
   function createCard(item, type) {
     var path = item.poster || item.poster_path;
-    if (path && path.indexOf('http') !== 0) path = 'https://image.tmdb.org/t/p/w200' + path;
+    if (path && path.indexOf('http') !== 0) path = 'https://image.tmdb.org/t/p/w300' + path;
     var title = item.title || item.name || 'Untitled';
     var year = item.release_date ? item.release_date.split('-')[0]
              : (item.first_air_date ? item.first_air_date.split('-')[0] : '');
+             
     var card = document.createElement('div');
     card.className = 'card';
-    card.innerHTML = '<img src="' + proxyImage(path) + '" alt="" />' +
+    card.innerHTML = '<div class="card-img-wrap">' + 
+                       '<img src="' + proxyImage(path) + '" alt="" loading="lazy" />' +
+                       '<div class="card-play-overlay"><i class="fas fa-play-circle"></i></div>' +
+                     '</div>' +
                      '<div class="title">' + title + '</div>' +
                      '<div class="year">' + year + '</div>';
+                     
     var tmdbId = getTmdbId(item);
     card.addEventListener('click', function() { fetchDetails(tmdbId, type); });
     return card;
@@ -469,7 +529,7 @@
     wrap.className = 'row';
     wrap.innerHTML = '<div class="row-header"><i class="' + icon + '"></i><h2>' + title + '</h2></div><div class="row-scroll"></div>';
     var scroll = wrap.getElementsByClassName('row-scroll')[0];
-    if (!items || !items.length) scroll.innerHTML = '<div class="error-msg"><i class="fas fa-exclamation-triangle"></i> No results</div>';
+    if (!items || !items.length) scroll.innerHTML = '<div class="error-msg"><i class="fas fa-exclamation-triangle"></i> No results found</div>';
     else for (var i = 0; i < items.length; i++) scroll.appendChild(createCard(items[i], type));
     rowsContainer.appendChild(wrap);
   }
@@ -477,38 +537,45 @@
   function loadTrendingMovies() {
     apiFetch('/trending', { time_window: 'day', page: 1 }).then(function(data) {
       if (data.results) {
-        var m = data.results.slice(0, 12);
+        var m = data.results.slice(0, 15);
         renderRow('Trending Movies', 'fas fa-fire', m, 'movie');
         if (m.length) renderHero(m[0], 'movie');
       }
     }).catch(function() {});
   }
+  
   function loadTrendingTV() {
     apiFetch('/trendingtv', { time_window: 'day', page: 1 }).then(function(data) {
-      if (data.results) renderRow('Trending TV', 'fas fa-tv', data.results.slice(0, 12), 'tv');
+      if (data.results) renderRow('Trending TV Shows', 'fas fa-tv', data.results.slice(0, 15), 'tv');
     }).catch(function() {});
   }
 
   function performSearch(q) {
     if (!q.trim()) { resetHome(); return; }
+    setActiveNav(null);
     rowsContainer.innerHTML = '';
     detailView.classList.remove('active');
     heroSection.style.display = 'none';
+    
     apiFetch('/search', { q: q, page: 1 }).then(function(d) {
-      if (d.results) renderRow('Movies', 'fas fa-film', d.results.slice(0, 12), 'movie');
+      if (d.results) renderRow('Movie Results', 'fas fa-film', d.results.slice(0, 15), 'movie');
     }).catch(function() {});
+    
     apiFetch('/searchtv', { q: q, page: 1 }).then(function(d) {
-      if (d.results) renderRow('TV Shows', 'fas fa-list-ul', d.results.slice(0, 12), 'tv');
+      if (d.results) renderRow('TV Show Results', 'fas fa-list-ul', d.results.slice(0, 15), 'tv');
     }).catch(function() {});
   }
 
   function resetHome() {
-    rowsContainer.innerHTML = '<div class="loading"><i class="fas fa-spinner fa-pulse"></i>Loading…</div>';
+    setActiveNav(navHome);
+    rowsContainer.innerHTML = '<div class="loading"><i class="fas fa-circle-notch fa-spin"></i> Gathering the best content...</div>';
     detailView.classList.remove('active');
     heroSection.style.display = 'none';
-    rowsContainer.innerHTML = '';
-    loadTrendingMovies();
-    loadTrendingTV();
+    setTimeout(function() {
+      rowsContainer.innerHTML = '';
+      loadTrendingMovies();
+      loadTrendingTV();
+    }, 100);
     searchInput.value = '';
   }
 
@@ -516,22 +583,28 @@
     resetHome();
     searchBtn.addEventListener('click', function() { performSearch(searchInput.value); });
     searchInput.addEventListener('keydown', function(e) { if (e.keyCode === 13) performSearch(searchInput.value); });
+    
     navHome.addEventListener('click', function(e) { e.preventDefault(); resetHome(); });
+    
     navTrending.addEventListener('click', function(e) {
       e.preventDefault();
+      setActiveNav(this);
       rowsContainer.innerHTML = '';
       detailView.classList.remove('active');
       heroSection.style.display = 'none';
-      loadTrendingMovies(); loadTrendingTV();
+      loadTrendingMovies(); 
     });
+    
     navTv.addEventListener('click', function(e) {
       e.preventDefault();
+      setActiveNav(this);
       rowsContainer.innerHTML = '';
       detailView.classList.remove('active');
       heroSection.style.display = 'none';
       loadTrendingTV();
     });
   }
+  
   init();
 })();
 </script>
