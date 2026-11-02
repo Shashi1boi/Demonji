@@ -11,35 +11,21 @@
     * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Roboto,system-ui,sans-serif; }
     html, body { height:100%; background:#000; overflow:hidden; color:#fff; width: 100%; }
 
-    #shell {
-      position:fixed; top:0; left:0; right:0; bottom:0;
-      background:#000;
-      user-select:none; outline:none;
-    }
+    #shell { position:fixed; top:0; left:0; right:0; bottom:0; background:#000; user-select:none; outline:none; }
     #shell.hide-ui { cursor:none; }
-    #video {
-      position:absolute; top:0; left:0; right:0; bottom:0;
-      width:100%; height:100%;
-      background:#000; object-fit:contain;
-    }
+    #video { position:absolute; top:0; left:0; right:0; bottom:0; width:100%; height:100%; background:#000; object-fit:contain; }
 
-    .grad {
-      position:absolute; left:0; right:0;
-      pointer-events:none; z-index:5;
-      transition:opacity .25s;
-    }
+    .grad { position:absolute; left:0; right:0; pointer-events:none; z-index:5; transition:opacity .25s; }
     .grad.top    { top:0; height:180px; background:linear-gradient(180deg, rgba(0,0,0,.85), transparent); }
     .grad.bottom { bottom:0; height:220px; background:linear-gradient(0deg, rgba(0,0,0,.90), transparent); }
     #shell.hide-ui .grad { opacity:0; }
 
     .top-bar {
-      position:absolute; top:0; left:0; right:0; width: 100%;
-      padding:22px 32px;
+      position:absolute; top:0; left:0; right:0; width: 100%; padding:22px 32px;
       display:-webkit-box; display:-webkit-flex; display:flex;
       -webkit-box-pack:justify; -webkit-justify-content:space-between; justify-content:space-between;
       -webkit-box-align:start; -webkit-align-items:flex-start; align-items:flex-start;
-      z-index:10;
-      transition:opacity .25s;
+      z-index:10; transition:opacity .25s;
     }
     #shell.hide-ui .top-bar { opacity:0; pointer-events:none; }
     .top-bar .info { max-width:70%; -webkit-box-flex:1; -webkit-flex:1; flex:1; }
@@ -47,30 +33,12 @@
     .top-bar h1 { font-size:1.8rem; font-weight:700; line-height:1.2; margin-bottom:4px; text-shadow:0 2px 12px rgba(0,0,0,.8); }
     .top-bar p { color:#ccc; font-size:.9rem; }
 
-    /* Quality HUD: Source vs Decoded */
-    .quality-hud {
-      display:none; align-items:center; gap:6px;
-      margin-top:10px; font-size:.72rem;
-      background:rgba(0,0,0,.55); padding:4px 11px; border-radius:12px;
-      color:#999; backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
-      border:1px solid rgba(255,255,255,.06); width:fit-content;
-    }
-    .quality-hud.show { display:inline-flex; }
-    .quality-hud strong { color:#fff; font-weight:700; margin-left:4px; }
-    .quality-hud .qh-sep { color:#444; margin:0 2px; }
-    .quality-hud.match   #qhAct { color:#4ade80; }
-    .quality-hud.mismatch #qhAct { color:#f87171; }
-
     .icon-btn {
-      background:rgba(255,255,255,.08);
-      border:1px solid rgba(255,255,255,.15);
-      color:#fff; border-radius:8px;
-      cursor:pointer;
-      display:-webkit-inline-box; display:-webkit-inline-flex; display:inline-flex;
+      background:rgba(255,255,255,.08); border:1px solid rgba(255,255,255,.15); color:#fff; border-radius:8px;
+      cursor:pointer; display:-webkit-inline-box; display:-webkit-inline-flex; display:inline-flex;
       -webkit-box-align:center; -webkit-align-items:center; align-items:center;
       -webkit-box-pack:center; -webkit-justify-content:center; justify-content:center;
-      transition:background .15s, border-color .15s, transform .12s;
-      padding:0;
+      transition:background .15s, border-color .15s, transform .12s; padding:0;
     }
     .icon-btn:hover, .icon-btn:focus { background:rgba(255,255,255,.22); border-color:rgba(255,255,255,.4); outline:none; }
     .icon-btn:active { transform:scale(0.96); }
@@ -205,12 +173,26 @@
     .opt-btn.active .opt-check { display:block; }
     .settings-empty { padding:16px 20px; color:#666; font-size:.85rem; text-align:center; }
 
+    /* Audio-switch toast */
+    .toast {
+      position:absolute; left:50%; bottom:120px;
+      -webkit-transform:translateX(-50%) translateY(10px); transform:translateX(-50%) translateY(10px);
+      background:rgba(0,0,0,.85); color:#fff;
+      padding:10px 20px; border-radius:24px; font-size:.88rem; font-weight:600;
+      border:1px solid rgba(255,255,255,.12);
+      opacity:0; pointer-events:none; z-index:18;
+      transition:opacity .22s, transform .22s;
+      -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px);
+      letter-spacing:.2px;
+    }
+    .toast.show { opacity:1; -webkit-transform:translateX(-50%) translateY(0); transform:translateX(-50%) translateY(0); }
+    .toast i { margin-right:8px; color:#4ade80; }
+
     @media (max-width:640px) {
       .top-bar { padding:14px 16px; }
       .top-bar h1 { font-size:1.15rem; }
       .top-bar .brand { font-size:1rem; margin-bottom:4px; }
       .top-bar p { font-size:.78rem; }
-      .quality-hud { font-size:.65rem; padding:3px 8px; }
       .ps-title { font-size:1.55rem; }
       .ps-sub { font-size:.9rem; }
       .ps-poster { max-height:32vh; }
@@ -224,6 +206,7 @@
       .buttons-row .icon-btn.play-pause { width:42px; height:42px; }
       .buttons-row .icon-btn.small { display:none; }
       .close-btn { width:40px; height:40px; }
+      .toast { bottom:100px; font-size:.8rem; padding:8px 16px; }
     }
   </style>
 </head>
@@ -239,11 +222,6 @@
       <div class="brand">flexji</div>
       <h1 id="title">Loading…</h1>
       <p id="subtitle"></p>
-      <div class="quality-hud" id="qualityHud">
-        <span>Source <strong id="qhSel">—</strong></span>
-        <span class="qh-sep">·</span>
-        <span>Decoded <strong id="qhAct">—</strong></span>
-      </div>
     </div>
     <button class="icon-btn close-btn" id="closeBtn" title="Close (Esc)">
       <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
@@ -286,6 +264,8 @@
       Retry
     </button>
   </div>
+
+  <div class="toast" id="toast"><i class="fas fa-check"></i><span id="toastText"></span></div>
 
   <div class="bottom-controls">
     <div class="progress-row">
@@ -354,14 +334,14 @@
   'use strict';
 
   var ICONS = {
-    play:         '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
-    pause:        '<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>',
-    volumeHigh:   '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>',
-    volumeLow:    '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>',
-    mute:         '<svg viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>',
-    fullscreen:   '<svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>',
-    exitFs:       '<svg viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>',
-    check:        '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>'
+    play:       '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>',
+    pause:      '<svg viewBox="0 0 24 24"><path d="M6 4h4v16H6zM14 4h4v16h-4z"/></svg>',
+    volumeHigh: '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>',
+    volumeLow:  '<svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>',
+    mute:       '<svg viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/></svg>',
+    fullscreen: '<svg viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>',
+    exitFs:     '<svg viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>',
+    check:      '<svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>'
   };
 
   function getQueryParam(name) {
@@ -393,16 +373,15 @@
   var psSub          = document.getElementById('psSub');
   var psPlayBtn      = document.getElementById('psPlayBtn');
 
-  var qualityHud     = document.getElementById('qualityHud');
-  var qhSel          = document.getElementById('qhSel');
-  var qhAct          = document.getElementById('qhAct');
-
   var buffering      = document.getElementById('buffering');
   var loadingScreen  = document.getElementById('loadingScreen');
   var loadingText    = document.getElementById('loadingText');
   var errorScreen    = document.getElementById('errorScreen');
   var errorText      = document.getElementById('errorText');
   var retryBtn       = document.getElementById('retryBtn');
+
+  var toastEl        = document.getElementById('toast');
+  var toastText      = document.getElementById('toastText');
 
   var playPauseBtn   = document.getElementById('playPause');
   var rewindBtn      = document.getElementById('rewindBtn');
@@ -440,7 +419,6 @@
       location.href = nextUrl;
     };
   }
-
   titleEl.textContent    = displayTitle;
   subtitleEl.textContent = displaySub;
   psTitle.textContent    = displayTitle;
@@ -462,6 +440,7 @@
   var currentData        = null;
   var currentSource      = null;
   var hideTimer          = null;
+  var toastTimer         = null;
   var userInitiatedPause = false;
   var isSwitching        = false;
   var selectedLang       = null;
@@ -469,28 +448,33 @@
   var timeRestored       = false;
   var firstPlaybackStarted = false;
 
-  // === Quality HUD ===
-  function updateQualityHud() {
-    if (!selectedQuality) { qualityHud.classList.remove('show'); return; }
-    qualityHud.classList.add('show');
-    qhSel.textContent = selectedQuality;
-    var h = video.videoHeight;
-    if (h) {
-      qhAct.textContent = h + 'p';
-      var selNum = parseInt(String(selectedQuality).replace(/[^\d]/g, ''), 10) || 0;
-      qualityHud.classList.remove('match', 'mismatch');
-      if (selNum && h === selNum) qualityHud.classList.add('match');
-      else if (selNum && h < selNum) qualityHud.classList.add('mismatch');
-    } else {
-      qhAct.textContent = '—';
-      qualityHud.classList.remove('match', 'mismatch');
-    }
+  // ---- Toast ----
+  function showToast(msg) {
+    toastText.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function() { toastEl.classList.remove('show'); }, 1800);
   }
-  video.addEventListener('loadedmetadata', updateQualityHud);
-  video.addEventListener('playing', updateQualityHud);
-  video.addEventListener('resize', updateQualityHud);
 
-  // === Session cache ===
+  // ---- Language code matching ----
+  // Handles "en", "eng", "English", "en-US", "en_US" ...
+  function normLang(x) {
+    if (!x) return '';
+    return String(x).toLowerCase().trim().split(/[-_]/)[0];
+  }
+  function trackMatchesLang(track, lang) {
+    var L = normLang(lang);
+    if (!L) return false;
+    var tl = normLang(track.lang || '');
+    var tn = String(track.name || track.label || '').toLowerCase();
+    if (tl && tl === L) return true;
+    if (tl && tl.substr(0, 3) === L.substr(0, 3) && Math.min(tl.length, L.length) <= 3) return true;
+    if (tn && tn === L) return true;
+    if (tn && tn.indexOf(L) === 0 && L.length >= 2) return true;
+    return false;
+  }
+
+  // ---- Session cache ----
   function cacheKey() {
     return 'vstream:' + type + ':' + tmdbId + (type === 'tv' ? ':' + season + ':' + episode : '');
   }
@@ -514,7 +498,6 @@
     errorScreen.style.display   = 'none';
     loadingText.textContent = 'Loading stream…';
 
-    // Fast path: cache hit → skip network entirely
     var cached = readCache();
     if (cached) {
       currentData = cached;
@@ -564,7 +547,6 @@
   function pickBestSource(data) {
     if (!data || !data.sources || !data.sources.length) return null;
     var maxQ = detectMaxQuality();
-
     var preferred = null;
     for (var i = 0; i < data.sources.length; i++) {
       var s = data.sources[i];
@@ -615,7 +597,7 @@
     return u;
   }
 
-  // === playSource: RAW-FIRST for fast start, PROXY fallback ===
+  // ---- playSource ----
   function playSource(source, forceProxy) {
     if (!source) return;
     currentSource = source;
@@ -624,11 +606,7 @@
     firstPlaybackStarted = false;
 
     if (hlsInstance) { try { hlsInstance.destroy(); } catch (e) {} hlsInstance = null; }
-    try {
-      video.pause();
-      video.removeAttribute('src');
-      video.load();
-    } catch (e) {}
+    try { video.pause(); video.removeAttribute('src'); video.load(); } catch (e) {}
 
     var proxyUrl = absoluteProxy(source);
     var rawUrl   = source.rawUrl || source.directUrl || null;
@@ -644,20 +622,18 @@
 
     function fallbackOrError(msg) {
       isSwitching = false;
-      if (!forceProxy && proxyUrl && proxyUrl !== playUrl) {
-        // retry through the proxy (fast, reliable)
-        playSource(source, true);
-      } else {
-        showError(msg || 'Cannot play this stream.');
-      }
+      if (!forceProxy && proxyUrl && proxyUrl !== playUrl) playSource(source, true);
+      else showError(msg || 'Cannot play this stream.');
     }
 
-    // Native HLS (Safari) — try raw first, fall back to proxy on error
     if (isHls && canNative) {
       video.src = playUrl;
       video.addEventListener('loadedmetadata', function onMeta() {
         video.removeEventListener('loadedmetadata', onMeta);
         isSwitching = false;
+        // Native HLS exposes video.audioTracks on Safari
+        syncNativeAudio();
+        buildSettings();
         tryPlay();
       });
       video.addEventListener('error', function onErr() {
@@ -667,7 +643,6 @@
       return;
     }
 
-    // HLS.js path
     if (isHls) {
       if (typeof Hls === 'undefined' || !Hls.isSupported()) {
         video.src = playUrl;
@@ -676,35 +651,26 @@
         return;
       }
 
-      /* ==== FAST-START CONFIG ==== */
       hlsInstance = new Hls({
-        // start small, ramp quickly
         autoStartLoad: true,
         startLevel: -1,
         testBandwidth: false,
-        abrEwmaDefaultEstimate: 1000000,  // 1 Mbps assumed → small first segment
+        abrEwmaDefaultEstimate: 1000000,
         abrBandWidthFactor: 0.95,
-        abrBandWidthUpFactor: 0.80,       // ramp up briskly
+        abrBandWidthUpFactor: 0.80,
         capLevelOnFPSDrop: true,
-
-        // buffers (only build AFTER playback starts, so startup is unaffected)
         maxBufferLength: 45,
         maxMaxBufferLength: 90,
         maxBufferSize: 90 * 1000 * 1000,
         backBufferLength: 30,
-
-        // fast failure so we can fall over to proxy quickly
         manifestLoadingTimeOut: 6000,
         manifestLoadingMaxRetry: 0,
         levelLoadingTimeOut: 10000,
         levelLoadingMaxRetry: 2,
         fragLoadingTimeOut: 15000,
         fragLoadingMaxRetry: 4,
-
-        // stall recovery
         highBufferWatchdogPeriod: 3,
         nudgeMaxRetry: 6,
-
         enableWorker: (typeof Worker !== 'undefined'),
         lowLatencyMode: false
       });
@@ -715,18 +681,20 @@
         isSwitching = false;
         tryPlay();
       });
-      hlsInstance.on(Hls.Events.LEVEL_SWITCHED, function() { setTimeout(updateQualityHud, 300); });
-      hlsInstance.on(Hls.Events.FRAG_CHANGED, updateQualityHud);
+
+      // Fires the moment HLS knows about multi-audio tracks
+      hlsInstance.on(Hls.Events.AUDIO_TRACKS_UPDATED, function() {
+        syncHlsAudio();
+        buildSettings();
+      });
 
       hlsInstance.on(Hls.Events.ERROR, function(evt, data) {
         if (!data || !data.fatal) return;
         if (data.type === Hls.ErrorTypes.NETWORK_ERROR) {
           if (forceProxy) {
-            // already on proxy — retry a couple times
             if (netErrCount < 2) { netErrCount++; hlsInstance.startLoad(); }
             else { hlsInstance.destroy(); hlsInstance = null; fallbackOrError('Network error.'); }
           } else {
-            // on raw — fall over to proxy immediately (usually <200ms for CORS)
             hlsInstance.destroy(); hlsInstance = null;
             fallbackOrError('Network error.');
           }
@@ -747,28 +715,40 @@
       return;
     }
 
-    // Non-HLS (progressive MP4/WebM)
     video.src = playUrl;
     isSwitching = false;
     tryPlay();
   }
 
+  // Read current audio track from HLS.js into `selectedLang`
+  function syncHlsAudio() {
+    if (!hlsInstance || !hlsInstance.audioTracks || !hlsInstance.audioTracks.length) return;
+    var idx = hlsInstance.audioTrack;
+    if (idx < 0 || idx >= hlsInstance.audioTracks.length) idx = 0;
+    var t = hlsInstance.audioTracks[idx];
+    if (t) selectedLang = (t.lang || t.name || selectedLang || '').toString();
+  }
+
+  // Read current audio track from native <video> (Safari)
+  function syncNativeAudio() {
+    if (!video.audioTracks || !video.audioTracks.length) return;
+    for (var i = 0; i < video.audioTracks.length; i++) {
+      if (video.audioTracks[i].enabled) {
+        selectedLang = (video.audioTracks[i].language || video.audioTracks[i].label || selectedLang || '').toString();
+        return;
+      }
+    }
+  }
+
   function tryPlay() {
     var p = video.play();
     if (!p || !p.then) return;
-    p.then(function() {
-      // 'playing' event will hide the loading screen
-    }).catch(function(e) {
-      // Autoplay blocked or playback error
-      if (e && e.name === 'AbortError') return; // superseded by a new load
+    p.then(function() {}).catch(function(e) {
+      if (e && e.name === 'AbortError') return;
       hideLoading();
       buffering.classList.remove('show');
-      if (e && e.name === 'NotAllowedError') {
-        showPausedScreen();
-      } else {
-        // Genuine playback error — surface it
-        showError('Playback failed. ' + (e && e.name || ''));
-      }
+      if (e && e.name === 'NotAllowedError') showPausedScreen();
+      else showError('Playback failed. ' + (e && e.name || ''));
     });
   }
 
@@ -782,7 +762,6 @@
       video.pause();
     }
   }
-
   function userPlay() {
     if (video.ended) video.currentTime = 0;
     userInitiatedPause = false;
@@ -806,35 +785,23 @@
   }
   function hidePausedScreen() { pausedScreen.classList.remove('active'); }
 
-  video.addEventListener('play', function() {
-    hidePausedScreen(); updatePlayPauseBtn(); scheduleHide();
-  });
+  video.addEventListener('play', function() { hidePausedScreen(); updatePlayPauseBtn(); scheduleHide(); });
   video.addEventListener('pause', function() {
     if (!video.ended && userInitiatedPause && !isSwitching) showPausedScreen();
     userInitiatedPause = false; updatePlayPauseBtn(); showControls();
   });
-  video.addEventListener('ended', function() {
-    showPausedScreen(); updatePlayPauseBtn(); showControls();
-  });
+  video.addEventListener('ended', function() { showPausedScreen(); updatePlayPauseBtn(); showControls(); });
 
-  // Show spinner ONLY after first playback has started; before that the
-  // loading screen itself is what the user sees.
   video.addEventListener('waiting', function() {
     if (firstPlaybackStarted) buffering.classList.add('show');
   });
   video.addEventListener('playing', function() {
     buffering.classList.remove('show');
-    if (!firstPlaybackStarted) {
-      firstPlaybackStarted = true;
-      hideLoading();
-    }
+    if (!firstPlaybackStarted) { firstPlaybackStarted = true; hideLoading(); }
   });
   video.addEventListener('canplay', function() { buffering.classList.remove('show'); });
 
-  video.addEventListener('timeupdate', function() {
-    updateProgress();
-    saveProgress();
-  });
+  video.addEventListener('timeupdate', function() { updateProgress(); saveProgress(); });
 
   video.addEventListener('loadedmetadata', function() {
     if (savedTime > 0 && !timeRestored && video.duration > savedTime) {
@@ -864,14 +831,14 @@
   function saveProgress() {
     if (!video.duration || video.currentTime < 5) return;
     try {
-      var progressStore = JSON.parse(localStorage.getItem('flexji_progress') || '{}');
+      var store = JSON.parse(localStorage.getItem('flexji_progress') || '{}');
       var key = type === 'tv' ? (tmdbId + '_' + season + '_' + episode) : tmdbId;
-      progressStore[key] = {
+      store[key] = {
         tmdbId: tmdbId, type: type, season: season, episode: episode,
         currentTime: video.currentTime, duration: video.duration,
         title: title, year: year, timestamp: Date.now()
       };
-      localStorage.setItem('flexji_progress', JSON.stringify(progressStore));
+      localStorage.setItem('flexji_progress', JSON.stringify(store));
     } catch(e){}
   }
 
@@ -910,43 +877,79 @@
     else volBtn.innerHTML = ICONS.volumeHigh;
   }
 
+  // ============================================================
+  //  SETTINGS — prefer real HLS audio tracks over API labels
+  // ============================================================
   function buildSettings() {
-    if (!currentData || !currentData.sources) return;
+    if (!currentData) return;
 
-    var audioMap = {}, qualityMap = {};
-    for (var i = 0; i < currentData.sources.length; i++) {
-      var s = currentData.sources[i];
-      var lang = s.audioLanguage || s.language || 'en';
-      var label = s.audioLabel || lang.toUpperCase();
-      var isOriginal = s.audioTracks && s.audioTracks[0] && s.audioTracks[0].original;
-      if (!audioMap[lang]) audioMap[lang] = { label: label, original: !!isOriginal };
-      else if (isOriginal) audioMap[lang].original = true;
-      qualityMap[s.quality || 'Auto'] = true;
+    var audioMap = {};
+    var qualityMap = {};
+
+    // 1) Real HLS.js tracks (ground truth for multi-audio streams)
+    var hlsTracks = (hlsInstance && hlsInstance.audioTracks) || [];
+    if (hlsTracks.length > 0) {
+      for (var i = 0; i < hlsTracks.length; i++) {
+        var t = hlsTracks[i];
+        var code = (t.lang || t.name || ('track' + i)).toString();
+        var label = t.name || t.lang || ('Track ' + (i + 1));
+        audioMap[code] = { label: label, original: (t.default === true) || i === 0 };
+      }
+    }
+    // 2) Native <video>.audioTracks (Safari)
+    else if (video.audioTracks && video.audioTracks.length > 0) {
+      for (var n = 0; n < video.audioTracks.length; n++) {
+        var nt = video.audioTracks[n];
+        var ncode = (nt.language || nt.label || ('track' + n)).toString();
+        audioMap[ncode] = { label: nt.label || nt.language || ('Track ' + (n + 1)), original: n === 0 };
+      }
+    }
+    // 3) Fall back to the API's source list
+    else if (currentData.sources) {
+      for (var k = 0; k < currentData.sources.length; k++) {
+        var s = currentData.sources[k];
+        var lang = s.audioLanguage || s.language || 'en';
+        var lbl = s.audioLabel || lang.toUpperCase();
+        var orig = !!(s.audioTracks && s.audioTracks[0] && s.audioTracks[0].original);
+        if (!audioMap[lang]) audioMap[lang] = { label: lbl, original: orig };
+        else if (orig) audioMap[lang].original = true;
+      }
+    }
+
+    if (currentData.sources) {
+      for (var q = 0; q < currentData.sources.length; q++) {
+        qualityMap[currentData.sources[q].quality || 'Auto'] = true;
+      }
     }
 
     var audioKeys = Object.keys(audioMap);
     var qualityKeys = Object.keys(qualityMap);
 
-    audioSection.style.display   = audioKeys.length > 1 ? '' : 'none';
+    // Hide audio section entirely if only one track and no alternative sources
+    var audioUsable = audioKeys.length > 1;
+    audioSection.style.display = audioUsable ? '' : 'none';
     qualitySection.style.display = qualityKeys.length > 1 ? '' : 'none';
-    settingsBtn.style.display = (audioKeys.length > 1 || qualityKeys.length > 1) ? '' : 'none';
+    settingsBtn.style.display = (audioUsable || qualityKeys.length > 1) ? '' : 'none';
 
+    // ---- Audio buttons ----
     audioOpts.innerHTML = '';
-    if (audioKeys.length <= 1) {
-      audioOpts.innerHTML = '<div class="settings-empty">Only one audio track</div>';
+    if (!audioUsable) {
+      audioOpts.innerHTML = '<div class="settings-empty">Single audio track on this stream</div>';
     } else {
-      audioKeys.forEach(function(lang) {
-        var info = audioMap[lang];
+      audioKeys.forEach(function(code) {
+        var info = audioMap[code];
+        var isActive = code === selectedLang || trackMatchesLang({ lang: code, name: info.label }, selectedLang);
         var btn = document.createElement('button');
-        btn.className = 'opt-btn' + (lang === selectedLang ? ' active' : '');
+        btn.className = 'opt-btn' + (isActive ? ' active' : '');
         var tag = info.original ? '<span class="opt-tag">Original</span>' : '';
         btn.innerHTML = '<span class="opt-label"><span>' + info.label + '</span>' + tag + '</span>' +
                         '<span class="opt-check">' + ICONS.check + '</span>';
-        btn.onclick = function() { selectAudio(lang); };
+        btn.onclick = function() { selectAudio(code); };
         audioOpts.appendChild(btn);
       });
     }
 
+    // ---- Quality buttons ----
     qualityOpts.innerHTML = '';
     if (qualityKeys.length <= 1) {
       qualityOpts.innerHTML = '<div class="settings-empty">Only one quality available</div>';
@@ -964,33 +967,95 @@
     }
   }
 
-  function selectAudio(lang) {
-    if (!currentData || !currentSource) return;
-    var curLang = currentSource.audioLanguage || currentSource.language;
-    if (lang === curLang) { closeSettings(); return; }
+  // ============================================================
+  //  AUDIO SWITCH — in-stream first, no reload
+  // ============================================================
+  function selectAudio(code) {
+    if (!currentData) return;
 
-    var maxQ = detectMaxQuality();
-    var candidates = currentData.sources.filter(function(s) {
-      return (s.audioLanguage || s.language) === lang;
-    });
-    if (!candidates.length) return;
-    candidates.sort(function(a, b) {
-      var qa = parseInt(String(a.quality || '').replace(/[^\d]/g, ''), 10) || 0;
-      var qb = parseInt(String(b.quality || '').replace(/[^\d]/g, ''), 10) || 0;
-      return qb - qa;
-    });
-    var chosen = null;
-    for (var i = 0; i < candidates.length; i++) {
-      var q = parseInt(String(candidates[i].quality || '').replace(/[^\d]/g, ''), 10) || 0;
-      if (q > 0 && q <= maxQ) { chosen = candidates[i]; break; }
+    // 1) HLS.js in-stream audio track switch (instant)
+    if (hlsInstance && hlsInstance.audioTracks && hlsInstance.audioTracks.length > 1) {
+      for (var i = 0; i < hlsInstance.audioTracks.length; i++) {
+        var t = hlsInstance.audioTracks[i];
+        var codeField = (t.lang || t.name || ('track' + i)).toString();
+        if (codeField === code || trackMatchesLang(t, code)) {
+          hlsInstance.audioTrack = i;
+          selectedLang = (t.lang || t.name || code).toString();
+          buildSettings();
+          closeSettings();
+          var label = t.name || t.lang || code;
+          showToast('Audio → ' + label);
+          return;
+        }
+      }
     }
-    if (!chosen) chosen = candidates[0];
 
-    selectedLang    = lang;
-    selectedQuality = chosen.quality;
-    savedTime = video.currentTime;
-    timeRestored = false;
-    buildSettings(); closeSettings(); playSource(chosen, false);
+    // 2) Native <video> audio tracks (Safari HLS)
+    if (video.audioTracks && video.audioTracks.length > 1) {
+      for (var n = 0; n < video.audioTracks.length; n++) {
+        var nt = video.audioTracks[n];
+        var nCode = (nt.language || nt.label || ('track' + n)).toString();
+        if (nCode === code || trackMatchesLang({ lang: nCode, name: nt.label }, code)) {
+          for (var m = 0; m < video.audioTracks.length; m++)
+            video.audioTracks[m].enabled = (m === n);
+          selectedLang = nCode;
+          buildSettings();
+          closeSettings();
+          showToast('Audio → ' + (nt.label || nt.language || code));
+          return;
+        }
+      }
+    }
+
+    // 3) Fall back to reloading a different stream (genuinely different URL)
+    var candidates = (currentData.sources || []).filter(function(s) {
+      var l = s.audioLanguage || s.language;
+      return l === code || trackMatchesLang({ lang: l }, code);
+    });
+
+    if (candidates.length) {
+      // If the URL is identical to what we're already playing, don't reload —
+      // nothing will change. Instead surface a clear toast.
+      var proxy = absoluteProxy(currentSource);
+      var raw   = currentSource.rawUrl || currentSource.directUrl;
+      var sameUrl = candidates.every(function(c) {
+        var cu = c.rawUrl || c.directUrl;
+        var cp = absoluteProxy(c);
+        return (cu && cu === raw) || (cp && cp === proxy);
+      });
+      if (sameUrl) {
+        closeSettings();
+        showToast('This stream only has one audio track');
+        return;
+      }
+
+      var maxQ = detectMaxQuality();
+      candidates.sort(function(a, b) {
+        var qa = parseInt(String(a.quality || '').replace(/[^\d]/g, ''), 10) || 0;
+        var qb = parseInt(String(b.quality || '').replace(/[^\d]/g, ''), 10) || 0;
+        return qb - qa;
+      });
+      var chosen = null;
+      for (var k = 0; k < candidates.length; k++) {
+        var q = parseInt(String(candidates[k].quality || '').replace(/[^\d]/g, ''), 10) || 0;
+        if (q > 0 && q <= maxQ) { chosen = candidates[k]; break; }
+      }
+      if (!chosen) chosen = candidates[0];
+
+      selectedLang = code;
+      selectedQuality = chosen.quality;
+      savedTime = video.currentTime;
+      timeRestored = false;
+      buildSettings();
+      closeSettings();
+      playSource(chosen, false);
+      showToast('Audio → ' + (chosen.audioLabel || code));
+      return;
+    }
+
+    // Nothing matched
+    closeSettings();
+    showToast('Audio track not available');
   }
 
   function selectQuality(q) {
@@ -1106,7 +1171,6 @@
   });
 
   retryBtn.addEventListener('click', function() {
-    // Clear cache so retry always re-queries the API
     try { sessionStorage.removeItem(cacheKey()); } catch (e) {}
     hideError(); fetchStream();
   });
