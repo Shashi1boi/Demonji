@@ -11,7 +11,7 @@
     #shell { position:fixed; inset:0; background:#000; user-select:none; outline:none; }
     #shell.hide-ui { cursor:none; }
 
-    /* HTML5 Video (Mobile / PC) */
+    /* HTML5 Video Fallback (Mobile / PC / Tizen Fallback) */
     #video {
       position:absolute; inset:0;
       width:100%; height:100%;
@@ -27,7 +27,7 @@
     }
 
     /* Hide HTML5 video when AVPlay is active */
-    #shell.tizen #video { display:none; }
+    #shell.tizen-active #video { display:none; }
 
     .grad { position:absolute; left:0; right:0; pointer-events:none; z-index:5; transition:opacity .25s; }
     .grad.top    { top:0;    height:180px; background:linear-gradient(180deg, rgba(0,0,0,.85), transparent); }
@@ -466,13 +466,12 @@
       isTizen = true;
     }
   } catch (e) { isTizen = false; }
-  if (isTizen) shell.classList.add('tizen');
   console.log('[flexji] engine =', isTizen ? 'AVPlay' : 'HTML5/Hls.js');
 
   /* ═══════════ STATE ═══════════ */
   var hlsInstance    = null;
   var avObject       = null;
-  var activeEngine   = null;
+  var activeEngine   = null; // 'avplay' | 'html5'
   var currentData    = null;
   var currentSource  = null;
   var isPlaying      = false;
@@ -484,8 +483,8 @@
   var hideTimer      = null;
   var avProgressTimer= null;
   var avplayFailed   = false;
-  var tizenRetries   = 0;
-  var MAX_TIZEN_RETRIES = 3;
+  var avplayTimeout  = null;
+  var TIZEN_TIMEOUT_MS = 6000; // If AVPlay doesn't respond in 6s, force fallback
 
   /* ═══════════ FETCH STREAM ═══════════ */
   function fetchStream() {
@@ -591,10 +590,11 @@
   }
 
   /* ══════════════════════════════════════════════
-     TIZEN AVPLAY ENGINE (LOW-LEVEL DECODER FIX)
+     TIZEN AVPLAY ENGINE (WATCHDOG + FALLBACK FIX)
      ══════════════════════════════════════════════ */
 
   function destroyTizen() {
+    clearTimeout(avplayTimeout);
     stopAvProgress();
     if (avObject) {
       try { webapis.avplay.stop(); } catch (e) {}
@@ -603,6 +603,7 @@
       avObject = null;
     }
     activeEngine = null;
+    shell.classList.remove('tizen-active');
   }
 
   function playOnTizen(source, useRaw) {
@@ -617,7 +618,7 @@
     showLoading('Buffering video…');
     buffering.classList.remove('show');
 
-    // 1) Create the AVPlay object and insert it
+    // 1) Create the AVPlay object
     var obj = document.createElement('object');
     obj.setAttribute('type', 'application/avplayer');
     obj.id = 'av-player';
@@ -630,37 +631,43 @@
     obj.style.left = '0';
     
     shell.insertBefore(obj, shell.firstChild);
-    void obj.offsetWidth; // Force layout
+    void obj.offsetWidth;
 
     var openUrl = playUrl;
     if (/\.m3u8(\?|$)/i.test(playUrl) && playUrl.indexOf('|') === -1) {
       openUrl = playUrl + '|COMPONENT=HLS';
     }
 
+    // 2) WATCHDOG: If AVPlay doesn't respond within TIZEN_TIMEOUT_MS, force HTML5 fallback
+    clearTimeout(avplayTimeout);
+    avplayTimeout = setTimeout(function() {
+      console.warn('AVPlay Watchdog: Timeout reached. Forcing HTML5 fallback.');
+      destroyTizen();
+      avplayFailed = true; // Prevent retrying AVPlay for this source
+      playOnHtml5(source, useRaw);
+    }, TIZEN_TIMEOUT_MS);
+
     try {
-      // 2) State: NONE -> IDLE
+      // 3) State: NONE -> IDLE
       webapis.avplay.open(openUrl);
       
-      // 3) State: IDLE - CRITICAL FIX: Set Display Method and Rect before prepareAsync
+      // 4) State: IDLE
       try {
-        // Use FULL_SCREEN mode to avoid aspect-ratio calculation issues
         webapis.avplay.setDisplayMethod('PLAYER_DISPLAY_MODE_FULL_SCREEN');
-        
         var w = window.innerWidth || 1920;
         var h = window.innerHeight || 1080;
         webapis.avplay.setDisplayRect(0, 0, w, h);
-
-        // CRITICAL FIX: Force the decoder to start at the lowest bitrate
-        // This prevents the hardware decoder from crashing on the initial segment
+        
+        // Force lowest bitrate to avoid decoder crash on initial fragment
         webapis.avplay.setStreamingProperty(
           'ADAPTIVE_INFO', 
           'BITRATES=2000~100000|STARTBITRATE=LOWEST'
         );
       } catch (e) {
-        console.warn('Display/Streaming settings failed:', e);
+        console.warn('AVPlay settings failed:', e);
       }
 
-      // 4) Set Listener
+      // 5) Set Listener
       webapis.avplay.setListener({
         oncurrentplaytime: function (timeMs) {
           if (!durationMs) {
@@ -680,6 +687,7 @@
         onerror: function (err) {
           console.error('AVPlay error:', err);
           buffering.classList.remove('show');
+          clearTimeout(avplayTimeout); // Cancel watchdog
           
           if (!useRaw && rawUrl && rawUrl !== playUrl) {
             playOnTizen(source, true);
@@ -693,37 +701,30 @@
         }
       });
 
-      // 5) State: IDLE -> READY
+      // 6) State: IDLE -> READY
       webapis.avplay.prepareAsync(function () {
+        // CANCEL WATCHDOG: AVPlay has successfully prepared
+        clearTimeout(avplayTimeout);
+        
         try { durationMs = webapis.avplay.getDuration() || 0; } catch (e) {}
         
-        // 6) State: READY -> PLAYING
+        // 7) State: READY -> PLAYING
         try { webapis.avplay.play(); } catch (e) {}
 
         activeEngine = 'avplay';
+        shell.classList.add('tizen-active'); // Hide HTML5 video
         isPlaying = true;
         isSwitching = false;
         updatePlayPauseIcon();
         hideLoading();
         startAvProgress();
         scheduleHide();
-        tizenRetries = 0; // Reset retries on success
         
       }, function (err) {
+        // CANCEL WATCHDOG: AVPlay failed, but we got a response
+        clearTimeout(avplayTimeout);
         console.error('AVPlay prepare failed:', err);
         
-        // RETRY MECHANISM: Try to reload the stream up to MAX_TIZEN_RETRIES times
-        if (tizenRetries < MAX_TIZEN_RETRIES) {
-          tizenRetries++;
-          console.log('Retrying Tizen playback (' + tizenRetries + '/' + MAX_TIZEN_RETRIES + ')...');
-          destroyTizen();
-          setTimeout(function() {
-            playOnTizen(source, useRaw);
-          }, 1000); // Wait 1 second before retrying
-          return;
-        }
-        
-        // If retries exhausted, try raw URL or fall back to HTML5
         if (!useRaw && rawUrl && rawUrl !== playUrl) {
           playOnTizen(source, true);
         } else if (!avplayFailed) {
@@ -736,6 +737,7 @@
       });
       
     } catch (e) {
+      clearTimeout(avplayTimeout);
       console.error('AVPlay exception:', e);
       destroyTizen();
       avplayFailed = true;
@@ -781,7 +783,7 @@
   }
 
   /* ══════════════════════════════════════════════
-     HTML5 + HLS.JS ENGINE (Mobile / PC)
+     HTML5 + HLS.JS ENGINE (Mobile / PC / Tizen Fallback)
      ══════════════════════════════════════════════ */
 
   function destroyHtml5() {
@@ -795,6 +797,7 @@
       video.load();
     } catch (e) {}
     activeEngine = null;
+    shell.classList.remove('tizen-active');
   }
 
   function playOnHtml5(source, useRaw) {
@@ -1354,7 +1357,6 @@
   retryBtn.addEventListener('click', function () {
     hideError();
     avplayFailed = false;
-    tizenRetries = 0;
     fetchStream();
   });
 
