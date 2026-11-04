@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ClearKey DASH Player with Quality Selector</title>
+    <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.6.18/dist/shaka-player.compiled.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background-color: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            overflow: hidden;
+        }
+        .video-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        video {
+            width: 100%;
+            height: 100%;
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            background-color: #000;
+        }
+        /* Quality Selector Styling */
+        .quality-wrapper {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.7);
+            border-radius: 8px;
+            padding: 5px;
+            backdrop-filter: blur(4px);
+        }
+        #quality-select {
+            background: transparent;
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 14px;
+            cursor: pointer;
+            outline: none;
+            appearance: none; /* Remove default arrow */
+            -webkit-appearance: none;
+            min-width: 120px;
+        }
+        #quality-select option {
+            background: #222;
+            color: #fff;
+        }
+        /* Larger touch targets for TV/Mobile */
+        @media (max-width: 768px) {
+            .quality-wrapper { top: 10px; right: 10px; }
+            #quality-select { padding: 10px; font-size: 16px; min-width: 140px; }
+        }
+        #error-message {
+            color: #ff4444;
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            padding: 10px;
+            border-radius: 5px;
+            display: none;
+            font-size: 14px;
+            z-index: 10;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="video-container">
+        <video id="video" controls autoplay playsinline></video>
+        <div class="quality-wrapper">
+            <select id="quality-select" aria-label="Video Quality">
+                <option value="auto">Auto</option>
+            </select>
+        </div>
+    </div>
+    <div id="error-message"></div>
+
+    <script>
+        const manifestUri = 'https://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/clients/dash/enc/ppmrp8tlzz/out/v1/cf829370483b4212ac7d5e3009c514b1/cenc.mpd';
+        const clearKeyId   = '952fb91696308da86bee7cd24edf0b58';
+        const clearKeyValue = 'bf359214ab3ac848738bdf014ace21b3';
+
+        let player = null;
+        let video = null;
+        let qualitySelect = null;
+
+        async function initPlayer() {
+            if (!shaka.Player.isBrowserSupported()) {
+                showError('This browser does not support Shaka Player.');
+                return;
+            }
+
+            video = document.getElementById('video');
+            qualitySelect = document.getElementById('quality-select');
+            player = new shaka.Player(video);
+
+            // ClearKey Configuration
+            player.configure({
+                drm: {
+                    clearKeys: { [clearKeyId]: clearKeyValue }
+                }
+            });
+
+            player.addEventListener('error', (event) => {
+                const error = event.detail;
+                console.error('Shaka Error:', error);
+                showError(`Playback Error: ${error.code} - ${error.message}`);
+            });
+
+            // Populate quality menu once tracks are available
+            player.addEventListener('trackschanged', updateQualityMenu);
+
+            try {
+                await player.load(manifestUri);
+                video.play().catch(e => console.warn('Autoplay blocked:', e));
+            } catch (error) {
+                console.error('Load Error:', error);
+                showError(`Failed to load manifest: ${error.message}`);
+            }
+        }
+
+        // ---------------------------------------------------------------
+        // QUALITY SELECTOR LOGIC
+        // ---------------------------------------------------------------
+        function updateQualityMenu() {
+            if (!player) return;
+            const tracks = player.getVariantTracks();
+            if (!tracks || tracks.length === 0) return;
+
+            // Preserve current selection
+            const currentValue = qualitySelect.value;
+
+            // Reset list to only "Auto"
+            qualitySelect.innerHTML = '<option value="auto">Auto</option>';
+
+            // Filter duplicates by height (keep the highest bandwidth per resolution)
+            const uniqueHeights = new Map();
+            tracks.forEach(track => {
+                if (!track.height) return;
+                if (!uniqueHeights.has(track.height) || track.bandwidth > uniqueHeights.get(track.height).bandwidth) {
+                    uniqueHeights.set(track.height, track);
+                }
+            });
+
+            // Sort by height descending (highest quality first)
+            const sortedTracks = Array.from(uniqueHeights.values()).sort((a, b) => b.height - a.height);
+
+            sortedTracks.forEach(track => {
+                const option = document.createElement('option');
+                option.value = track.height;
+                option.textContent = `${track.height}p`;
+                qualitySelect.appendChild(option);
+            });
+
+            // Restore selection if it still exists
+            if (currentValue !== 'auto' && uniqueHeights.has(parseInt(currentValue))) {
+                qualitySelect.value = currentValue;
+            } else {
+                qualitySelect.value = 'auto';
+            }
+        }
+
+        // Handle user selection
+        document.getElementById('quality-select').addEventListener('change', (e) => {
+            const selectedValue = e.target.value;
+
+            if (!player) return;
+
+            if (selectedValue === 'auto') {
+                // Re-enable ABR (adaptive streaming)
+                player.configure({ abr: { enabled: true } });
+                return;
+            }
+
+            // Manual selection: find the track with matching height
+            const tracks = player.getVariantTracks();
+            const selectedHeight = parseInt(selectedValue);
+            const chosenTrack = tracks.find(t => t.height === selectedHeight);
+
+            if (chosenTrack) {
+                // Disable ABR so it stays on the chosen track
+                player.configure({ abr: { enabled: false } });
+                // The second parameter `true` clears the buffer for an immediate switch
+                player.selectVariantTrack(chosenTrack, true);
+            }
+        });
+
+        function showError(msg) {
+            const el = document.getElementById('error-message');
+            el.textContent = msg;
+            el.style.display = 'block';
+        }
+
+        document.addEventListener('DOMContentLoaded', initPlayer);
+    </script>
+</body>
+</html>
