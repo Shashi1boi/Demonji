@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<title>Stremio Addon Web Player</title>
+<title>Stremio → Shaka Player</title>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@4.6.18/dist/controls.css">
 <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.6.18/dist/shaka-player.ui.min.js"></script>
@@ -23,14 +23,28 @@
     display:flex; align-items:center; gap:10px;
     padding:10px 14px;
     background:#121a24; border-bottom:1px solid #1f2a36;
-    flex-shrink:0;
+    flex-shrink:0; flex-wrap:wrap;
   }
-  #topbar h1 { font-size:16px; font-weight:bold; color:#4fc3f7; flex:1; }
+  #topbar h1 { font-size:16px; font-weight:bold; color:#4fc3f7; flex-shrink:0; }
+  #searchWrap { flex:1; display:flex; gap:8px; min-width:200px; }
+  #searchInput {
+    flex:1; padding:9px 14px; border-radius:7px;
+    background:#0a121a; border:1px solid #2a3a4a;
+    color:#fff; font-family:inherit; font-size:13px; outline:none;
+  }
+  #searchInput:focus { border-color:#4fc3f7; }
+  #searchBtn {
+    padding:9px 16px; border-radius:7px;
+    background:#1e5a78; border:1px solid #4fc3f7;
+    color:#fff; font-weight:bold; font-family:inherit;
+    font-size:13px; cursor:pointer; white-space:nowrap;
+  }
+  #searchBtn:hover { background:#256a8f; }
   .tb-btn {
     background:#1a2530; border:1px solid #2a3a4a; color:#ddd;
     border-radius:7px; padding:8px 14px; font-family:inherit;
     font-size:13px; font-weight:bold; cursor:pointer;
-    min-height:38px;
+    min-height:38px; flex-shrink:0;
   }
   .tb-btn:hover { background:#22303f; border-color:#4fc3f7; }
   .tb-btn:focus-visible { outline:2px solid #4fc3f7; outline-offset:2px; }
@@ -38,9 +52,9 @@
   /* ── Main area ── */
   #main { display:flex; flex:1; min-height:0; }
 
-  /* Sidebar (catalogs & items) */
+  /* Sidebar */
   #sidebar {
-    width:360px; flex-shrink:0;
+    width:380px; flex-shrink:0;
     background:#0e1620; border-right:1px solid #1f2a36;
     display:flex; flex-direction:column;
     overflow-y:auto;
@@ -51,7 +65,15 @@
     background:#121a24; border-bottom:1px solid #1f2a36;
     position:sticky; top:0; z-index:2;
   }
-  .addon-card, .catalog-btn, .item-card, .stream-card {
+  .back-btn {
+    padding:10px 14px; background:#1a2530; border:none;
+    border-bottom:1px solid #1a2530; color:#4fc3f7;
+    font-weight:bold; font-size:13px; cursor:pointer;
+    text-align:left; font-family:inherit; width:100%;
+  }
+  .back-btn:hover { background:#22303f; }
+
+  .addon-card, .catalog-btn, .item-card, .stream-card, .episode-btn {
     display:flex; gap:10px; align-items:center;
     padding:10px 14px; border-bottom:1px solid #1a2530;
     cursor:pointer; text-align:left; width:100%;
@@ -60,9 +82,9 @@
     transition:background .12s;
   }
   .addon-card:hover, .catalog-btn:hover,
-  .item-card:hover, .stream-card:hover { background:#16202c; }
+  .item-card:hover, .stream-card:hover, .episode-btn:hover { background:#16202c; }
   .addon-card:focus-visible, .catalog-btn:focus-visible,
-  .item-card:focus-visible, .stream-card:focus-visible {
+  .item-card:focus-visible, .stream-card:focus-visible, .episode-btn:focus-visible {
     outline:2px solid #4fc3f7; outline-offset:-2px;
   }
   .addon-logo { width:36px; height:36px; border-radius:6px; object-fit:contain; background:#0a0a0a; flex-shrink:0; }
@@ -86,6 +108,9 @@
   .stream-addon { font-size:11px; color:#7cd0f5; font-weight:bold; }
   .stream-name { font-size:13px; font-weight:bold; color:#ddd; }
   .stream-desc { font-size:11px; color:#8a9aa5; }
+  .episode-btn { flex-direction:column; align-items:flex-start; gap:2px; }
+  .episode-title { font-size:13px; font-weight:bold; color:#ddd; }
+  .episode-meta { font-size:11px; color:#7a8a95; }
   .empty-msg { padding:24px 14px; color:#6a7a85; font-size:13px; text-align:center; }
 
   /* ── Player area ── */
@@ -93,13 +118,13 @@
     flex:1; display:flex; flex-direction:column;
     background:#000; min-width:0; position:relative;
   }
-  #player-container { flex:1; position:relative; background:#000; }
+  #player-container { flex:1; position:relative; background:#000; min-height:200px; }
   #video {
     width:100%; height:100%; background:#000;
     object-fit:contain; display:block; outline:none;
   }
 
-  /* Reconnect pill (non-interactive) */
+  /* Reconnect pill */
   #reconnectBanner {
     position:absolute; top:12px; left:50%; transform:translateX(-50%);
     z-index:50;
@@ -157,8 +182,7 @@
   .input-row input {
     flex:1; padding:11px 14px; border-radius:7px;
     background:#0a121a; border:1px solid #2a3a4a;
-    color:#fff; font-family:inherit; font-size:14px;
-    outline:none;
+    color:#fff; font-family:inherit; font-size:14px; outline:none;
   }
   .input-row input:focus { border-color:#4fc3f7; }
   .input-row button {
@@ -168,7 +192,6 @@
     font-size:14px; cursor:pointer; white-space:nowrap;
   }
   .input-row button:hover { background:#256a8f; }
-
   .err-text { color:#ef5350; font-size:12px; margin-top:6px; }
 
   /* Larger Shaka controls on TVs */
@@ -198,20 +221,21 @@
 <div id="app">
   <!-- ═══ TOP BAR ═══ -->
   <div id="topbar">
-    <h1>🎬 Stremio → Shaka Player</h1>
+    <h1>🎬 Stremio Player</h1>
+    <div id="searchWrap">
+      <input id="searchInput" type="search" placeholder="Search movies, series, anime…" autocomplete="off" spellcheck="false">
+      <button id="searchBtn">Search</button>
+    </div>
     <button class="tb-btn" id="addonMgrBtn">⚙ Addons</button>
     <button class="tb-btn" id="refreshBtn">⟳ Refresh</button>
   </div>
 
   <!-- ═══ MAIN ═══ -->
   <div id="main">
-    <!-- Sidebar: catalogs, items, streams -->
     <div id="sidebar">
       <div class="section-title" id="sideTitle">Catalogs</div>
       <div id="sideBody"></div>
     </div>
-
-    <!-- Player -->
     <div id="player-area">
       <div id="player-container">
         <video id="video" autoplay playsinline webkit-playsinline preload="auto"></video>
@@ -249,8 +273,8 @@
 // ─────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────
-var LS_ADDONS = 'stremio_web_addons_v1';
-var LS_LAST_ADDON = 'stremio_web_last_addon_v1';
+var LS_ADDONS = 'stremio_web_addons_v2';
+var CINEMETA_URL = 'https://v3-cinemeta.strem.io/manifest.json';
 
 var reconnectCfg = {
   BASE_BACKOFF_MS: 1000,
@@ -264,8 +288,10 @@ var reconnectCfg = {
 // STATE
 // ─────────────────────────────────────────────
 var addons = [];          // { url, manifest, baseUrl }
-var currentCatalog = null; // { addon, catalog }
-var currentItem = null;    // { addon, item }
+var currentView = 'catalogs'; // 'catalogs' | 'items' | 'episodes' | 'streams'
+var currentCatalog = null;
+var currentItem = null;   // { addon, item }
+var currentSeriesMeta = null;
 var player = null;
 var ui = null;
 
@@ -279,7 +305,6 @@ var stallInterval = null;
 var currentStreamUrl = null;
 var currentDrm = null;
 
-// DOM shortcuts
 var $ = function(id){ return document.getElementById(id); };
 var video = $('video');
 var playerContainer = $('player-container');
@@ -287,6 +312,7 @@ var reconnectBanner = $('reconnectBanner');
 var rbText = $('rbText');
 var sideTitle = $('sideTitle');
 var sideBody = $('sideBody');
+var searchInput = $('searchInput');
 
 // ─────────────────────────────────────────────
 // TIZEN DETECTION
@@ -327,7 +353,6 @@ function addAddonFromUrl(url){
   if (!url) return Promise.reject(new Error('URL is empty'));
   if (!/^https?:\/\//i.test(url)) return Promise.reject(new Error('URL must start with http:// or https://'));
 
-  // Deduplicate
   for (var i = 0; i < addons.length; i++){
     if (addons[i].url === url) return Promise.resolve(addons[i]);
   }
@@ -336,7 +361,7 @@ function addAddonFromUrl(url){
     if (!manifest || !manifest.id || !manifest.name){
       throw new Error('Invalid manifest: missing id or name');
     }
-    var baseUrl = url.substring(0, url.lastIndexOf('/')); // strip /manifest.json
+    var baseUrl = url.substring(0, url.lastIndexOf('/'));
     var addon = { url: url, manifest: manifest, baseUrl: baseUrl };
     addons.push(addon);
     saveAddons();
@@ -347,6 +372,17 @@ function addAddonFromUrl(url){
 function removeAddon(url){
   addons = addons.filter(function(a){ return a.url !== url; });
   saveAddons();
+}
+
+function ensureCinemeta(){
+  // Add Cinemeta if not already present
+  for (var i = 0; i < addons.length; i++){
+    if (addons[i].url === CINEMETA_URL) return Promise.resolve(addons[i]);
+  }
+  return addAddonFromUrl(CINEMETA_URL).catch(function(err){
+    console.warn('Cinemeta auto-add failed:', err);
+    return null;
+  });
 }
 
 // ─────────────────────────────────────────────
@@ -434,10 +470,18 @@ function esc(s){
   });
 }
 
+function goBack(){
+  if (currentView === 'streams') { showEpisodesOrItems(); return; }
+  if (currentView === 'episodes') { showItemsFromCatalog(); return; }
+  if (currentView === 'items') { renderCatalogs(); return; }
+}
+
 function renderCatalogs(){
-  sideTitle.textContent = 'Catalogs';
+  currentView = 'catalogs';
   currentCatalog = null;
   currentItem = null;
+  currentSeriesMeta = null;
+  sideTitle.textContent = 'Catalogs';
 
   if (!addons.length){
     sideBody.innerHTML = '<div class="empty-msg">Add an addon first.<br><br>Click <b>⚙ Addons</b> above.</div>';
@@ -450,8 +494,11 @@ function renderCatalogs(){
     var cats = (a.manifest.catalogs || []);
     for (var c = 0; c < cats.length; c++){
       var cat = cats[c];
+      var displayName = cat.name || cat.id;
+      // For Cinemeta year catalogs, append "by Year"
+      if (cat.id === 'year') displayName += ' (by Year)';
       html += '<button class="catalog-btn" data-addon="' + i + '" data-catidx="' + c + '" type="button">';
-      html += '<span class="cat-name">' + esc(cat.name || cat.id) + '</span>';
+      html += '<span class="cat-name">' + esc(displayName) + '</span>';
       html += '<span class="cat-type">' + esc(cat.type) + '</span>';
       html += '</button>';
     }
@@ -464,19 +511,63 @@ function renderCatalogs(){
     btns[b].addEventListener('click', function(){
       var addonIdx = parseInt(this.getAttribute('data-addon'), 10);
       var catIdx = parseInt(this.getAttribute('data-catidx'), 10);
-      loadCatalog(addons[addonIdx], addons[addonIdx].manifest.catalogs[catIdx]);
+      var addon = addons[addonIdx];
+      var cat = addon.manifest.catalogs[catIdx];
+      selectCatalog(addon, cat);
     });
   }
 }
 
-function loadCatalog(addon, catalog){
+function selectCatalog(addon, catalog){
   currentCatalog = { addon: addon, catalog: catalog };
+  currentView = 'items';
   sideTitle.textContent = catalog.name || catalog.id;
+
+  // Check for required extras (like "year" catalog needs genre=year)
+  var extraRequired = catalog.extraRequired || [];
+  var extraSupported = catalog.extraSupported || [];
+
+  if (extraRequired.indexOf('genre') !== -1 && catalog.genres && catalog.genres.length){
+    // Show genre picker (for year catalogs, genres are years)
+    renderGenrePicker(addon, catalog);
+    return;
+  }
+
+  loadCatalog(addon, catalog, {});
+}
+
+function renderGenrePicker(addon, catalog){
+  var genres = catalog.genres || [];
+  var html = '';
+  // Sort descending for years
+  var sorted = genres.slice().sort().reverse();
+  for (var i = 0; i < sorted.length; i++){
+    var g = sorted[i];
+    html += '<button class="catalog-btn" data-genre="' + esc(g) + '" type="button">';
+    html += '<span class="cat-name">' + esc(g) + '</span>';
+    html += '</button>';
+  }
+  sideBody.innerHTML = html;
+
+  var btns = sideBody.querySelectorAll('.catalog-btn');
+  for (var b = 0; b < btns.length; b++){
+    btns[b].addEventListener('click', function(){
+      var genre = this.getAttribute('data-genre');
+      currentView = 'items';
+      sideTitle.textContent = (catalog.name || catalog.id) + ' · ' + genre;
+      loadCatalog(addon, catalog, { genre: genre });
+    });
+  }
+}
+
+function loadCatalog(addon, catalog, extra){
   sideBody.innerHTML = '<div class="empty-msg">Loading catalog…</div>';
 
   var url = addon.baseUrl + '/catalog/' + encodeURIComponent(catalog.type) + '/' + encodeURIComponent(catalog.id) + '.json';
+  if (extra && extra.genre){
+    url = url.replace('.json', '/' + encodeURIComponent(extra.genre) + '.json');
+  }
 
-  // If catalog has required extras, we might need a search param, but we just try without first.
   fetchJSON(url).then(function(data){
     var metas = (data && data.metas) || [];
     renderCatalogItems(metas, addon, catalog);
@@ -490,7 +581,7 @@ function renderCatalogItems(metas, addon, catalog){
     sideBody.innerHTML = '<div class="empty-msg">This catalog returned no items.</div>';
     return;
   }
-  var html = '';
+  var html = '<button class="back-btn" type="button" id="backToCats">← Back to Catalogs</button>';
   for (var i = 0; i < metas.length; i++){
     var m = metas[i];
     if (!m || !m.id) continue;
@@ -505,25 +596,108 @@ function renderCatalogItems(metas, addon, catalog){
   }
   sideBody.innerHTML = html;
 
+  $('backToCats').addEventListener('click', renderCatalogs);
+
   var cards = sideBody.querySelectorAll('.item-card');
   for (var k = 0; k < cards.length; k++){
     cards[k].addEventListener('click', function(){
       var id = this.getAttribute('data-id');
       var type = this.getAttribute('data-type');
-      loadStreams(id, type);
+      handleItemClick(id, type);
     });
   }
 }
 
 // ─────────────────────────────────────────────
-// STREAM FETCHING
+// ITEM CLICK → SERIES EPISODES OR STREAMS
 // ─────────────────────────────────────────────
-function loadStreams(itemId, itemType){
+function handleItemClick(itemId, itemType){
   currentItem = { id: itemId, type: itemType };
+
+  if (itemType === 'series'){
+    // Fetch meta from Cinemeta to get episodes
+    var cinemeta = null;
+    for (var i = 0; i < addons.length; i++){
+      if (addons[i].manifest.id === 'com.linvo.cinemeta') { cinemeta = addons[i]; break; }
+    }
+    if (cinemeta){
+      sideTitle.textContent = 'Episodes';
+      sideBody.innerHTML = '<div class="empty-msg">Fetching episodes…</div>';
+      var metaUrl = cinemeta.baseUrl + '/meta/' + encodeURIComponent(itemType) + '/' + encodeURIComponent(itemId) + '.json';
+      fetchJSON(metaUrl).then(function(data){
+        if (data && data.meta && data.meta.videos && data.meta.videos.length){
+          currentSeriesMeta = data.meta;
+          renderEpisodes(data.meta.videos, itemId);
+        } else {
+          // No episodes — try streams directly
+          showStreamsForItem(itemId, itemType);
+        }
+      }).catch(function(){
+        showStreamsForItem(itemId, itemType);
+      });
+    } else {
+      showStreamsForItem(itemId, itemType);
+    }
+  } else {
+    showStreamsForItem(itemId, itemType);
+  }
+}
+
+function renderEpisodes(videos, seriesId){
+  currentView = 'episodes';
+  var html = '<button class="back-btn" type="button" id="backToItems">← Back</button>';
+  // Group by season
+  var seasons = {};
+  for (var i = 0; i < videos.length; i++){
+    var v = videos[i];
+    var s = v.season || 0;
+    if (!seasons[s]) seasons[s] = [];
+    seasons[s].push(v);
+  }
+  var seasonKeys = Object.keys(seasons).sort(function(a,b){ return a - b; });
+  for (var sk = 0; sk < seasonKeys.length; sk++){
+    var seasonNum = seasonKeys[sk];
+    if (seasonNum == 0) continue; // skip specials if desired
+    html += '<div class="section-title">Season ' + seasonNum + '</div>';
+    var eps = seasons[seasonNum];
+    for (var e = 0; e < eps.length; e++){
+      var ep = eps[e];
+      var epId = ep.id; // usually "tt1234567:1:1"
+      var epTitle = ep.name || ('Episode ' + ep.episode);
+      var epMeta = 'S' + ep.season + ' E' + ep.episode;
+      if (ep.released) epMeta += ' · ' + new Date(ep.released).getFullYear();
+      html += '<button class="episode-btn" data-epid="' + esc(epId) + '" data-eptitle="' + esc(epTitle) + '" type="button">';
+      html += '<div class="episode-title">' + esc(epTitle) + '</div>';
+      html += '<div class="episode-meta">' + esc(epMeta) + '</div>';
+      html += '</button>';
+    }
+  }
+  sideBody.innerHTML = html;
+
+  $('backToItems').addEventListener('click', function(){
+    // Reload the catalog items
+    if (currentCatalog){
+      loadCatalog(currentCatalog.addon, currentCatalog.catalog, {});
+    } else {
+      renderCatalogs();
+    }
+  });
+
+  var epBtns = sideBody.querySelectorAll('.episode-btn');
+  for (var b = 0; b < epBtns.length; b++){
+    epBtns[b].addEventListener('click', function(){
+      var epid = this.getAttribute('data-epid');
+      var eptitle = this.getAttribute('data-eptitle');
+      showStreamsForItem(epid, 'series');
+    });
+  }
+}
+
+function showStreamsForItem(itemId, itemType){
+  currentView = 'streams';
   sideTitle.textContent = 'Streams';
   sideBody.innerHTML = '<div class="empty-msg">Fetching streams from all addons…</div>';
 
-  // Find all addons that support stream for this type and id prefix
   var streamAddons = [];
   for (var i = 0; i < addons.length; i++){
     var a = addons[i];
@@ -589,10 +763,13 @@ function loadStreams(itemId, itemType){
 
 function renderStreams(list){
   if (!list.length){
-    sideBody.innerHTML = '<div class="empty-msg">No streams returned by any addon.</div>';
+    sideBody.innerHTML = '<button class="back-btn" type="button" id="backFromStreams">← Back</button>' +
+      '<div class="empty-msg">No streams returned by any addon.</div>';
+    var bb = $('backFromStreams');
+    if (bb) bb.addEventListener('click', function(){ showEpisodesOrItems(); });
     return;
   }
-  var html = '';
+  var html = '<button class="back-btn" type="button" id="backFromStreams">← Back</button>';
   for (var i = 0; i < list.length; i++){
     var entry = list[i];
     var s = entry.stream;
@@ -605,7 +782,8 @@ function renderStreams(list){
   }
   sideBody.innerHTML = html;
 
-  // Store the list on the DOM for click handlers
+  $('backFromStreams').addEventListener('click', function(){ showEpisodesOrItems(); });
+
   var cards = sideBody.querySelectorAll('.stream-card');
   for (var k = 0; k < cards.length; k++){
     (function(idx){
@@ -616,21 +794,84 @@ function renderStreams(list){
   }
 }
 
+function showEpisodesOrItems(){
+  if (currentSeriesMeta){
+    renderEpisodes(currentSeriesMeta.videos, currentItem.id);
+  } else if (currentCatalog){
+    loadCatalog(currentCatalog.addon, currentCatalog.catalog, {});
+  } else {
+    renderCatalogs();
+  }
+}
+
+// ─────────────────────────────────────────────
+// SEARCH
+// ─────────────────────────────────────────────
+$('searchBtn').addEventListener('click', doSearch);
+searchInput.addEventListener('keydown', function(e){
+  if (e.key === 'Enter') doSearch();
+});
+
+function doSearch(){
+  var q = searchInput.value.trim();
+  if (!q) return;
+
+  // Find Cinemeta (or any addon with search extra)
+  var searchAddons = [];
+  for (var i = 0; i < addons.length; i++){
+    var a = addons[i];
+    var cats = a.manifest.catalogs || [];
+    for (var c = 0; c < cats.length; c++){
+      var cat = cats[c];
+      var extras = cat.extraSupported || [];
+      if (extras.indexOf('search') !== -1){
+        searchAddons.push({ addon: a, catalog: cat });
+      }
+    }
+  }
+
+  if (!searchAddons.length){
+    alert('No addons support search.');
+    return;
+  }
+
+  currentView = 'items';
+  sideTitle.textContent = 'Search: ' + q;
+  sideBody.innerHTML = '<div class="empty-msg">Searching…</div>';
+
+  var promises = searchAddons.map(function(sa){
+    var url = sa.addon.baseUrl + '/catalog/' + encodeURIComponent(sa.catalog.type) + '/' + encodeURIComponent(sa.catalog.id) + '/search=' + encodeURIComponent(q) + '.json';
+    return fetchJSON(url).then(function(data){
+      return { metas: (data && data.metas) || [] };
+    }).catch(function(){
+      return { metas: [] };
+    });
+  });
+
+  Promise.all(promises).then(function(results){
+    var allMetas = [];
+    for (var i = 0; i < results.length; i++){
+      for (var j = 0; j < results[i].metas.length; j++){
+        allMetas.push(results[i].metas[j]);
+      }
+    }
+    if (!allMetas.length){
+      sideBody.innerHTML = '<div class="empty-msg">No results found for "' + esc(q) + '".</div>';
+      return;
+    }
+    renderCatalogItems(allMetas, null, { type: 'movie' });
+  });
+}
+
 // ─────────────────────────────────────────────
 // STREAM PARSING (URL + ClearKey)
 // ─────────────────────────────────────────────
 function parseStreamUrl(rawUrl){
-  // Stremio streams can be:
-  // - a plain URL
-  // - a URL with |drmScheme=clearkey&drmLicense=KID:KEY appended
-  // - an infoHash (torrent) — not supported in browser without WebTorrent
   if (!rawUrl) return null;
 
   var url = rawUrl;
   var drm = null;
 
-  // Split off query params that belong to the stream wrapper, not the media URL
-  // The | separator is Stremio convention
   var pipeIdx = url.indexOf('|');
   if (pipeIdx !== -1){
     var suffix = url.substring(pipeIdx + 1);
@@ -639,7 +880,6 @@ function parseStreamUrl(rawUrl){
     for (var i = 0; i < params.length; i++){
       var kv = params[i].split('=');
       if (kv[0] === 'drmScheme' && kv[1] === 'clearkey'){
-        // Look for drmLicense
         for (var j = 0; j < params.length; j++){
           var kv2 = params[j].split('=');
           if (kv2[0] === 'drmLicense' && kv2[1]){
@@ -653,7 +893,6 @@ function parseStreamUrl(rawUrl){
     }
   }
 
-  // Also check for the same params in the query string (some addons use ? instead of |)
   if (!drm && url.indexOf('drmScheme=clearkey') !== -1){
     var m = url.match(/[?&]drmLicense=([^&]+)/);
     if (m){
@@ -669,10 +908,9 @@ function parseStreamUrl(rawUrl){
 // PLAYBACK
 // ─────────────────────────────────────────────
 function playStream(stream){
-  // Prefer direct URL; some addons give infoHash only
   var rawUrl = stream.url || stream.externalUrl || '';
   if (!rawUrl && stream.infoHash){
-    alert('This stream is a torrent (infoHash). Browser playback of torrents requires WebTorrent, which is not included here.');
+    alert('This stream is a torrent (infoHash). Browser playback requires WebTorrent, which is not included.');
     return;
   }
   if (!rawUrl){
@@ -695,7 +933,6 @@ function playStream(stream){
 
   resetReconnectState();
 
-  // Configure DRM if needed
   var drmCfg = {};
   if (currentDrm){
     drmCfg = { clearKeys: {} };
@@ -755,11 +992,23 @@ function initPlayer(){
     addSeekBar: true,
     addBigPlayButton: true,
     controlPanelElements: [
-      'play_pause', 'time_and_duration', 'spacer',
-      'mute', 'volume', 'quality', 'fullscreen'
+      'play_pause',
+      'time_and_duration',
+      'spacer',
+      'mute',
+      'volume',
+      'rewind',
+      'fast_forward',
+      'quality',
+      'fullscreen',
+      'overflow_menu'
     ],
     overflowMenuButtons: [
-      'captions', 'language', 'playback_rate', 'loop', 'statistics'
+      'captions',
+      'language',
+      'playback_rate',
+      'loop',
+      'statistics'
     ],
     seekBarColors: {
       base: 'rgba(255,255,255,0.30)',
@@ -770,8 +1019,8 @@ function initPlayer(){
 
   // Dynamic headers for streams that need Referer / UA
   player.getNetworkingEngine().registerRequestFilter(function(type, request){
-    // If a stream needs specific headers, you can add logic here.
-    // For Stremio streams, many direct URLs work without them.
+    // Stremio streams usually work without custom headers,
+    // but you can add per-addon header logic here if needed.
   });
 
   player.addEventListener('error', function(event){
@@ -780,7 +1029,6 @@ function initPlayer(){
     var msg = err.message || '';
     console.error('[Shaka] Error ' + code + ': ' + msg);
 
-    // Fatal: DRM (6xxx) or codec (4015)
     if ((code >= 6000 && code < 7000) || code === 4015){
       hideReconnect();
       return;
@@ -790,7 +1038,7 @@ function initPlayer(){
 }
 
 // ─────────────────────────────────────────────
-// RECONNECT ENGINE (same as before)
+// RECONNECT ENGINE
 // ─────────────────────────────────────────────
 function showReconnect(attempt, delayMs){
   var seconds = Math.round(delayMs / 1000);
@@ -891,7 +1139,6 @@ function startStallDetector(){
   }, 1000);
 }
 
-// Video event hooks
 video.addEventListener('waiting', function(){
   clearTimeout(waitingTimer);
   waitingTimer = setTimeout(function(){
@@ -910,7 +1157,6 @@ video.addEventListener('error', function(){
   scheduleReconnect('media-error');
 });
 
-// Network online recovery
 window.addEventListener('online', function(){
   if (reconnect.inProgress && reconnect.timer){
     clearTimeout(reconnect.timer);
@@ -943,9 +1189,8 @@ document.addEventListener('keydown', function(e){
     else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
     return;
   }
-  // Do not exit the page — go back to catalogs
   e.preventDefault();
-  renderCatalogs();
+  goBack();
 });
 
 // ─────────────────────────────────────────────
@@ -959,7 +1204,6 @@ $('refreshBtn').addEventListener('click', function(){
 // BOOT
 // ─────────────────────────────────────────────
 function boot(){
-  // Restore addons
   var stored = loadStoredAddons();
   if (stored.length){
     addons = stored.map(function(s){
@@ -968,16 +1212,15 @@ function boot(){
     });
   }
 
-  // Init player
   initPlayer();
 
-  // Render catalogs (or empty state)
-  renderCatalogs();
-
-  // Auto-open addon manager if no addons
-  if (!addons.length){
-    setTimeout(openAddonModal, 400);
-  }
+  // Always ensure Cinemeta is present
+  ensureCinemeta().then(function(){
+    renderCatalogs();
+    if (!addons.length){
+      setTimeout(openAddonModal, 400);
+    }
+  });
 }
 
 if (document.readyState === 'complete' || document.readyState === 'interactive'){
