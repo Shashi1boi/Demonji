@@ -4,56 +4,150 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="referrer" content="no-referrer">
-<title>ClearKey DASH Player</title>
+<title>IND vs NZ | 1st ODI</title>
 
-<!-- Shaka Player + UI (self-contained UI build) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@4.6.18/dist/controls.css">
 <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.6.18/dist/shaka-player.ui.min.js"></script>
 
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html, body {
-    background: #000; width: 100%; height: 100%; overflow: hidden;
-    font-family: -apple-system, Arial, Helvetica, sans-serif;
-    color: #fff;
-    -webkit-user-select: none; user-select: none;
+    background:#000; width:100%; height:100%; overflow:hidden;
+    font-family:-apple-system, Arial, Helvetica, sans-serif;
+    color:#fff; -webkit-user-select:none; user-select:none;
   }
 
-  #player-container {
-    position: fixed;
-    inset: 0;
-    background: #000;
-  }
-
+  #player-container { position:fixed; inset:0; background:#000; }
   #video {
-    width: 100%; height: 100%;
-    background: #000;
-    object-fit: contain;
-    display: block;
-    outline: none;
+    width:100%; height:100%;
+    background:#000; object-fit:contain;
+    display:block; outline:none;
   }
 
-  /* ── Reconnect status pill — NOT a button, purely informational ── */
+  /* ── SOURCE SELECTOR (top-right, does not overlap Shaka controls) ── */
+  #sourceBtn {
+    position: fixed;
+    top: calc(14px + env(safe-area-inset-top));
+    right: 14px;
+    z-index: 999;
+    background: rgba(12, 22, 32, 0.92);
+    color: #7cd0f5;
+    border: 1px solid rgba(79, 195, 247, 0.55);
+    border-radius: 9px;
+    padding: 10px 14px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 42px;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.55);
+    transition: background .15s, border-color .15s;
+    white-space: nowrap;
+    max-width: calc(100vw - 28px);
+  }
+  #sourceBtn .sb-icon { font-size: 15px; line-height: 1; }
+  #sourceBtn .sb-label {
+    color: #fff;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 45vw;
+  }
+  #sourceBtn .sb-arrow { font-size: 10px; opacity: 0.75; }
+  #sourceBtn:hover, #sourceBtn:focus, #sourceBtn:focus-visible {
+    background: rgba(30, 90, 120, 0.95);
+    border-color: #4fc3f7;
+    outline: 2px solid #4fc3f7;
+    outline-offset: 2px;
+  }
+
+  #sourceMenu {
+    position: fixed;
+    top: calc(64px + env(safe-area-inset-top));
+    right: 14px;
+    z-index: 999;
+    background: rgba(12, 22, 32, 0.97);
+    border: 1px solid rgba(79, 195, 247, 0.45);
+    border-radius: 10px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 210px;
+    max-width: calc(100vw - 28px);
+    max-height: 65vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 32px rgba(0,0,0,0.75);
+    -webkit-overflow-scrolling: touch;
+  }
+  #sourceMenu.hidden { display: none; }
+
+  .src-option {
+    background: transparent;
+    border: 1px solid transparent;
+    color: #ddd;
+    padding: 12px 14px;
+    font-family: inherit;
+    font-size: 14px;
+    text-align: left;
+    border-radius: 7px;
+    cursor: pointer;
+    min-height: 46px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    transition: background .12s, border-color .12s;
+  }
+  .src-option:hover,
+  .src-option:focus,
+  .src-option:focus-visible {
+    background: rgba(79, 195, 247, 0.18);
+    color: #fff;
+    outline: none;
+    border-color: #4fc3f7;
+  }
+  .src-option.active {
+    background: rgba(79, 195, 247, 0.28);
+    color: #fff;
+    font-weight: bold;
+    border-color: rgba(79, 195, 247, 0.5);
+  }
+  .src-option .src-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .src-option .src-tag {
+    font-size: 9px;
+    font-weight: bold;
+    padding: 2px 6px;
+    border-radius: 4px;
+    letter-spacing: .5px;
+    flex-shrink: 0;
+  }
+  .src-tag.hls { background: rgba(102, 187, 106, 0.25); color: #66bb6a; border: 1px solid rgba(102,187,106,.4); }
+  .src-tag.dash { background: rgba(79, 195, 247, 0.22); color: #7cd0f5; border: 1px solid rgba(79,195,247,.4); }
+
+  /* ── Reconnect banner (non-interactive pill) ── */
   #reconnectBanner {
     position: fixed;
-    top: calc(16px + env(safe-area-inset-top));
+    top: calc(66px + env(safe-area-inset-top));
     left: 50%;
     transform: translateX(-50%);
-    z-index: 9999;
+    z-index: 998;
     background: rgba(12, 22, 32, 0.92);
     color: #4fc3f7;
     border: 1px solid rgba(79, 195, 247, 0.5);
     border-radius: 8px;
-    padding: 10px 18px;
-    font-size: 13px;
+    padding: 9px 16px;
+    font-size: 12px;
     font-weight: bold;
     display: none;
-    pointer-events: none;            /* never blocks Shaka's controls */
+    pointer-events: none;
     white-space: nowrap;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
     max-width: 90vw;
     overflow: hidden;
     text-overflow: ellipsis;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55);
   }
   #reconnectBanner.visible { display: block; }
   #reconnectBanner .rb-dot {
@@ -65,19 +159,22 @@
     vertical-align: middle;
     animation: rbPulse 1s infinite;
   }
-  @keyframes rbPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+  @keyframes rbPulse { 0%,100% { opacity:1; } 50% { opacity:.25; } }
 
-  /* Bigger, D-pad-friendly Shaka controls on large screens / TVs */
+  /* Bigger Shaka controls on large screens / TVs */
   @media (min-width: 1280px) {
     .shaka-controls-container .shaka-controls-button-panel button {
-      min-width: 48px;
-      min-height: 48px;
-      font-size: 16px;
+      min-width: 48px; min-height: 48px; font-size: 16px;
     }
     .shaka-controls-container .shaka-seek-bar-container { height: 32px; }
+    #sourceBtn { padding: 12px 16px; font-size: 14px; }
+    .src-option { font-size: 15px; padding: 14px 16px; }
+  }
+  @media (max-width: 480px) {
+    #sourceBtn { padding: 9px 12px; font-size: 12px; }
+    .src-option { padding: 11px 12px; font-size: 13px; min-height: 44px; }
   }
 
-  /* Extra-visible focus outline for Tizen remotes */
   .shaka-controls-container button:focus,
   .shaka-controls-container button:focus-visible {
     outline: 2px solid #4fc3f7;
@@ -95,6 +192,14 @@
          preload="auto"></video>
 </div>
 
+<button id="sourceBtn" type="button" aria-haspopup="menu" aria-expanded="false">
+  <span class="sb-icon">📺</span>
+  <span class="sb-label" id="sourceBtnLabel">Loading…</span>
+  <span class="sb-arrow">▼</span>
+</button>
+
+<div id="sourceMenu" class="hidden" role="menu" aria-label="Select source"></div>
+
 <div id="reconnectBanner" role="status" aria-live="polite">
   <span class="rb-dot"></span><span id="rbText">Reconnecting…</span>
 </div>
@@ -104,33 +209,121 @@
   'use strict';
 
   // ─────────────────────────────────────────────
-  // CONFIG
+  // SOURCES
   // ─────────────────────────────────────────────
-  var MANIFEST_URI  = 'https://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/clients/dash/enc/ppmrp8tlzz/out/v1/cf829370483b4212ac7d5e3009c514b1/cenc.mpd';
-  var CLEAR_KEY_ID  = '952fb91696308da86bee7cd24edf0b58';
-  var CLEAR_KEY_VAL = 'bf359214ab3ac848738bdf014ace21b3';
+  var SOURCES = [
+    {
+      id: 'willow',
+      name: 'WILLOW',
+      type: 'dash',
+      url: 'https://otte.cache.aiv-cdn.net/iad-nitro/live/clients/dash/enc/pkooyxhqmr/out/v1/4c8d0ecc7d704eb2935efde33b289d50/cenc.mpd',
+      drm: { kid: '6a028d5592b0e81f9c4fd4de4df6d5c7', key: '9378d2ddd738b2d0b7a85ba65b643a7f' }
+    },
+    {
+      id: 'prime-eng',
+      name: 'PRIME ENGLISH',
+      type: 'dash',
+      url: 'https://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/clients/dash/enc/rtlq2she5l/out/v1/8965a8b295c4453eb5afd8706e65586a/cenc.mpd',
+      drm: { kid: 'db4b3e1da015cf0f03c2a5f4b9ee8433', key: '964bab777741f2b59adedcbbcd463374' }
+    },
+    {
+      id: 'prime-hin',
+      name: 'PRIME HINDI',
+      type: 'dash',
+      url: 'https://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/clients/dash/enc/ppmrp8tlzz/out/v1/cf829370483b4212ac7d5e3009c514b1/cenc.mpd',
+      drm: { kid: '952fb91696308da86bee7cd24edf0b58', key: 'bf359214ab3ac848738bdf014ace21b3' }
+    },
+    {
+      id: 'eng',
+      name: 'ENGLISH',
+      type: 'hls',
+      url: 'https://sonymtmnew-akamaized.pages.dev/out/v1/mpchgp431f/mpch8947/cricodi_0311-eng-1-ts-hls/std-lrh-800300010.m3u8',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0',
+        'Referer': 'https://www.sonyliv.com/',
+        'Origin': 'https://www.sonyliv.com',
+        'x-playback-session-id': '9c70fc2c3fc1ed93ca6902bfb74f8dd9-1793753402655'
+      }
+    },
+    {
+      id: 'hin',
+      name: 'HINDI',
+      type: 'hls',
+      url: 'https://sonymtmnew-akamaized.pages.dev/out/v1/mpchgp431f/mpchb9e7/cricodi_0311-hin-1-ts-hls/std-lrh-800300010.m3u8',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0',
+        'Referer': 'https://www.sonyliv.com/',
+        'Origin': 'https://www.sonyliv.com',
+        'x-playback-session-id': '9c70fc2c3fc1ed93ca6902bfb74f8dd9-1793753402655'
+      }
+    },
+    {
+      id: 'tam',
+      name: 'TAMIL',
+      type: 'hls',
+      url: 'https://sonymtmnew-akamaized.pages.dev/out/v1/mpchgp431f/mpchde34/cricodi_0311-tam-1-ts-hls/std-lrh-800300010.m3u8',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0',
+        'Referer': 'https://www.sonyliv.com/',
+        'Origin': 'https://www.sonyliv.com',
+        'x-playback-session-id': '9c70fc2c3fc1ed93ca6902bfb74f8dd9-1793753402655'
+      }
+    },
+    {
+      id: 'tel',
+      name: 'TELUGU',
+      type: 'hls',
+      url: 'https://sonymtmnew-akamaized.pages.dev/out/v1/mpchgp431f/mpchc857/cricodi_0311-tel-1-ts-hls/std-lrh-800300010.m3u8',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0',
+        'Referer': 'https://www.sonyliv.com/',
+        'Origin': 'https://www.sonyliv.com',
+        'x-playback-session-id': '9c70fc2c3fc1ed93ca6902bfb74f8dd9-1793753402655'
+      }
+    },
+    {
+      id: 'kan',
+      name: 'KANNADA',
+      type: 'hls',
+      url: 'https://sonymtmnew-akamaized.pages.dev/out/v1/mpchgp431f/mpch8872/cricodi_0311-kan-1-ts-hls/std-lrh-800300010.m3u8',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:158.0) Gecko/20100101 Firefox/158.0',
+        'Referer': 'https://www.sonyliv.com/',
+        'Origin': 'https://www.sonyliv.com',
+        'x-playback-session-id': '9c70fc2c3fc1ed93ca6902bfb74f8dd9-1793753402655'
+      }
+    }
+  ];
 
-  // Reconnect tuning
-  var BASE_BACKOFF_MS     = 1000;    // first retry after 1s
-  var MAX_BACKOFF_MS      = 15000;   // cap at 15s between retries
-  var STALL_THRESHOLD_SEC = 10;      // no progress for 10s → reconnect
-  var WAITING_TIMEOUT_MS  = 12000;   // buffering for 12s → reconnect
-  var STABLE_RESET_MS     = 15000;   // playing fine for 15s → reset attempt counter
+  // ─────────────────────────────────────────────
+  // RECONNECT TUNING
+  // ─────────────────────────────────────────────
+  var BASE_BACKOFF_MS     = 1000;
+  var MAX_BACKOFF_MS      = 15000;
+  var STALL_THRESHOLD_SEC = 10;
+  var WAITING_TIMEOUT_MS  = 12000;
+  var STABLE_RESET_MS     = 15000;
+  var SOURCE_STORAGE_KEY  = 'clearkey_last_source_v1';
 
   // ─────────────────────────────────────────────
   // DOM
   // ─────────────────────────────────────────────
-  var video          = document.getElementById('video');
-  var container      = document.getElementById('player-container');
+  var video           = document.getElementById('video');
+  var container       = document.getElementById('player-container');
+  var sourceBtn       = document.getElementById('sourceBtn');
+  var sourceBtnLabel  = document.getElementById('sourceBtnLabel');
+  var sourceMenu      = document.getElementById('sourceMenu');
   var reconnectBanner = document.getElementById('reconnectBanner');
-  var rbText         = document.getElementById('rbText');
-
-  var player = null;
-  var ui     = null;
+  var rbText          = document.getElementById('rbText');
 
   // ─────────────────────────────────────────────
   // STATE
   // ─────────────────────────────────────────────
+  var player  = null;
+  var ui      = null;
+  var currentSource = null;
+  var isTizenPlatform = false;
+
   var reconnect = {
     attempt: 0,
     inProgress: false,
@@ -138,18 +331,107 @@
     lastCurrentTime: 0,
     stallCount: 0
   };
-  var reloadInFlight  = false;
-  var waitingTimer    = null;
-  var stallInterval   = null;
-  var isTizenPlatform = false;
+  var reloadInFlight = false;
+  var waitingTimer   = null;
+  var stallInterval  = null;
 
   // ─────────────────────────────────────────────
-  // TIZEN DETECTION
+  // UTIL
   // ─────────────────────────────────────────────
   function detectTizen() {
     try { return shaka.util.Platform.isTizen(); }
     catch (e) { return false; }
   }
+
+  function getUrlParam(name) {
+    var q = window.location.search.substring(1).split('&');
+    for (var i = 0; i < q.length; i++) {
+      var kv = q[i].split('=');
+      if (decodeURIComponent(kv[0]) === name) return decodeURIComponent(kv[1] || '');
+    }
+    return null;
+  }
+
+  function findSourceById(id) {
+    for (var i = 0; i < SOURCES.length; i++) if (SOURCES[i].id === id) return SOURCES[i];
+    return null;
+  }
+
+  function getInitialSource() {
+    var fromUrl = getUrlParam('src');
+    if (fromUrl) {
+      var s = findSourceById(fromUrl);
+      if (s) return s;
+    }
+    var stored = null;
+    try { stored = localStorage.getItem(SOURCE_STORAGE_KEY); } catch (e) {}
+    if (stored) {
+      var s2 = findSourceById(stored);
+      if (s2) return s2;
+    }
+    return SOURCES[0];
+  }
+
+  // ─────────────────────────────────────────────
+  // SOURCE UI
+  // ─────────────────────────────────────────────
+  function renderSourceMenu() {
+    var html = '';
+    for (var i = 0; i < SOURCES.length; i++) {
+      var s = SOURCES[i];
+      var active = (currentSource && currentSource.id === s.id) ? ' active' : '';
+      var tag = s.type === 'hls' ? '<span class="src-tag hls">HLS</span>'
+                                 : '<span class="src-tag dash">DASH</span>';
+      html += '<button type="button" class="src-option' + active +
+              '" data-src-id="' + s.id + '" role="menuitem">' +
+              '<span class="src-name">' + s.name + '</span>' + tag +
+              '</button>';
+    }
+    sourceMenu.innerHTML = html;
+
+    var btns = sourceMenu.querySelectorAll('.src-option');
+    for (var b = 0; b < btns.length; b++) {
+      btns[b].addEventListener('click', function (e) {
+        e.stopPropagation();
+        var id = this.getAttribute('data-src-id');
+        closeSourceMenu();
+        switchSource(id);
+      });
+    }
+  }
+
+  function updateSourceButtonLabel() {
+    sourceBtnLabel.textContent = currentSource ? currentSource.name : 'Select Source';
+  }
+
+  function openSourceMenu() {
+    renderSourceMenu();
+    sourceMenu.classList.remove('hidden');
+    sourceBtn.setAttribute('aria-expanded', 'true');
+    var active = sourceMenu.querySelector('.src-option.active') ||
+                 sourceMenu.querySelector('.src-option');
+    if (active) setTimeout(function () { active.focus(); }, 30);
+  }
+
+  function closeSourceMenu() {
+    sourceMenu.classList.add('hidden');
+    sourceBtn.setAttribute('aria-expanded', 'false');
+    sourceBtn.focus();
+  }
+
+  sourceBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    if (sourceMenu.classList.contains('hidden')) openSourceMenu();
+    else closeSourceMenu();
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!sourceMenu.classList.contains('hidden') &&
+        !sourceMenu.contains(e.target) &&
+        e.target !== sourceBtn) {
+      closeSourceMenu();
+    }
+  });
 
   // ─────────────────────────────────────────────
   // RECONNECT UI
@@ -168,47 +450,43 @@
   // RECONNECT ENGINE
   // ─────────────────────────────────────────────
   function scheduleReconnect(reason) {
-    if (reconnect.inProgress) {
-      console.log('[Reconnect] Already scheduled — ignoring reason:', reason);
-      return;
-    }
+    if (reconnect.inProgress) return;
     reconnect.inProgress = true;
 
-    var delay = Math.min(
-      MAX_BACKOFF_MS,
-      BASE_BACKOFF_MS * Math.pow(2, Math.min(reconnect.attempt, 4))
-    );
+    var delay = Math.min(MAX_BACKOFF_MS,
+      BASE_BACKOFF_MS * Math.pow(2, Math.min(reconnect.attempt, 4)));
     reconnect.attempt++;
 
     console.warn('[Reconnect] Attempt #' + reconnect.attempt +
-                 ' in ' + delay + 'ms (reason: ' + reason + ')');
+                 ' in ' + delay + 'ms (' + reason + ')');
     showReconnect(reconnect.attempt, delay);
 
     clearTimeout(reconnect.timer);
     reconnect.timer = setTimeout(doReconnect, delay);
   }
 
+  function getDrmConfig() {
+    var keys = {};
+    if (currentSource && currentSource.drm) {
+      keys[currentSource.drm.kid] = currentSource.drm.key;
+    }
+    return { clearKeys: keys };
+  }
+
   function doReconnect() {
-    if (reloadInFlight || !player) return;
+    if (reloadInFlight || !player || !currentSource) return;
     reloadInFlight = true;
 
     clearTimeout(reconnect.timer);
     reconnect.timer = null;
     reconnect.stallCount = 0;
 
-    console.log('[Reconnect] Unloading and reloading manifest…');
+    console.log('[Reconnect] Reloading ' + currentSource.name);
 
-    var config = {
-      drm: {
-        clearKeys: (function () {
-          var c = {};
-          c[CLEAR_KEY_ID] = CLEAR_KEY_VAL;
-          return c;
-        })()
-      },
+    var cfg = {
+      drm: getDrmConfig(),
       streaming: {
         lowLatencyMode: true,
-        // Tizen fix: start with buffer path, switch back after 5s
         rebufferingGoal: isTizenPlatform ? 1 : 0
       },
       abr: { enabled: true }
@@ -217,33 +495,25 @@
     player.unload().catch(function (e) {
       console.warn('[Reconnect] Unload warning (continuing):', e);
     }).then(function () {
-      player.configure(config);
-      return player.load(MANIFEST_URI);
+      player.configure(cfg);
+      return player.load(currentSource.url);
     }).then(function () {
-      console.log('[Reconnect] Reload succeeded');
+      console.log('[Reconnect] Reload OK');
       reloadInFlight = false;
       reconnect.inProgress = false;
 
-      // Tizen: restore low-latency goal after startup
       if (isTizenPlatform) {
         setTimeout(function () {
           try { player.configure({ streaming: { rebufferingGoal: 0 } }); } catch (e) {}
         }, 5000);
       }
 
-      // Try to resume playback (Shaka may auto-play since video was playing)
       var p = video.play();
-      if (p && p.catch) {
-        p.catch(function (e) {
-          console.log('[Reconnect] Autoplay blocked after reconnect:', e.name);
-          // Shaka UI will show big play button — user just taps it
-        });
-      }
+      if (p && p.catch) p.catch(function () { /* Shaka big-play button covers this */ });
 
-      // Reset attempt counter after stable playback
       setTimeout(function () {
         if (!video.paused && video.readyState >= 3) {
-          console.log('[Reconnect] Playback stable — resetting attempt counter');
+          console.log('[Reconnect] Playback stable — resetting counter');
           reconnect.attempt = 0;
           hideReconnect();
         }
@@ -256,8 +526,20 @@
     });
   }
 
+  function resetReconnectState() {
+    clearTimeout(reconnect.timer);
+    reconnect.timer = null;
+    reconnect.inProgress = false;
+    reconnect.attempt = 0;
+    reconnect.stallCount = 0;
+    reloadInFlight = false;
+    clearTimeout(waitingTimer);
+    waitingTimer = null;
+    hideReconnect();
+  }
+
   // ─────────────────────────────────────────────
-  // STALL DETECTOR — currentTime not advancing
+  // STALL DETECTOR
   // ─────────────────────────────────────────────
   function startStallDetector() {
     if (stallInterval) return;
@@ -270,7 +552,7 @@
       if (Math.abs(video.currentTime - reconnect.lastCurrentTime) < 0.3) {
         reconnect.stallCount++;
         if (reconnect.stallCount >= STALL_THRESHOLD_SEC) {
-          console.warn('[Reconnect] Stall detected (' + STALL_THRESHOLD_SEC + 's no progress)');
+          console.warn('[Reconnect] Stall (' + STALL_THRESHOLD_SEC + 's no progress)');
           reconnect.stallCount = 0;
           scheduleReconnect('stall');
         }
@@ -282,6 +564,47 @@
   }
 
   // ─────────────────────────────────────────────
+  // SOURCE SWITCH
+  // ─────────────────────────────────────────────
+  function switchSource(sourceId) {
+    var next = findSourceById(sourceId);
+    if (!next) return;
+    if (currentSource && currentSource.id === next.id) return;
+
+    resetReconnectState();
+    currentSource = next;
+    try { localStorage.setItem(SOURCE_STORAGE_KEY, next.id); } catch (e) {}
+    updateSourceButtonLabel();
+
+    if (!player) { boot(); return; }
+
+    var cfg = {
+      drm: getDrmConfig(),
+      streaming: {
+        lowLatencyMode: true,
+        rebufferingGoal: isTizenPlatform ? 1 : 0
+      },
+      abr: { enabled: true }
+    };
+
+    player.unload().catch(function () {}).then(function () {
+      player.configure(cfg);
+      return player.load(next.url);
+    }).then(function () {
+      console.log('[Source] Switched to ' + next.name);
+      if (isTizenPlatform) {
+        setTimeout(function () {
+          try { player.configure({ streaming: { rebufferingGoal: 0 } }); } catch (e) {}
+        }, 5000);
+      }
+      video.play().catch(function () {});
+    }).catch(function (err) {
+      console.error('[Source] Load failed:', err);
+      scheduleReconnect('source-switch');
+    });
+  }
+
+  // ─────────────────────────────────────────────
   // BOOT
   // ─────────────────────────────────────────────
   function boot() {
@@ -290,8 +613,9 @@
       return;
     }
     isTizenPlatform = detectTizen();
+    currentSource = getInitialSource();
 
-    // ════════ TIZEN FIX #1: Skip polyfills ════════
+    // ════════ TIZEN FIX #1: Skip polyfills (avoids 6001) ════════
     if (!isTizenPlatform) {
       try {
         if (shaka.polyfill && shaka.polyfill.installAll) shaka.polyfill.installAll();
@@ -299,7 +623,7 @@
         console.warn('[Player] Polyfill install failed:', e);
       }
     } else {
-      console.log('[Player] Tizen detected — skipping polyfills (avoids error 6001).');
+      console.log('[Player] Tizen detected — polyfills skipped.');
     }
 
     if (!shaka.Player.isBrowserSupported()) {
@@ -307,11 +631,9 @@
       return;
     }
 
-    // ─────────── Create Shaka Player ───────────
     player = new shaka.Player(video);
 
-    // ─────────── Pure Shaka UI ───────────
-    // Everything you see is drawn by Shaka — no custom buttons.
+    // ─────────── Shaka UI ───────────
     ui = new shaka.ui.Overlay(player, container, video, {
       addSeekBar: true,
       addBigPlayButton: true,
@@ -321,7 +643,7 @@
         'spacer',
         'mute',
         'volume',
-        'quality',        // ← Shaka's own gear / resolution button
+        'quality',      // Shaka's own gear / resolution picker
         'fullscreen'
       ],
       overflowMenuButtons: [
@@ -338,12 +660,21 @@
       }
     });
 
-    // ─────────── ClearKey DRM ───────────
-    var clearKeys = {};
-    clearKeys[CLEAR_KEY_ID] = CLEAR_KEY_VAL;
+    // ─────────── Request filter: dynamic per-source headers ───────────
+    // Reads `currentSource` on every request so switching sources
+    // automatically applies the right headers (Referer, Origin, UA, etc.).
+    player.getNetworkingEngine().registerRequestFilter(function (type, request) {
+      if (currentSource && currentSource.headers) {
+        for (var h in currentSource.headers) {
+          try { request.headers[h] = currentSource.headers[h]; }
+          catch (e) { /* some headers blocked by browser — ignore */ }
+        }
+      }
+    });
 
+    // ─────────── DRM config ───────────
     player.configure({
-      drm: { clearKeys: clearKeys },
+      drm: getDrmConfig(),
       streaming: {
         lowLatencyMode: true,
         rebufferingGoal: isTizenPlatform ? 1 : 0
@@ -351,120 +682,142 @@
       abr: { enabled: true }
     });
 
-    // ─────────── Shaka error → reconnect ───────────
+    // ─────────── Errors ───────────
     player.addEventListener('error', function (event) {
       var err  = event.detail || {};
       var code = err.code || 0;
       var msg  = err.message || '';
-
       console.error('[Player] Error ' + code + ': ' + msg);
 
-      // Non-retryable: DRM (6xxx) or codec (4015)
+      // Fatal: DRM (6xxx) or codec (4015) — no point retrying
       if ((code >= 6000 && code < 7000) || code === 4015) {
-        console.error('[Player] Fatal error — not retrying.');
         if (code === 6001) {
-          console.error('[Player] ClearKey unavailable — check HTTPS or device CDM support.');
+          console.error('[Player] 6001 — ClearKey unavailable. Try a different source or check HTTPS.');
         }
         hideReconnect();
         return;
       }
-
       scheduleReconnect('shaka-error-' + code);
     });
 
-    // ─────────── Load the live DASH manifest ───────────
-    player.load(MANIFEST_URI).then(function () {
-      console.log('[Player] Manifest loaded.');
+    // ─────────── Initial load ───────────
+    console.log('[Player] Loading initial source:', currentSource.name);
+    updateSourceButtonLabel();
 
-      // ════════ TIZEN FIX #2: rebufferingGoal workaround ════════
+    player.load(currentSource.url).then(function () {
+      console.log('[Player] Manifest loaded.');
       if (isTizenPlatform) {
         setTimeout(function () {
           try { player.configure({ streaming: { rebufferingGoal: 0 } }); } catch (e) {}
         }, 5000);
       }
-
-      // Start the watchdog
       startStallDetector();
     }).catch(function (err) {
       console.error('[Player] Initial load failed:', err);
       scheduleReconnect('initial-load');
     });
 
-    // ─────────── Video-level recovery hooks ───────────
+    // ─────────── Video recovery hooks ───────────
     video.addEventListener('waiting', function () {
       clearTimeout(waitingTimer);
       waitingTimer = setTimeout(function () {
         if (!video.paused && video.readyState < 3) {
-          console.warn('[Reconnect] Buffering too long (' + WAITING_TIMEOUT_MS + 'ms)');
+          console.warn('[Reconnect] Buffering too long');
           scheduleReconnect('waiting-timeout');
         }
       }, WAITING_TIMEOUT_MS);
     });
-
     video.addEventListener('playing', function () {
       clearTimeout(waitingTimer);
       waitingTimer = null;
       reconnect.stallCount = 0;
       reconnect.lastCurrentTime = video.currentTime;
     });
-
-    // Native media error (rare on DASH, but caught for safety)
     video.addEventListener('error', function () {
       var e = video.error;
       console.error('[Reconnect] Media error:', e ? e.code : '?', e ? e.message : '');
       scheduleReconnect('media-error');
     });
 
-    // ─────────── Network online/offline ───────────
+    // ─────────── Network events ───────────
     window.addEventListener('online', function () {
-      console.log('[Reconnect] Network back online');
+      console.log('[Reconnect] Network back');
       if (reconnect.inProgress && reconnect.timer) {
-        console.log('[Reconnect] Triggering retry now (network restored)');
         clearTimeout(reconnect.timer);
         reconnect.timer = null;
-        // Don't advance attempt on network recovery
         reconnect.attempt = Math.max(0, reconnect.attempt - 1);
         doReconnect();
       }
     });
     window.addEventListener('offline', function () {
-      console.log('[Reconnect] Network went offline — will retry when back');
+      console.log('[Reconnect] Network offline — will retry when back');
     });
   }
 
   // ─────────────────────────────────────────────
-  // ════════ TIZEN FIX #3: Remote Back / Exit key ════════
-  // 10009 = RETURN, 461 = EXIT
-  // If Shaka has a menu open, let Shaka handle it first.
+  // KEYBOARD — source menu nav + Tizen back key
   // ─────────────────────────────────────────────
   document.addEventListener('keydown', function (e) {
     var k = e.keyCode;
-    if (k !== 10009 && k !== 461) return;
 
-    var popup = document.querySelector(
-      '.shaka-overflow-menu, .shaka-settings-menu, ' +
-      '.shaka-quality-menu, .shaka-client-side-ad-container'
-    );
-    if (popup && !popup.classList.contains('shaka-hidden')) {
-      return; // Shaka's own key handler will close it
-    }
-
-    if (document.fullscreenElement || document.webkitFullscreenElement) {
-      e.preventDefault();
-      if (document.exitFullscreen) document.exitFullscreen();
-      else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-      return;
-    }
-
-    e.preventDefault();
-    try {
-      if (window.tizen && window.tizen.application) {
-        window.tizen.application.getCurrentApplication().exit();
-      } else {
-        history.back();
+    // ─── Source menu open → arrows + Enter + Escape ───
+    if (!sourceMenu.classList.contains('hidden')) {
+      if (k === 38) { // Up
+        e.preventDefault();
+        var opts = Array.prototype.slice.call(sourceMenu.querySelectorAll('.src-option'));
+        var idx = opts.indexOf(document.activeElement);
+        if (idx > 0) opts[idx - 1].focus();
+        return;
       }
-    } catch (err) {
-      history.back();
+      if (k === 40) { // Down
+        e.preventDefault();
+        var opts2 = Array.prototype.slice.call(sourceMenu.querySelectorAll('.src-option'));
+        var idx2 = opts2.indexOf(document.activeElement);
+        if (idx2 >= 0 && idx2 < opts2.length - 1) opts2[idx2 + 1].focus();
+        return;
+      }
+      if (k === 13 || k === 23) { // Enter / D-pad OK
+        if (document.activeElement && document.activeElement.classList.contains('src-option')) {
+          e.preventDefault();
+          document.activeElement.click();
+        }
+        return;
+      }
+      if (k === 27 || k === 10009 || k === 8) { // Escape / Back
+        e.preventDefault();
+        closeSourceMenu();
+        return;
+      }
+    }
+
+    // ─── Tizen Back / Exit ───
+    if (k === 10009 || k === 461) {
+      var popup = document.querySelector(
+        '.shaka-overflow-menu, .shaka-settings-menu, ' +
+        '.shaka-quality-menu, .shaka-client-side-ad-container'
+      );
+      if (popup && !popup.classList.contains('shaka-hidden')) return;
+
+      if (!sourceMenu.classList.contains('hidden')) {
+        e.preventDefault();
+        closeSourceMenu();
+        return;
+      }
+      if (document.fullscreenElement || document.webkitFullscreenElement) {
+        e.preventDefault();
+        if (document.exitFullscreen) document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+        return;
+      }
+      e.preventDefault();
+      try {
+        if (window.tizen && window.tizen.application) {
+          window.tizen.application.getCurrentApplication().exit();
+        } else {
+          history.back();
+        }
+      } catch (err) { history.back(); }
+      return;
     }
   });
 
