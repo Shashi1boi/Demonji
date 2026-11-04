@@ -1,0 +1,992 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="referrer" content="no-referrer">
+<title>Stremio Addon Web Player</title>
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@4.6.18/dist/controls.css">
+<script src="https://cdn.jsdelivr.net/npm/shaka-player@4.6.18/dist/shaka-player.ui.min.js"></script>
+
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body {
+    background:#0a0e14; width:100%; height:100%; overflow:hidden;
+    font-family:-apple-system, Arial, Helvetica, sans-serif;
+    color:#e6edf3; -webkit-user-select:none; user-select:none;
+  }
+  #app { display:flex; flex-direction:column; height:100vh; }
+
+  /* ── Top bar ── */
+  #topbar {
+    display:flex; align-items:center; gap:10px;
+    padding:10px 14px;
+    background:#121a24; border-bottom:1px solid #1f2a36;
+    flex-shrink:0;
+  }
+  #topbar h1 { font-size:16px; font-weight:bold; color:#4fc3f7; flex:1; }
+  .tb-btn {
+    background:#1a2530; border:1px solid #2a3a4a; color:#ddd;
+    border-radius:7px; padding:8px 14px; font-family:inherit;
+    font-size:13px; font-weight:bold; cursor:pointer;
+    min-height:38px;
+  }
+  .tb-btn:hover { background:#22303f; border-color:#4fc3f7; }
+  .tb-btn:focus-visible { outline:2px solid #4fc3f7; outline-offset:2px; }
+
+  /* ── Main area ── */
+  #main { display:flex; flex:1; min-height:0; }
+
+  /* Sidebar (catalogs & items) */
+  #sidebar {
+    width:360px; flex-shrink:0;
+    background:#0e1620; border-right:1px solid #1f2a36;
+    display:flex; flex-direction:column;
+    overflow-y:auto;
+  }
+  .section-title {
+    padding:12px 14px; font-size:12px; font-weight:bold;
+    color:#7cd0f5; text-transform:uppercase; letter-spacing:1px;
+    background:#121a24; border-bottom:1px solid #1f2a36;
+    position:sticky; top:0; z-index:2;
+  }
+  .addon-card, .catalog-btn, .item-card, .stream-card {
+    display:flex; gap:10px; align-items:center;
+    padding:10px 14px; border-bottom:1px solid #1a2530;
+    cursor:pointer; text-align:left; width:100%;
+    background:transparent; border-left:none; border-right:none;
+    border-top:none; font-family:inherit; color:inherit;
+    transition:background .12s;
+  }
+  .addon-card:hover, .catalog-btn:hover,
+  .item-card:hover, .stream-card:hover { background:#16202c; }
+  .addon-card:focus-visible, .catalog-btn:focus-visible,
+  .item-card:focus-visible, .stream-card:focus-visible {
+    outline:2px solid #4fc3f7; outline-offset:-2px;
+  }
+  .addon-logo { width:36px; height:36px; border-radius:6px; object-fit:contain; background:#0a0a0a; flex-shrink:0; }
+  .addon-info { flex:1; min-width:0; }
+  .addon-name { font-size:14px; font-weight:bold; color:#fff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .addon-desc { font-size:11px; color:#7a8a95; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .addon-remove {
+    background:#3a1a1a; border:1px solid #5a2a2a; color:#ef5350;
+    border-radius:5px; padding:4px 8px; font-size:11px; cursor:pointer;
+    font-family:inherit; flex-shrink:0;
+  }
+  .catalog-btn .cat-name { font-size:14px; font-weight:bold; color:#ddd; flex:1; }
+  .catalog-btn .cat-type { font-size:11px; color:#7a8a95; }
+  .item-card { gap:12px; }
+  .item-poster { width:50px; height:72px; border-radius:5px; object-fit:cover; background:#1a2530; flex-shrink:0; }
+  .item-info { flex:1; min-width:0; }
+  .item-title { font-size:14px; font-weight:bold; color:#fff; margin-bottom:3px; }
+  .item-year { font-size:11px; color:#7a8a95; }
+  .item-meta { font-size:11px; color:#7cd0f5; margin-top:2px; }
+  .stream-card { flex-direction:column; align-items:stretch; gap:4px; }
+  .stream-addon { font-size:11px; color:#7cd0f5; font-weight:bold; }
+  .stream-name { font-size:13px; font-weight:bold; color:#ddd; }
+  .stream-desc { font-size:11px; color:#8a9aa5; }
+  .empty-msg { padding:24px 14px; color:#6a7a85; font-size:13px; text-align:center; }
+
+  /* ── Player area ── */
+  #player-area {
+    flex:1; display:flex; flex-direction:column;
+    background:#000; min-width:0; position:relative;
+  }
+  #player-container { flex:1; position:relative; background:#000; }
+  #video {
+    width:100%; height:100%; background:#000;
+    object-fit:contain; display:block; outline:none;
+  }
+
+  /* Reconnect pill (non-interactive) */
+  #reconnectBanner {
+    position:absolute; top:12px; left:50%; transform:translateX(-50%);
+    z-index:50;
+    background:rgba(12,22,32,0.92); color:#4fc3f7;
+    border:1px solid rgba(79,195,247,0.5); border-radius:8px;
+    padding:8px 16px; font-size:12px; font-weight:bold;
+    display:none; pointer-events:none; white-space:nowrap;
+    max-width:90%;
+  }
+  #reconnectBanner.visible { display:block; }
+  #reconnectBanner .rb-dot {
+    display:inline-block; width:8px; height:8px; border-radius:50%;
+    background:#4fc3f7; margin-right:8px; vertical-align:middle;
+    animation:rbPulse 1s infinite;
+  }
+  @keyframes rbPulse { 0%,100%{opacity:1;} 50%{opacity:.25;} }
+
+  /* ── Modals ── */
+  .modal {
+    position:fixed; inset:0; background:rgba(0,0,0,0.88);
+    z-index:1000; display:flex; align-items:center; justify-content:center;
+    padding:16px;
+  }
+  .modal.hidden { display:none; }
+  .modal-panel {
+    background:#121a24; border:1px solid #2a3a4a; border-radius:12px;
+    width:100%; max-width:540px; max-height:85vh;
+    display:flex; flex-direction:column; overflow:hidden;
+  }
+  .modal-header {
+    padding:14px 18px; border-bottom:1px solid #2a3a4a;
+    display:flex; align-items:center; justify-content:space-between;
+    background:#0e1620;
+  }
+  .modal-header h2 { font-size:16px; color:#4fc3f7; }
+  .modal-close {
+    background:#2a2a2a; border:1px solid #444; color:#eee;
+    border-radius:6px; padding:8px 14px; font-size:12px;
+    font-weight:bold; cursor:pointer; font-family:inherit;
+  }
+  .modal-body { padding:16px 18px; overflow-y:auto; flex:1; }
+  .modal-footer {
+    padding:12px 18px; border-top:1px solid #2a3a4a;
+    display:flex; gap:10px; background:#0e1620;
+  }
+  .modal-footer button {
+    flex:1; padding:12px; border-radius:8px;
+    background:#1a2530; border:1px solid #2a3a4a;
+    color:#ddd; font-family:inherit; font-size:14px;
+    font-weight:bold; cursor:pointer;
+  }
+  .modal-footer button:hover { background:#22303f; border-color:#4fc3f7; }
+
+  .input-row { display:flex; gap:8px; margin-bottom:14px; }
+  .input-row input {
+    flex:1; padding:11px 14px; border-radius:7px;
+    background:#0a121a; border:1px solid #2a3a4a;
+    color:#fff; font-family:inherit; font-size:14px;
+    outline:none;
+  }
+  .input-row input:focus { border-color:#4fc3f7; }
+  .input-row button {
+    padding:11px 18px; border-radius:7px;
+    background:#1e5a78; border:1px solid #4fc3f7;
+    color:#fff; font-weight:bold; font-family:inherit;
+    font-size:14px; cursor:pointer; white-space:nowrap;
+  }
+  .input-row button:hover { background:#256a8f; }
+
+  .err-text { color:#ef5350; font-size:12px; margin-top:6px; }
+
+  /* Larger Shaka controls on TVs */
+  @media (min-width:1280px) {
+    .shaka-controls-container .shaka-controls-button-panel button {
+      min-width:48px; min-height:48px; font-size:16px;
+    }
+    .shaka-controls-container .shaka-seek-bar-container { height:32px; }
+  }
+  .shaka-controls-container button:focus,
+  .shaka-controls-container button:focus-visible {
+    outline:2px solid #4fc3f7; outline-offset:2px;
+  }
+
+  /* Mobile layout */
+  @media (max-width:760px) {
+    #main { flex-direction:column; }
+    #sidebar { width:100%; height:45vh; border-right:none; border-bottom:1px solid #1f2a36; }
+    #player-area { height:55vh; }
+    .tb-btn { padding:8px 10px; font-size:12px; }
+    #topbar h1 { font-size:14px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <!-- ═══ TOP BAR ═══ -->
+  <div id="topbar">
+    <h1>🎬 Stremio → Shaka Player</h1>
+    <button class="tb-btn" id="addonMgrBtn">⚙ Addons</button>
+    <button class="tb-btn" id="refreshBtn">⟳ Refresh</button>
+  </div>
+
+  <!-- ═══ MAIN ═══ -->
+  <div id="main">
+    <!-- Sidebar: catalogs, items, streams -->
+    <div id="sidebar">
+      <div class="section-title" id="sideTitle">Catalogs</div>
+      <div id="sideBody"></div>
+    </div>
+
+    <!-- Player -->
+    <div id="player-area">
+      <div id="player-container">
+        <video id="video" autoplay playsinline webkit-playsinline preload="auto"></video>
+        <div id="reconnectBanner"><span class="rb-dot"></span><span id="rbText">Reconnecting…</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ADDON MANAGER MODAL ═══ -->
+<div id="addonModal" class="modal hidden">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <h2>⚙ Manage Addons</h2>
+      <button class="modal-close" id="addonClose">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="input-row">
+        <input id="addonUrlInput" type="url" placeholder="https://…/manifest.json" autocomplete="off" spellcheck="false">
+        <button id="addonAddBtn">Add</button>
+      </div>
+      <div id="addonList"></div>
+      <div class="err-text" id="addonErr"></div>
+    </div>
+    <div class="modal-footer">
+      <button id="addonDone">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+// ─────────────────────────────────────────────
+// CONSTANTS
+// ─────────────────────────────────────────────
+var LS_ADDONS = 'stremio_web_addons_v1';
+var LS_LAST_ADDON = 'stremio_web_last_addon_v1';
+
+var reconnectCfg = {
+  BASE_BACKOFF_MS: 1000,
+  MAX_BACKOFF_MS: 15000,
+  STALL_THRESHOLD_SEC: 10,
+  WAITING_TIMEOUT_MS: 12000,
+  STABLE_RESET_MS: 15000
+};
+
+// ─────────────────────────────────────────────
+// STATE
+// ─────────────────────────────────────────────
+var addons = [];          // { url, manifest, baseUrl }
+var currentCatalog = null; // { addon, catalog }
+var currentItem = null;    // { addon, item }
+var player = null;
+var ui = null;
+
+var reconnect = {
+  attempt: 0, inProgress: false, timer: null,
+  lastCurrentTime: 0, stallCount: 0
+};
+var reloadInFlight = false;
+var waitingTimer = null;
+var stallInterval = null;
+var currentStreamUrl = null;
+var currentDrm = null;
+
+// DOM shortcuts
+var $ = function(id){ return document.getElementById(id); };
+var video = $('video');
+var playerContainer = $('player-container');
+var reconnectBanner = $('reconnectBanner');
+var rbText = $('rbText');
+var sideTitle = $('sideTitle');
+var sideBody = $('sideBody');
+
+// ─────────────────────────────────────────────
+// TIZEN DETECTION
+// ─────────────────────────────────────────────
+function isTizen() {
+  try { return shaka.util.Platform.isTizen(); } catch(e){ return false; }
+}
+
+// ─────────────────────────────────────────────
+// STORAGE
+// ─────────────────────────────────────────────
+function loadStoredAddons(){
+  try {
+    var raw = localStorage.getItem(LS_ADDONS);
+    return raw ? JSON.parse(raw) : [];
+  } catch(e){ return []; }
+}
+function saveAddons(){
+  try {
+    localStorage.setItem(LS_ADDONS, JSON.stringify(addons.map(function(a){
+      return { url: a.url, manifest: a.manifest };
+    })));
+  } catch(e){}
+}
+
+// ─────────────────────────────────────────────
+// ADDON MANIFEST LOADING
+// ─────────────────────────────────────────────
+function fetchJSON(url){
+  return fetch(url, { mode:'cors', credentials:'omit' }).then(function(r){
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  });
+}
+
+function addAddonFromUrl(url){
+  url = (url || '').trim().replace(/\/+$/, '');
+  if (!url) return Promise.reject(new Error('URL is empty'));
+  if (!/^https?:\/\//i.test(url)) return Promise.reject(new Error('URL must start with http:// or https://'));
+
+  // Deduplicate
+  for (var i = 0; i < addons.length; i++){
+    if (addons[i].url === url) return Promise.resolve(addons[i]);
+  }
+
+  return fetchJSON(url).then(function(manifest){
+    if (!manifest || !manifest.id || !manifest.name){
+      throw new Error('Invalid manifest: missing id or name');
+    }
+    var baseUrl = url.substring(0, url.lastIndexOf('/')); // strip /manifest.json
+    var addon = { url: url, manifest: manifest, baseUrl: baseUrl };
+    addons.push(addon);
+    saveAddons();
+    return addon;
+  });
+}
+
+function removeAddon(url){
+  addons = addons.filter(function(a){ return a.url !== url; });
+  saveAddons();
+}
+
+// ─────────────────────────────────────────────
+// ADDON MANAGER UI
+// ─────────────────────────────────────────────
+var addonModal = $('addonModal');
+var addonListEl = $('addonList');
+var addonUrlInput = $('addonUrlInput');
+var addonErr = $('addonErr');
+
+function renderAddonList(){
+  if (!addons.length){
+    addonListEl.innerHTML = '<div class="empty-msg">No addons yet. Paste a manifest URL above.</div>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < addons.length; i++){
+    var a = addons[i];
+    var m = a.manifest;
+    html += '<div class="addon-card">';
+    if (m.logo) html += '<img class="addon-logo" src="' + esc(m.logo) + '" onerror="this.style.visibility=\'hidden\'">';
+    else html += '<div class="addon-logo"></div>';
+    html += '<div class="addon-info">';
+    html += '<div class="addon-name">' + esc(m.name) + '</div>';
+    html += '<div class="addon-desc">' + esc(m.description || m.version || '') + '</div>';
+    html += '</div>';
+    html += '<button class="addon-remove" data-url="' + esc(a.url) + '">✕</button>';
+    html += '</div>';
+  }
+  addonListEl.innerHTML = html;
+
+  var rmBtns = addonListEl.querySelectorAll('.addon-remove');
+  for (var r = 0; r < rmBtns.length; r++){
+    rmBtns[r].addEventListener('click', function(e){
+      e.stopPropagation();
+      var url = this.getAttribute('data-url');
+      removeAddon(url);
+      renderAddonList();
+      renderCatalogs();
+    });
+  }
+}
+
+function openAddonModal(){
+  renderAddonList();
+  addonErr.textContent = '';
+  addonUrlInput.value = '';
+  addonModal.classList.remove('hidden');
+  setTimeout(function(){ addonUrlInput.focus(); }, 50);
+}
+function closeAddonModal(){ addonModal.classList.add('hidden'); }
+
+$('addonMgrBtn').addEventListener('click', openAddonModal);
+$('addonClose').addEventListener('click', closeAddonModal);
+$('addonDone').addEventListener('click', function(){
+  closeAddonModal();
+  renderCatalogs();
+});
+addonModal.addEventListener('click', function(e){
+  if (e.target === addonModal) closeAddonModal();
+});
+
+$('addonAddBtn').addEventListener('click', function(){
+  var url = addonUrlInput.value.trim();
+  if (!url) return;
+  addonErr.textContent = '';
+  addAddonFromUrl(url).then(function(addon){
+    addonUrlInput.value = '';
+    renderAddonList();
+    renderCatalogs();
+  }).catch(function(err){
+    addonErr.textContent = 'Failed: ' + err.message;
+  });
+});
+addonUrlInput.addEventListener('keydown', function(e){
+  if (e.key === 'Enter') $('addonAddBtn').click();
+});
+
+// ─────────────────────────────────────────────
+// CATALOG BROWSING
+// ─────────────────────────────────────────────
+function esc(s){
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];
+  });
+}
+
+function renderCatalogs(){
+  sideTitle.textContent = 'Catalogs';
+  currentCatalog = null;
+  currentItem = null;
+
+  if (!addons.length){
+    sideBody.innerHTML = '<div class="empty-msg">Add an addon first.<br><br>Click <b>⚙ Addons</b> above.</div>';
+    return;
+  }
+
+  var html = '';
+  for (var i = 0; i < addons.length; i++){
+    var a = addons[i];
+    var cats = (a.manifest.catalogs || []);
+    for (var c = 0; c < cats.length; c++){
+      var cat = cats[c];
+      html += '<button class="catalog-btn" data-addon="' + i + '" data-catidx="' + c + '" type="button">';
+      html += '<span class="cat-name">' + esc(cat.name || cat.id) + '</span>';
+      html += '<span class="cat-type">' + esc(cat.type) + '</span>';
+      html += '</button>';
+    }
+  }
+  if (!html) html = '<div class="empty-msg">No catalogs found in your addons.</div>';
+  sideBody.innerHTML = html;
+
+  var btns = sideBody.querySelectorAll('.catalog-btn');
+  for (var b = 0; b < btns.length; b++){
+    btns[b].addEventListener('click', function(){
+      var addonIdx = parseInt(this.getAttribute('data-addon'), 10);
+      var catIdx = parseInt(this.getAttribute('data-catidx'), 10);
+      loadCatalog(addons[addonIdx], addons[addonIdx].manifest.catalogs[catIdx]);
+    });
+  }
+}
+
+function loadCatalog(addon, catalog){
+  currentCatalog = { addon: addon, catalog: catalog };
+  sideTitle.textContent = catalog.name || catalog.id;
+  sideBody.innerHTML = '<div class="empty-msg">Loading catalog…</div>';
+
+  var url = addon.baseUrl + '/catalog/' + encodeURIComponent(catalog.type) + '/' + encodeURIComponent(catalog.id) + '.json';
+
+  // If catalog has required extras, we might need a search param, but we just try without first.
+  fetchJSON(url).then(function(data){
+    var metas = (data && data.metas) || [];
+    renderCatalogItems(metas, addon, catalog);
+  }).catch(function(err){
+    sideBody.innerHTML = '<div class="empty-msg">Catalog load failed: ' + esc(err.message) + '</div>';
+  });
+}
+
+function renderCatalogItems(metas, addon, catalog){
+  if (!metas.length){
+    sideBody.innerHTML = '<div class="empty-msg">This catalog returned no items.</div>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < metas.length; i++){
+    var m = metas[i];
+    if (!m || !m.id) continue;
+    html += '<button class="item-card" data-id="' + esc(m.id) + '" data-type="' + esc(m.type || catalog.type) + '" type="button">';
+    if (m.poster) html += '<img class="item-poster" src="' + esc(m.poster) + '" loading="lazy" onerror="this.style.visibility=\'hidden\'">';
+    else html += '<div class="item-poster"></div>';
+    html += '<div class="item-info">';
+    html += '<div class="item-title">' + esc(m.name || 'Untitled') + '</div>';
+    if (m.releaseInfo) html += '<div class="item-year">' + esc(m.releaseInfo) + '</div>';
+    if (m.description) html += '<div class="item-meta">' + esc((m.description || '').substring(0, 60)) + '…</div>';
+    html += '</div></button>';
+  }
+  sideBody.innerHTML = html;
+
+  var cards = sideBody.querySelectorAll('.item-card');
+  for (var k = 0; k < cards.length; k++){
+    cards[k].addEventListener('click', function(){
+      var id = this.getAttribute('data-id');
+      var type = this.getAttribute('data-type');
+      loadStreams(id, type);
+    });
+  }
+}
+
+// ─────────────────────────────────────────────
+// STREAM FETCHING
+// ─────────────────────────────────────────────
+function loadStreams(itemId, itemType){
+  currentItem = { id: itemId, type: itemType };
+  sideTitle.textContent = 'Streams';
+  sideBody.innerHTML = '<div class="empty-msg">Fetching streams from all addons…</div>';
+
+  // Find all addons that support stream for this type and id prefix
+  var streamAddons = [];
+  for (var i = 0; i < addons.length; i++){
+    var a = addons[i];
+    var res = a.manifest.resources || [];
+    var supportsStream = false;
+    var typesOk = false;
+    var prefixOk = true;
+
+    for (var r = 0; r < res.length; r++){
+      var rv = res[r];
+      if (typeof rv === 'string' && rv === 'stream') supportsStream = true;
+      else if (rv && rv.name === 'stream') supportsStream = true;
+    }
+    if (!supportsStream) continue;
+
+    var types = a.manifest.types || [];
+    if (types.indexOf(itemType) !== -1) typesOk = true;
+    else if (res && typeof res === 'object'){
+      for (var r2 = 0; r2 < res.length; r2++){
+        if (res[r2].name === 'stream' && res[r2].types && res[r2].types.indexOf(itemType) !== -1){
+          typesOk = true; break;
+        }
+      }
+    }
+    if (!typesOk) continue;
+
+    var prefixes = a.manifest.idPrefixes || [];
+    if (prefixes.length){
+      prefixOk = false;
+      for (var p = 0; p < prefixes.length; p++){
+        if (itemId.indexOf(prefixes[p]) === 0){ prefixOk = true; break; }
+      }
+    }
+    if (!prefixOk) continue;
+
+    streamAddons.push(a);
+  }
+
+  if (!streamAddons.length){
+    sideBody.innerHTML = '<div class="empty-msg">No addons provide streams for this item.</div>';
+    return;
+  }
+
+  var promises = streamAddons.map(function(a){
+    var url = a.baseUrl + '/stream/' + encodeURIComponent(itemType) + '/' + encodeURIComponent(itemId) + '.json';
+    return fetchJSON(url).then(function(data){
+      return { addon: a, streams: (data && data.streams) || [] };
+    }).catch(function(){
+      return { addon: a, streams: [] };
+    });
+  });
+
+  Promise.all(promises).then(function(results){
+    var all = [];
+    for (var i = 0; i < results.length; i++){
+      for (var j = 0; j < results[i].streams.length; j++){
+        all.push({ addon: results[i].addon, stream: results[i].streams[j] });
+      }
+    }
+    renderStreams(all);
+  });
+}
+
+function renderStreams(list){
+  if (!list.length){
+    sideBody.innerHTML = '<div class="empty-msg">No streams returned by any addon.</div>';
+    return;
+  }
+  var html = '';
+  for (var i = 0; i < list.length; i++){
+    var entry = list[i];
+    var s = entry.stream;
+    var title = s.title || s.name || ('Stream ' + (i + 1));
+    html += '<button class="stream-card" data-idx="' + i + '" type="button">';
+    html += '<div class="stream-addon">' + esc(entry.addon.manifest.name) + '</div>';
+    html += '<div class="stream-name">' + esc(s.name || 'Stream') + '</div>';
+    if (s.title) html += '<div class="stream-desc">' + esc(s.title) + '</div>';
+    html += '</button>';
+  }
+  sideBody.innerHTML = html;
+
+  // Store the list on the DOM for click handlers
+  var cards = sideBody.querySelectorAll('.stream-card');
+  for (var k = 0; k < cards.length; k++){
+    (function(idx){
+      cards[k].addEventListener('click', function(){
+        playStream(list[idx].stream);
+      });
+    })(k);
+  }
+}
+
+// ─────────────────────────────────────────────
+// STREAM PARSING (URL + ClearKey)
+// ─────────────────────────────────────────────
+function parseStreamUrl(rawUrl){
+  // Stremio streams can be:
+  // - a plain URL
+  // - a URL with |drmScheme=clearkey&drmLicense=KID:KEY appended
+  // - an infoHash (torrent) — not supported in browser without WebTorrent
+  if (!rawUrl) return null;
+
+  var url = rawUrl;
+  var drm = null;
+
+  // Split off query params that belong to the stream wrapper, not the media URL
+  // The | separator is Stremio convention
+  var pipeIdx = url.indexOf('|');
+  if (pipeIdx !== -1){
+    var suffix = url.substring(pipeIdx + 1);
+    url = url.substring(0, pipeIdx);
+    var params = suffix.split('&');
+    for (var i = 0; i < params.length; i++){
+      var kv = params[i].split('=');
+      if (kv[0] === 'drmScheme' && kv[1] === 'clearkey'){
+        // Look for drmLicense
+        for (var j = 0; j < params.length; j++){
+          var kv2 = params[j].split('=');
+          if (kv2[0] === 'drmLicense' && kv2[1]){
+            var parts = kv2[1].split(':');
+            if (parts.length === 2){
+              drm = { kid: parts[0], key: parts[1] };
+            }
+          }
+        }
+      }
+    }
+  }
+
+  // Also check for the same params in the query string (some addons use ? instead of |)
+  if (!drm && url.indexOf('drmScheme=clearkey') !== -1){
+    var m = url.match(/[?&]drmLicense=([^&]+)/);
+    if (m){
+      var parts2 = m[1].split(':');
+      if (parts2.length === 2) drm = { kid: parts2[0], key: parts2[1] };
+    }
+  }
+
+  return { url: url, drm: drm };
+}
+
+// ─────────────────────────────────────────────
+// PLAYBACK
+// ─────────────────────────────────────────────
+function playStream(stream){
+  // Prefer direct URL; some addons give infoHash only
+  var rawUrl = stream.url || stream.externalUrl || '';
+  if (!rawUrl && stream.infoHash){
+    alert('This stream is a torrent (infoHash). Browser playback of torrents requires WebTorrent, which is not included here.');
+    return;
+  }
+  if (!rawUrl){
+    alert('This stream has no playable URL.');
+    return;
+  }
+
+  var parsed = parseStreamUrl(rawUrl);
+  if (!parsed || !parsed.url){
+    alert('Could not parse stream URL.');
+    return;
+  }
+
+  currentStreamUrl = parsed.url;
+  currentDrm = parsed.drm;
+
+  if (!player){
+    initPlayer();
+  }
+
+  resetReconnectState();
+
+  // Configure DRM if needed
+  var drmCfg = {};
+  if (currentDrm){
+    drmCfg = { clearKeys: {} };
+    drmCfg.clearKeys[currentDrm.kid] = currentDrm.key;
+  }
+
+  player.configure({
+    drm: drmCfg,
+    streaming: {
+      lowLatencyMode: true,
+      rebufferingGoal: isTizen() ? 1 : 0
+    },
+    abr: { enabled: true }
+  });
+
+  player.unload().catch(function(){}).then(function(){
+    return player.load(currentStreamUrl);
+  }).then(function(){
+    console.log('[Play] Loaded:', currentStreamUrl);
+    if (isTizen()){
+      setTimeout(function(){
+        try { player.configure({ streaming: { rebufferingGoal: 0 } }); } catch(e){}
+      }, 5000);
+    }
+    video.play().catch(function(){ /* Shaka big-play covers this */ });
+    startStallDetector();
+  }).catch(function(err){
+    console.error('[Play] Load failed:', err);
+    scheduleReconnect('stream-load');
+  });
+}
+
+// ─────────────────────────────────────────────
+// SHAKA PLAYER
+// ─────────────────────────────────────────────
+function initPlayer(){
+  if (!shaka || !shaka.Player){
+    console.error('Shaka not loaded');
+    return;
+  }
+
+  // TIZEN FIX: skip polyfills
+  if (!isTizen()){
+    try {
+      if (shaka.polyfill && shaka.polyfill.installAll) shaka.polyfill.installAll();
+    } catch(e){ console.warn('Polyfill failed', e); }
+  }
+
+  if (!shaka.Player.isBrowserSupported()){
+    console.error('Browser not supported');
+    return;
+  }
+
+  player = new shaka.Player(video);
+
+  ui = new shaka.ui.Overlay(player, playerContainer, video, {
+    addSeekBar: true,
+    addBigPlayButton: true,
+    controlPanelElements: [
+      'play_pause', 'time_and_duration', 'spacer',
+      'mute', 'volume', 'quality', 'fullscreen'
+    ],
+    overflowMenuButtons: [
+      'captions', 'language', 'playback_rate', 'loop', 'statistics'
+    ],
+    seekBarColors: {
+      base: 'rgba(255,255,255,0.30)',
+      buffered: 'rgba(255,255,255,0.50)',
+      played: '#4fc3f7'
+    }
+  });
+
+  // Dynamic headers for streams that need Referer / UA
+  player.getNetworkingEngine().registerRequestFilter(function(type, request){
+    // If a stream needs specific headers, you can add logic here.
+    // For Stremio streams, many direct URLs work without them.
+  });
+
+  player.addEventListener('error', function(event){
+    var err = event.detail || {};
+    var code = err.code || 0;
+    var msg = err.message || '';
+    console.error('[Shaka] Error ' + code + ': ' + msg);
+
+    // Fatal: DRM (6xxx) or codec (4015)
+    if ((code >= 6000 && code < 7000) || code === 4015){
+      hideReconnect();
+      return;
+    }
+    scheduleReconnect('shaka-error-' + code);
+  });
+}
+
+// ─────────────────────────────────────────────
+// RECONNECT ENGINE (same as before)
+// ─────────────────────────────────────────────
+function showReconnect(attempt, delayMs){
+  var seconds = Math.round(delayMs / 1000);
+  rbText.textContent = 'Reconnecting… attempt ' + attempt +
+    (seconds > 0 ? ' (retry in ' + seconds + 's)' : '');
+  reconnectBanner.classList.add('visible');
+}
+function hideReconnect(){ reconnectBanner.classList.remove('visible'); }
+
+function scheduleReconnect(reason){
+  if (reconnect.inProgress || !currentStreamUrl) return;
+  reconnect.inProgress = true;
+  var delay = Math.min(reconnectCfg.MAX_BACKOFF_MS,
+    reconnectCfg.BASE_BACKOFF_MS * Math.pow(2, Math.min(reconnect.attempt, 4)));
+  reconnect.attempt++;
+  console.warn('[Reconnect] #' + reconnect.attempt + ' in ' + delay + 'ms (' + reason + ')');
+  showReconnect(reconnect.attempt, delay);
+  clearTimeout(reconnect.timer);
+  reconnect.timer = setTimeout(doReconnect, delay);
+}
+
+function doReconnect(){
+  if (reloadInFlight || !player || !currentStreamUrl) return;
+  reloadInFlight = true;
+  clearTimeout(reconnect.timer);
+  reconnect.timer = null;
+  reconnect.stallCount = 0;
+
+  var drmCfg = {};
+  if (currentDrm){
+    drmCfg = { clearKeys: {} };
+    drmCfg.clearKeys[currentDrm.kid] = currentDrm.key;
+  }
+
+  player.unload().catch(function(){}).then(function(){
+    player.configure({
+      drm: drmCfg,
+      streaming: {
+        lowLatencyMode: true,
+        rebufferingGoal: isTizen() ? 1 : 0
+      },
+      abr: { enabled: true }
+    });
+    return player.load(currentStreamUrl);
+  }).then(function(){
+    reloadInFlight = false;
+    reconnect.inProgress = false;
+    if (isTizen()){
+      setTimeout(function(){
+        try { player.configure({ streaming: { rebufferingGoal: 0 } }); } catch(e){}
+      }, 5000);
+    }
+    video.play().catch(function(){});
+    setTimeout(function(){
+      if (!video.paused && video.readyState >= 3){
+        reconnect.attempt = 0;
+        hideReconnect();
+      }
+    }, reconnectCfg.STABLE_RESET_MS);
+  }).catch(function(err){
+    console.error('[Reconnect] Reload failed:', err);
+    reloadInFlight = false;
+    reconnect.inProgress = false;
+    scheduleReconnect('reload-failed');
+  });
+}
+
+function resetReconnectState(){
+  clearTimeout(reconnect.timer);
+  reconnect.timer = null;
+  reconnect.inProgress = false;
+  reconnect.attempt = 0;
+  reconnect.stallCount = 0;
+  reloadInFlight = false;
+  clearTimeout(waitingTimer);
+  waitingTimer = null;
+  hideReconnect();
+}
+
+function startStallDetector(){
+  if (stallInterval) clearInterval(stallInterval);
+  stallInterval = setInterval(function(){
+    if (video.paused || video.readyState < 2){
+      reconnect.stallCount = 0;
+      reconnect.lastCurrentTime = video.currentTime;
+      return;
+    }
+    if (Math.abs(video.currentTime - reconnect.lastCurrentTime) < 0.3){
+      reconnect.stallCount++;
+      if (reconnect.stallCount >= reconnectCfg.STALL_THRESHOLD_SEC){
+        reconnect.stallCount = 0;
+        scheduleReconnect('stall');
+      }
+    } else {
+      reconnect.stallCount = 0;
+    }
+    reconnect.lastCurrentTime = video.currentTime;
+  }, 1000);
+}
+
+// Video event hooks
+video.addEventListener('waiting', function(){
+  clearTimeout(waitingTimer);
+  waitingTimer = setTimeout(function(){
+    if (!video.paused && video.readyState < 3){
+      scheduleReconnect('waiting-timeout');
+    }
+  }, reconnectCfg.WAITING_TIMEOUT_MS);
+});
+video.addEventListener('playing', function(){
+  clearTimeout(waitingTimer);
+  waitingTimer = null;
+  reconnect.stallCount = 0;
+  reconnect.lastCurrentTime = video.currentTime;
+});
+video.addEventListener('error', function(){
+  scheduleReconnect('media-error');
+});
+
+// Network online recovery
+window.addEventListener('online', function(){
+  if (reconnect.inProgress && reconnect.timer){
+    clearTimeout(reconnect.timer);
+    reconnect.timer = null;
+    reconnect.attempt = Math.max(0, reconnect.attempt - 1);
+    doReconnect();
+  }
+});
+
+// ─────────────────────────────────────────────
+// TIZEN BACK / EXIT KEY
+// ─────────────────────────────────────────────
+document.addEventListener('keydown', function(e){
+  var k = e.keyCode;
+  if (k !== 10009 && k !== 461) return;
+
+  var popup = document.querySelector(
+    '.shaka-overflow-menu, .shaka-settings-menu, .shaka-quality-menu'
+  );
+  if (popup && !popup.classList.contains('shaka-hidden')) return;
+
+  if (!addonModal.classList.contains('hidden')){
+    e.preventDefault();
+    closeAddonModal();
+    return;
+  }
+  if (document.fullscreenElement || document.webkitFullscreenElement){
+    e.preventDefault();
+    if (document.exitFullscreen) document.exitFullscreen();
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+    return;
+  }
+  // Do not exit the page — go back to catalogs
+  e.preventDefault();
+  renderCatalogs();
+});
+
+// ─────────────────────────────────────────────
+// REFRESH BUTTON
+// ─────────────────────────────────────────────
+$('refreshBtn').addEventListener('click', function(){
+  renderCatalogs();
+});
+
+// ─────────────────────────────────────────────
+// BOOT
+// ─────────────────────────────────────────────
+function boot(){
+  // Restore addons
+  var stored = loadStoredAddons();
+  if (stored.length){
+    addons = stored.map(function(s){
+      var baseUrl = s.url.substring(0, s.url.lastIndexOf('/'));
+      return { url: s.url, manifest: s.manifest, baseUrl: baseUrl };
+    });
+  }
+
+  // Init player
+  initPlayer();
+
+  // Render catalogs (or empty state)
+  renderCatalogs();
+
+  // Auto-open addon manager if no addons
+  if (!addons.length){
+    setTimeout(openAddonModal, 400);
+  }
+}
+
+if (document.readyState === 'complete' || document.readyState === 'interactive'){
+  setTimeout(boot, 0);
+} else {
+  document.addEventListener('DOMContentLoaded', boot);
+}
+
+})();
+</script>
+</body>
+</html>
