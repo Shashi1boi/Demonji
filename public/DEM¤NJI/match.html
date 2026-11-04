@@ -6,23 +6,19 @@
 <meta name="referrer" content="no-referrer">
 <title>ClearKey DASH Player</title>
 
-<!-- Shaka Player + UI CSS/JS (UI build bundles everything you need) -->
+<!-- Shaka Player + UI (self-contained UI build) -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/shaka-player@4.6.18/dist/controls.css">
 <script src="https://cdn.jsdelivr.net/npm/shaka-player@4.6.18/dist/shaka-player.ui.min.js"></script>
 
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body {
-    background: #000;
-    width: 100%; height: 100%;
-    overflow: hidden;
+    background: #000; width: 100%; height: 100%; overflow: hidden;
     font-family: -apple-system, Arial, Helvetica, sans-serif;
     color: #fff;
-    -webkit-user-select: none;
-    user-select: none;
+    -webkit-user-select: none; user-select: none;
   }
 
-  /* Shaka UI requires a positioned container */
   #player-container {
     position: fixed;
     inset: 0;
@@ -30,27 +26,58 @@
   }
 
   #video {
-    width: 100%;
-    height: 100%;
+    width: 100%; height: 100%;
     background: #000;
     object-fit: contain;
     display: block;
     outline: none;
   }
 
-  /* Make Shaka's own controls larger / more D-pad friendly on TVs */
+  /* ── Reconnect status pill — NOT a button, purely informational ── */
+  #reconnectBanner {
+    position: fixed;
+    top: calc(16px + env(safe-area-inset-top));
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 9999;
+    background: rgba(12, 22, 32, 0.92);
+    color: #4fc3f7;
+    border: 1px solid rgba(79, 195, 247, 0.5);
+    border-radius: 8px;
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: bold;
+    display: none;
+    pointer-events: none;            /* never blocks Shaka's controls */
+    white-space: nowrap;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.55);
+    max-width: 90vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  #reconnectBanner.visible { display: block; }
+  #reconnectBanner .rb-dot {
+    display: inline-block;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #4fc3f7;
+    margin-right: 8px;
+    vertical-align: middle;
+    animation: rbPulse 1s infinite;
+  }
+  @keyframes rbPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+
+  /* Bigger, D-pad-friendly Shaka controls on large screens / TVs */
   @media (min-width: 1280px) {
     .shaka-controls-container .shaka-controls-button-panel button {
       min-width: 48px;
       min-height: 48px;
       font-size: 16px;
     }
-    .shaka-controls-container .shaka-seek-bar-container {
-      height: 32px;
-    }
+    .shaka-controls-container .shaka-seek-bar-container { height: 32px; }
   }
 
-  /* Extra-visible focus outline (some Tizen builds don't show Shaka's default) */
+  /* Extra-visible focus outline for Tizen remotes */
   .shaka-controls-container button:focus,
   .shaka-controls-container button:focus-visible {
     outline: 2px solid #4fc3f7;
@@ -68,6 +95,10 @@
          preload="auto"></video>
 </div>
 
+<div id="reconnectBanner" role="status" aria-live="polite">
+  <span class="rb-dot"></span><span id="rbText">Reconnecting…</span>
+</div>
+
 <script>
 (function () {
   'use strict';
@@ -75,21 +106,179 @@
   // ─────────────────────────────────────────────
   // CONFIG
   // ─────────────────────────────────────────────
-  var MANIFEST_URI   = 'https://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/clients/dash/enc/ppmrp8tlzz/out/v1/cf829370483b4212ac7d5e3009c514b1/cenc.mpd';
-  var CLEAR_KEY_ID   = '952fb91696308da86bee7cd24edf0b58';
-  var CLEAR_KEY_VAL  = 'bf359214ab3ac848738bdf014ace21b3';
+  var MANIFEST_URI  = 'https://otte.live.fly.ww.aiv-cdn.net/iad-nitro/live/clients/dash/enc/ppmrp8tlzz/out/v1/cf829370483b4212ac7d5e3009c514b1/cenc.mpd';
+  var CLEAR_KEY_ID  = '952fb91696308da86bee7cd24edf0b58';
+  var CLEAR_KEY_VAL = 'bf359214ab3ac848738bdf014ace21b3';
 
-  var video     = document.getElementById('video');
-  var container = document.getElementById('player-container');
-  var player    = null;
-  var ui        = null;
+  // Reconnect tuning
+  var BASE_BACKOFF_MS     = 1000;    // first retry after 1s
+  var MAX_BACKOFF_MS      = 15000;   // cap at 15s between retries
+  var STALL_THRESHOLD_SEC = 10;      // no progress for 10s → reconnect
+  var WAITING_TIMEOUT_MS  = 12000;   // buffering for 12s → reconnect
+  var STABLE_RESET_MS     = 15000;   // playing fine for 15s → reset attempt counter
+
+  // ─────────────────────────────────────────────
+  // DOM
+  // ─────────────────────────────────────────────
+  var video          = document.getElementById('video');
+  var container      = document.getElementById('player-container');
+  var reconnectBanner = document.getElementById('reconnectBanner');
+  var rbText         = document.getElementById('rbText');
+
+  var player = null;
+  var ui     = null;
+
+  // ─────────────────────────────────────────────
+  // STATE
+  // ─────────────────────────────────────────────
+  var reconnect = {
+    attempt: 0,
+    inProgress: false,
+    timer: null,
+    lastCurrentTime: 0,
+    stallCount: 0
+  };
+  var reloadInFlight  = false;
+  var waitingTimer    = null;
+  var stallInterval   = null;
+  var isTizenPlatform = false;
 
   // ─────────────────────────────────────────────
   // TIZEN DETECTION
   // ─────────────────────────────────────────────
-  function isTizen() {
+  function detectTizen() {
     try { return shaka.util.Platform.isTizen(); }
     catch (e) { return false; }
+  }
+
+  // ─────────────────────────────────────────────
+  // RECONNECT UI
+  // ─────────────────────────────────────────────
+  function showReconnect(attempt, delayMs) {
+    var seconds = Math.round(delayMs / 1000);
+    rbText.textContent = 'Reconnecting… attempt ' + attempt +
+                         (seconds > 0 ? ' (retry in ' + seconds + 's)' : '');
+    reconnectBanner.classList.add('visible');
+  }
+  function hideReconnect() {
+    reconnectBanner.classList.remove('visible');
+  }
+
+  // ─────────────────────────────────────────────
+  // RECONNECT ENGINE
+  // ─────────────────────────────────────────────
+  function scheduleReconnect(reason) {
+    if (reconnect.inProgress) {
+      console.log('[Reconnect] Already scheduled — ignoring reason:', reason);
+      return;
+    }
+    reconnect.inProgress = true;
+
+    var delay = Math.min(
+      MAX_BACKOFF_MS,
+      BASE_BACKOFF_MS * Math.pow(2, Math.min(reconnect.attempt, 4))
+    );
+    reconnect.attempt++;
+
+    console.warn('[Reconnect] Attempt #' + reconnect.attempt +
+                 ' in ' + delay + 'ms (reason: ' + reason + ')');
+    showReconnect(reconnect.attempt, delay);
+
+    clearTimeout(reconnect.timer);
+    reconnect.timer = setTimeout(doReconnect, delay);
+  }
+
+  function doReconnect() {
+    if (reloadInFlight || !player) return;
+    reloadInFlight = true;
+
+    clearTimeout(reconnect.timer);
+    reconnect.timer = null;
+    reconnect.stallCount = 0;
+
+    console.log('[Reconnect] Unloading and reloading manifest…');
+
+    var config = {
+      drm: {
+        clearKeys: (function () {
+          var c = {};
+          c[CLEAR_KEY_ID] = CLEAR_KEY_VAL;
+          return c;
+        })()
+      },
+      streaming: {
+        lowLatencyMode: true,
+        // Tizen fix: start with buffer path, switch back after 5s
+        rebufferingGoal: isTizenPlatform ? 1 : 0
+      },
+      abr: { enabled: true }
+    };
+
+    player.unload().catch(function (e) {
+      console.warn('[Reconnect] Unload warning (continuing):', e);
+    }).then(function () {
+      player.configure(config);
+      return player.load(MANIFEST_URI);
+    }).then(function () {
+      console.log('[Reconnect] Reload succeeded');
+      reloadInFlight = false;
+      reconnect.inProgress = false;
+
+      // Tizen: restore low-latency goal after startup
+      if (isTizenPlatform) {
+        setTimeout(function () {
+          try { player.configure({ streaming: { rebufferingGoal: 0 } }); } catch (e) {}
+        }, 5000);
+      }
+
+      // Try to resume playback (Shaka may auto-play since video was playing)
+      var p = video.play();
+      if (p && p.catch) {
+        p.catch(function (e) {
+          console.log('[Reconnect] Autoplay blocked after reconnect:', e.name);
+          // Shaka UI will show big play button — user just taps it
+        });
+      }
+
+      // Reset attempt counter after stable playback
+      setTimeout(function () {
+        if (!video.paused && video.readyState >= 3) {
+          console.log('[Reconnect] Playback stable — resetting attempt counter');
+          reconnect.attempt = 0;
+          hideReconnect();
+        }
+      }, STABLE_RESET_MS);
+    }).catch(function (err) {
+      console.error('[Reconnect] Reload failed:', err);
+      reloadInFlight = false;
+      reconnect.inProgress = false;
+      scheduleReconnect('reload-failed');
+    });
+  }
+
+  // ─────────────────────────────────────────────
+  // STALL DETECTOR — currentTime not advancing
+  // ─────────────────────────────────────────────
+  function startStallDetector() {
+    if (stallInterval) return;
+    stallInterval = setInterval(function () {
+      if (video.paused || video.readyState < 2) {
+        reconnect.stallCount = 0;
+        reconnect.lastCurrentTime = video.currentTime;
+        return;
+      }
+      if (Math.abs(video.currentTime - reconnect.lastCurrentTime) < 0.3) {
+        reconnect.stallCount++;
+        if (reconnect.stallCount >= STALL_THRESHOLD_SEC) {
+          console.warn('[Reconnect] Stall detected (' + STALL_THRESHOLD_SEC + 's no progress)');
+          reconnect.stallCount = 0;
+          scheduleReconnect('stall');
+        }
+      } else {
+        reconnect.stallCount = 0;
+      }
+      reconnect.lastCurrentTime = video.currentTime;
+    }, 1000);
   }
 
   // ─────────────────────────────────────────────
@@ -100,47 +289,41 @@
       console.error('[Player] Shaka failed to load.');
       return;
     }
+    isTizenPlatform = detectTizen();
 
     // ════════ TIZEN FIX #1: Skip polyfills ════════
-    // Installing EME polyfills on Tizen triggers error 6001
-    // (REQUESTED_KEY_SYSTEM_CONFIG_UNAVAILABLE).
-    if (!isTizen()) {
+    if (!isTizenPlatform) {
       try {
-        if (shaka.polyfill && shaka.polyfill.installAll) {
-          shaka.polyfill.installAll();
-        }
+        if (shaka.polyfill && shaka.polyfill.installAll) shaka.polyfill.installAll();
       } catch (e) {
         console.warn('[Player] Polyfill install failed:', e);
       }
     } else {
-      console.log('[Player] Tizen detected — skipping polyfills to avoid error 6001.');
+      console.log('[Player] Tizen detected — skipping polyfills (avoids error 6001).');
     }
 
     if (!shaka.Player.isBrowserSupported()) {
-      console.error('[Player] Browser not supported (needs MSE / EME).');
+      console.error('[Player] Browser not supported (MSE/EME missing).');
       return;
     }
 
     // ─────────── Create Shaka Player ───────────
     player = new shaka.Player(video);
 
-    // ─────────── Create Shaka UI (pure Shaka controls) ───────────
-    // Everything below is drawn by Shaka's own UI library — no custom buttons.
+    // ─────────── Pure Shaka UI ───────────
+    // Everything you see is drawn by Shaka — no custom buttons.
     ui = new shaka.ui.Overlay(player, container, video, {
       addSeekBar: true,
       addBigPlayButton: true,
-      // Controls visible in the bottom bar (this is where the quality
-      // picker lives — Shaka's own gear / resolution button).
       controlPanelElements: [
         'play_pause',
         'time_and_duration',
         'spacer',
         'mute',
         'volume',
-        'quality',      // ← Shaka's built-in quality button (Auto + resolutions)
+        'quality',        // ← Shaka's own gear / resolution button
         'fullscreen'
       ],
-      // Everything else Shaka offers goes in the overflow (⋮) menu.
       overflowMenuButtons: [
         'captions',
         'language',
@@ -161,19 +344,32 @@
 
     player.configure({
       drm: { clearKeys: clearKeys },
-      streaming: { lowLatencyMode: true },
+      streaming: {
+        lowLatencyMode: true,
+        rebufferingGoal: isTizenPlatform ? 1 : 0
+      },
       abr: { enabled: true }
     });
 
-    // ─────────── Error handling ───────────
+    // ─────────── Shaka error → reconnect ───────────
     player.addEventListener('error', function (event) {
-      var err = event.detail || {};
-      var code = err.code || '???';
-      var msg  = err.message || 'Unknown playback error';
-      if (code === 6001) {
-        msg += ' — ClearKey may be unavailable on this device, or the page is not served over HTTPS.';
+      var err  = event.detail || {};
+      var code = err.code || 0;
+      var msg  = err.message || '';
+
+      console.error('[Player] Error ' + code + ': ' + msg);
+
+      // Non-retryable: DRM (6xxx) or codec (4015)
+      if ((code >= 6000 && code < 7000) || code === 4015) {
+        console.error('[Player] Fatal error — not retrying.');
+        if (code === 6001) {
+          console.error('[Player] ClearKey unavailable — check HTTPS or device CDM support.');
+        }
+        hideReconnect();
+        return;
       }
-      console.error('[Player] Error', code, msg);
+
+      scheduleReconnect('shaka-error-' + code);
     });
 
     // ─────────── Load the live DASH manifest ───────────
@@ -181,41 +377,76 @@
       console.log('[Player] Manifest loaded.');
 
       // ════════ TIZEN FIX #2: rebufferingGoal workaround ════════
-      // Some Tizen models never fire "buffering = false" on live DASH,
-      // leaving the screen black. A brief buffer-based start fixes it.
-      if (isTizen()) {
-        try {
-          player.configure({ streaming: { rebufferingGoal: 1 } });
-          setTimeout(function () {
-            try { player.configure({ streaming: { rebufferingGoal: 0 } }); } catch (e) {}
-          }, 5000);
-          console.log('[Player] Tizen rebufferingGoal workaround applied.');
-        } catch (e) {}
+      if (isTizenPlatform) {
+        setTimeout(function () {
+          try { player.configure({ streaming: { rebufferingGoal: 0 } }); } catch (e) {}
+        }, 5000);
       }
+
+      // Start the watchdog
+      startStallDetector();
     }).catch(function (err) {
-      console.error('[Player] Load failed:', err);
+      console.error('[Player] Initial load failed:', err);
+      scheduleReconnect('initial-load');
+    });
+
+    // ─────────── Video-level recovery hooks ───────────
+    video.addEventListener('waiting', function () {
+      clearTimeout(waitingTimer);
+      waitingTimer = setTimeout(function () {
+        if (!video.paused && video.readyState < 3) {
+          console.warn('[Reconnect] Buffering too long (' + WAITING_TIMEOUT_MS + 'ms)');
+          scheduleReconnect('waiting-timeout');
+        }
+      }, WAITING_TIMEOUT_MS);
+    });
+
+    video.addEventListener('playing', function () {
+      clearTimeout(waitingTimer);
+      waitingTimer = null;
+      reconnect.stallCount = 0;
+      reconnect.lastCurrentTime = video.currentTime;
+    });
+
+    // Native media error (rare on DASH, but caught for safety)
+    video.addEventListener('error', function () {
+      var e = video.error;
+      console.error('[Reconnect] Media error:', e ? e.code : '?', e ? e.message : '');
+      scheduleReconnect('media-error');
+    });
+
+    // ─────────── Network online/offline ───────────
+    window.addEventListener('online', function () {
+      console.log('[Reconnect] Network back online');
+      if (reconnect.inProgress && reconnect.timer) {
+        console.log('[Reconnect] Triggering retry now (network restored)');
+        clearTimeout(reconnect.timer);
+        reconnect.timer = null;
+        // Don't advance attempt on network recovery
+        reconnect.attempt = Math.max(0, reconnect.attempt - 1);
+        doReconnect();
+      }
+    });
+    window.addEventListener('offline', function () {
+      console.log('[Reconnect] Network went offline — will retry when back');
     });
   }
 
   // ─────────────────────────────────────────────
   // ════════ TIZEN FIX #3: Remote Back / Exit key ════════
-  // 10009 = RETURN (back) on Tizen remotes
-  // 461   = EXIT
-  // When Shaka has an overlay open (overflow menu, quality popup),
-  // let Shaka handle it first; only exit the app if nothing is open.
+  // 10009 = RETURN, 461 = EXIT
+  // If Shaka has a menu open, let Shaka handle it first.
   // ─────────────────────────────────────────────
   document.addEventListener('keydown', function (e) {
     var k = e.keyCode;
     if (k !== 10009 && k !== 461) return;
 
-    // If Shaka has an active popup / menu open, let its own handlers
-    // take it down instead of exiting the app.
     var popup = document.querySelector(
       '.shaka-overflow-menu, .shaka-settings-menu, ' +
       '.shaka-quality-menu, .shaka-client-side-ad-container'
     );
     if (popup && !popup.classList.contains('shaka-hidden')) {
-      return; // let Shaka's default key handling close it
+      return; // Shaka's own key handler will close it
     }
 
     if (document.fullscreenElement || document.webkitFullscreenElement) {
@@ -225,7 +456,6 @@
       return;
     }
 
-    // Nothing open — exit the Tizen app (or fall back to browser history)
     e.preventDefault();
     try {
       if (window.tizen && window.tizen.application) {
